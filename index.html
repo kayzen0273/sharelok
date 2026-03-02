@@ -3,72 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R V1 | P2P VOICE PRO</title>
+    <title>C.R V1 | P2P VOICE ULTIMATE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         body { background: #000; color: #0f0; font-family: 'Courier New', Courier, monospace; }
-        .cr-card { border: 1px solid #0f0; background: #050505; box-shadow: 0 0 30px rgba(0, 255, 0, 0.05); }
-        .vol-bar { height: 4px; background: #030; width: 100%; position: relative; overflow: hidden; }
-        .vol-fill { height: 100%; background: #0f0; width: 0%; transition: width 0.1s; }
-        .btn { transition: 0.2s; border: 1px solid #0f0; text-transform: uppercase; font-size: 10px; font-weight: bold; }
-        .btn:hover:not(:disabled) { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
-        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .cr-ui { border: 1px solid #0f0; background: #050505; }
+        .btn-action { background: #030; border: 1px solid #0f0; transition: 0.2s; cursor: pointer; }
+        .btn-action:hover:not(:disabled) { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
+        .btn-action:disabled { opacity: 0.3; cursor: not-allowed; }
+        .vol-meter { height: 10px; background: #111; border: 1px solid #030; position: relative; overflow: hidden; }
+        .vol-level { height: 100%; background: linear-gradient(90deg, #050, #0f0); width: 0%; transition: width 0.1s; }
+        .terminal { background: #000; border: 1px solid #020; font-size: 9px; height: 80px; overflow-y: auto; color: #0a0; padding: 5px; }
+        .pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 </head>
-<body class="h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="max-w-md w-full cr-card rounded-lg p-6 border-t-4 border-t-green-500">
-        <div class="flex justify-between items-start mb-6">
-            <div>
-                <h1 class="text-xl font-black italic">C.R P2P VOICE</h1>
-                <p class="text-[9px] opacity-50">STRICTLY FOR USER: GIGS</p>
-            </div>
-            <div id="connection-indicator" class="text-[9px] border border-red-500 text-red-500 px-2 py-1">OFFLINE</div>
+    <div class="max-w-md w-full cr-ui p-6 rounded-lg shadow-2xl">
+        <div class="flex justify-between items-center mb-6 border-b border-green-900 pb-2">
+            <h1 class="font-black text-xl tracking-tighter italic">C.R P2P <span class="text-white">PRO</span></h1>
+            <div id="netStatus" class="text-[10px] px-2 py-0.5 bg-red-900 text-red-200 rounded">OFFLINE</div>
         </div>
 
-        <!-- My ID -->
-        <div class="bg-black p-3 border border-green-900 mb-4">
-            <label class="text-[9px] uppercase text-green-700 block mb-1">ID Lo (Kirim ke Target):</label>
-            <div class="flex gap-2">
-                <input type="text" id="myIdDisplay" readonly class="bg-transparent text-white font-bold w-full outline-none text-sm">
-                <button onclick="copyId()" class="text-[10px] text-green-500 underline">COPY</button>
+        <!-- ID Card -->
+        <div class="mb-4 bg-green-950/20 p-3 border border-green-900 rounded">
+            <label class="text-[9px] uppercase opacity-60">ID Perangkat Lo:</label>
+            <div class="flex items-center justify-between">
+                <span id="myIdText" class="text-white font-bold text-lg">GENERATING...</span>
+                <button onclick="copyId()" class="text-[10px] underline hover:text-white">SALIN</button>
             </div>
         </div>
 
-        <!-- Input Target -->
+        <!-- Call Target -->
         <div class="mb-6">
-            <label class="text-[9px] uppercase text-green-700 block mb-1">Input ID Target:</label>
-            <input type="text" id="targetIdInput" placeholder="Paste ID target..." class="w-full bg-black border border-green-900 p-2 text-sm outline-none focus:border-green-400 text-white">
+            <input type="text" id="targetId" placeholder="Input ID Target..." class="w-full bg-black border border-green-900 p-3 text-sm outline-none focus:border-green-400 text-white placeholder:opacity-30">
+        </div>
+
+        <!-- Audio Force Trigger (Hidden by default) -->
+        <div id="forceAudio" class="hidden mb-4 p-3 bg-blue-900/30 border border-blue-500 rounded text-center">
+            <p class="text-[10px] text-blue-200 mb-2 font-bold uppercase">Audio Terdeteksi!</p>
+            <button onclick="resumeAudio()" class="btn-action w-full py-2 text-[10px]">AKTIFKAN SUARA SEKARANG</button>
         </div>
 
         <!-- Controls -->
         <div class="grid grid-cols-2 gap-3 mb-6">
-            <button id="callBtn" onclick="initiateCall()" class="btn py-3 bg-green-950 text-green-400">Panggil</button>
-            <button id="hangupBtn" onclick="endCall()" class="btn py-3 bg-red-950 text-red-500 border-red-500" disabled>Hangup</button>
+            <button id="btnStart" onclick="callTarget()" class="btn-action py-3 font-bold">PANGGIL</button>
+            <button id="btnEnd" onclick="location.reload()" class="btn-action py-3 font-bold text-red-500 border-red-500" disabled>PUTUSKAN</button>
         </div>
 
-        <!-- Voice Meter -->
-        <div class="mb-4">
-            <div class="flex justify-between text-[9px] mb-1 uppercase text-gray-500">
-                <span>Mic Activity</span>
-                <span id="call-timer">00:00</span>
+        <!-- Visuals -->
+        <div class="space-y-3 mb-4">
+            <div>
+                <div class="flex justify-between text-[8px] uppercase mb-1"><span>Mic Input</span><span id="micVal">0%</span></div>
+                <div class="vol-meter"><div id="localVol" class="vol-level"></div></div>
             </div>
-            <div class="vol-bar"><div id="volFill" class="vol-fill"></div></div>
+            <div id="remoteMeter" class="hidden">
+                <div class="flex justify-between text-[8px] uppercase mb-1"><span>Target Audio</span><span id="remoteVal">0%</span></div>
+                <div class="vol-meter"><div id="remoteVol" class="vol-level"></div></div>
+            </div>
         </div>
 
-        <!-- System Log -->
-        <div id="log" class="text-[8px] h-16 overflow-y-auto bg-black border border-green-950 p-2 text-gray-500 leading-tight">
-            [SYSTEM] Awaiting user interaction...
+        <!-- Log -->
+        <div id="log" class="terminal mb-2">
+            <div>[SYSTEM] Menunggu User Gigs...</div>
         </div>
-
-        <audio id="remoteAudio" autoplay></audio>
+        
+        <p class="text-[8px] text-center opacity-30 mt-4 uppercase tracking-widest">Powered by C.R V1.0 | No Logs Policy</p>
     </div>
 
+    <audio id="remoteAudio" autoplay playsinline></audio>
+
     <script>
-        // CONFIG FIREBASE GIGS
         const firebaseConfig = {
             apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
             authDomain: "apktroj.firebaseapp.com",
@@ -83,160 +91,143 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const myId = "CR-" + Math.random().toString(36).substr(2, 4).toUpperCase();
-        document.getElementById('myIdDisplay').value = myId;
+        document.getElementById('myIdText').innerText = myId;
 
-        let localStream, remoteStream, peerConnection;
-        const servers = {
+        let localStream, pc, audioCtx, analyser, remoteAnalyser;
+        
+        // Pake STUN/TURN gratisan biar nembus NAT/Firewall
+        const rtcConfig = {
             iceServers: [
-                { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
             ],
-            iceCandidatePoolSize: 10,
+            iceCandidatePoolSize: 10
         };
 
-        function writeLog(msg) {
-            const log = document.getElementById('log');
-            log.innerHTML += `<div>> ${msg}</div>`;
-            log.scrollTop = log.scrollHeight;
+        function addLog(m) {
+            const l = document.getElementById('log');
+            l.innerHTML += `<div>> ${m}</div>`;
+            l.scrollTop = l.scrollHeight;
         }
 
-        // Monitoring Mic Level
-        function monitorMic(stream) {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
-            analyser.fftSize = 256;
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-
-            function update() {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for(let i=0; i<bufferLength; i++) sum += dataArray[i];
-                let average = sum / bufferLength;
-                document.getElementById('volFill').style.width = (average * 2) + "%";
-                requestAnimationFrame(update);
-            }
-            update();
-        }
-
-        // 1. Setup Media & Listen for Incoming
         async function init() {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
-                monitorMic(localStream);
-                writeLog("Mic Active. Ready.");
-                document.getElementById('connection-indicator').innerText = "ONLINE";
-                document.getElementById('connection-indicator').classList.replace('text-red-500', 'text-green-500');
-                document.getElementById('connection-indicator').classList.replace('border-red-500', 'border-green-500');
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+                });
+                setupVisualizer(localStream, 'localVol', 'micVal');
+                document.getElementById('netStatus').innerText = "ONLINE";
+                document.getElementById('netStatus').className = "text-[10px] px-2 py-0.5 bg-green-900 text-green-200 rounded";
+                addLog("Mic Ready. P2P Handshake aktif.");
 
                 // Listen for Calls
-                db.ref('calls/' + myId).on('value', async snap => {
-                    const data = snap.val();
-                    if (data && data.offer && !peerConnection) {
-                        handleIncomingCall(data);
+                db.ref(`calls/${myId}/offer`).on('value', async snap => {
+                    const offer = snap.val();
+                    if(offer && !pc) {
+                        addLog("Panggilan masuk...");
+                        if(confirm("Terima panggilan?")) handleAnswer(offer);
                     }
                 });
             } catch (e) {
-                writeLog("ERROR: Izinin Mic dulu!");
+                addLog("ERROR: Mic diblokir!");
             }
         }
 
-        // 2. Initiate Call
-        async function initiateCall() {
-            const targetId = document.getElementById('targetIdInput').value;
-            if(!targetId) return alert("Mana ID targetnya?");
-
-            writeLog(`Calling ${targetId}...`);
-            document.getElementById('callBtn').disabled = true;
-            document.getElementById('hangupBtn').disabled = false;
-
-            peerConnection = new RTCPeerConnection(servers);
-            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-            peerConnection.ontrack = event => {
-                document.getElementById('remoteAudio').srcObject = event.streams[0];
-                writeLog("P2P Audio Connected.");
-            };
-
-            peerConnection.onicecandidate = event => {
-                if(event.candidate) {
-                    db.ref(`calls/${targetId}/candidates`).push(event.candidate.toJSON());
-                }
-            };
-
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-
-            const callData = { offer: { type: offer.type, sdp: offer.sdp }, caller: myId };
-            await db.ref('calls/' + targetId).set(callData);
-
-            // Watch for answer
-            db.ref(`calls/${targetId}/answer`).on('value', snap => {
-                const answer = snap.val();
-                if(answer && !peerConnection.currentRemoteDescription) {
-                    peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                }
-            });
-
-            // Watch for candidates
-            db.ref(`calls/${myId}/candidates`).on('child_added', snap => {
-                peerConnection.addIceCandidate(new RTCIceCandidate(snap.val()));
-            });
-        }
-
-        // 3. Handle Incoming
-        async function handleIncomingCall(data) {
-            writeLog("Incoming call...");
-            if(!confirm(`Terima telepon dari ${data.caller}?`)) {
-                db.ref('calls/' + myId).remove();
-                return;
+        function setupVisualizer(stream, barId, textId) {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const src = context.createMediaStreamSource(stream);
+            const node = context.createAnalyser();
+            src.connect(node);
+            const data = new Uint8Array(node.frequencyBinCount);
+            
+            function draw() {
+                node.getByteFrequencyData(data);
+                let sum = data.reduce((a, b) => a + b, 0);
+                let vol = Math.round((sum / data.length) * 2.5);
+                document.getElementById(barId).style.width = vol + "%";
+                document.getElementById(textId).innerText = vol + "%";
+                requestAnimationFrame(draw);
             }
+            draw();
+            if(barId === 'localVol') audioCtx = context;
+        }
 
-            document.getElementById('callBtn').disabled = true;
-            document.getElementById('hangupBtn').disabled = false;
+        async function createPC(target) {
+            pc = new RTCPeerConnection(rtcConfig);
+            
+            localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
-            peerConnection = new RTCPeerConnection(servers);
-            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-            peerConnection.ontrack = event => {
-                document.getElementById('remoteAudio').srcObject = event.streams[0];
-                writeLog("P2P Audio Connected.");
+            pc.onicecandidate = e => {
+                if(e.candidate) db.ref(`calls/${target}/ice`).push(e.candidate.toJSON());
             };
 
-            peerConnection.onicecandidate = event => {
-                if(event.candidate) {
-                    db.ref(`calls/${data.caller}/candidates`).push(event.candidate.toJSON());
-                }
+            pc.ontrack = e => {
+                const remoteAudio = document.getElementById('remoteAudio');
+                remoteAudio.srcObject = e.streams[0];
+                document.getElementById('remoteMeter').classList.remove('hidden');
+                document.getElementById('forceAudio').classList.remove('hidden');
+                setupVisualizer(e.streams[0], 'remoteVol', 'remoteVal');
+                addLog("Audio Terhubung!");
             };
 
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-
-            await db.ref(`calls/${myId}/answer`).set({ type: answer.type, sdp: answer.sdp });
-
-            db.ref(`calls/${myId}/candidates`).on('child_added', snap => {
-                peerConnection.addIceCandidate(new RTCIceCandidate(snap.val()));
+            // Sync Ice Candidates
+            db.ref(`calls/${myId}/ice`).on('child_added', s => {
+                if(pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
             });
         }
 
-        function endCall() {
-            db.ref('calls/' + myId).remove();
-            location.reload();
+        async function callTarget() {
+            const target = document.getElementById('targetId').value;
+            if(!target) return;
+
+            document.getElementById('btnStart').disabled = true;
+            document.getElementById('btnEnd').disabled = false;
+            addLog(`Calling ${target}...`);
+
+            await createPC(target);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            await db.ref(`calls/${target}/offer`).set({ type: offer.type, sdp: offer.sdp, from: myId });
+
+            db.ref(`calls/${target}/answer`).on('value', async s => {
+                const ans = s.val();
+                if(ans && !pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(ans));
+                    addLog("Target Menjawab.");
+                }
+            });
+        }
+
+        async function handleAnswer(offer) {
+            document.getElementById('btnStart').disabled = true;
+            document.getElementById('btnEnd').disabled = false;
+            
+            await createPC(offer.from);
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const ans = await pc.createAnswer();
+            await pc.setLocalDescription(ans);
+
+            await db.ref(`calls/${offer.from}/answer`).set({ type: ans.type, sdp: ans.sdp });
+            addLog("Menyambungkan...");
+        }
+
+        function resumeAudio() {
+            const ra = document.getElementById('remoteAudio');
+            ra.play();
+            if(audioCtx) audioCtx.resume();
+            document.getElementById('forceAudio').classList.add('hidden');
+            addLog("Audio Output Diaktifkan.");
         }
 
         function copyId() {
-            const el = document.createElement('textarea');
-            el.value = myId;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            writeLog("ID Copied.");
+            const t = document.createElement('textarea');
+            t.value = myId; document.body.appendChild(t); t.select();
+            document.execCommand('copy'); document.body.removeChild(t);
+            addLog("ID Disalin.");
         }
 
-        // Start init on load
         window.onload = init;
     </script>
 </body>
