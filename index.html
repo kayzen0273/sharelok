@@ -3,71 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R V1 | WA VOICE GROUP</title>
+    <title>C.R V2 | WA VOICE PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { background-color: #0b141a; color: #e9edef; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .wa-green { background-color: #00a884; }
+        body { background-color: #0b141a; color: #e9edef; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         .wa-dark { background-color: #202c33; }
-        .wa-bg { background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded51.png'); opacity: 0.06; position: fixed; inset: 0; z-index: -1; }
-        .member-card { transition: 0.3s; border-left: 4px solid transparent; }
-        .member-card.speaking { border-left: 4px solid #00a884; background: #2a3942; }
-        .pulse { animation: pulse-wa 1.5s infinite; }
-        @keyframes pulse-wa { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+        .wa-green { background-color: #00a884; }
+        .member-item { border-bottom: 1px solid #2a3942; transition: 0.2s; }
+        .member-item:hover { background-color: #2a3942; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .is-speaking { border-left: 4px solid #00a884; animation: glow 1s infinite alternate; }
+        @keyframes glow { from { background: #202c33; } to { background: #2a3942; } }
     </style>
 </head>
 <body class="h-screen flex flex-col">
-    <div class="wa-bg"></div>
 
     <!-- Header -->
-    <header class="wa-dark p-4 flex items-center justify-between shadow-md z-10">
+    <header class="wa-dark p-4 flex items-center justify-between shadow-lg">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full wa-green flex items-center justify-center font-bold text-white shadow-lg">C.R</div>
+            <div class="w-10 h-10 rounded-full wa-green flex items-center justify-center font-bold text-white shadow-xl">CR</div>
             <div>
-                <h1 class="font-bold text-sm">Gigs V1 Group Chat</h1>
-                <p id="online-count" class="text-[10px] text-gray-400 font-medium tracking-wider uppercase">0 Member Online</p>
+                <h1 class="font-bold text-sm">Gigs Group V2</h1>
+                <p id="stats" class="text-[10px] text-gray-400">Menghubungkan ke server...</p>
             </div>
         </div>
-        <div class="flex gap-4">
-            <button onclick="location.reload()" class="opacity-70 hover:opacity-100">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            </button>
-        </div>
+        <button onclick="location.reload()" class="p-2 rounded-full hover:bg-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        </button>
     </header>
 
-    <!-- Content -->
-    <main class="flex-1 overflow-y-auto p-4 space-y-2 z-10" id="members-list">
-        <!-- List member bakal muncul di sini -->
+    <!-- Member List -->
+    <div id="setup-screen" class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div class="w-20 h-20 bg-gray-700 rounded-full mb-4 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 opacity-30" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+        </div>
+        <h2 class="text-xl font-bold mb-2">Voice Group Gigs</h2>
+        <p class="text-xs text-gray-500 mb-6">Masukan nama lo buat gabung ke obrolan privat.</p>
+        <input type="text" id="username" placeholder="Nama lo..." class="w-full max-w-xs bg-[#2a3942] border-none rounded-lg p-3 mb-4 outline-none focus:ring-2 focus:ring-[#00a884]">
+        <button onclick="join()" class="w-full max-w-xs wa-green py-3 rounded-lg font-bold text-black hover:opacity-90">GABUNG SEKARANG</button>
+    </div>
+
+    <main id="main-app" class="hidden flex-1 overflow-y-auto">
+        <div id="list-container">
+            <!-- Members injected here -->
+        </div>
     </main>
 
-    <!-- Footer / Control -->
-    <footer class="wa-dark p-6 border-t border-gray-800 z-10">
-        <div id="setup-panel" class="mb-4">
-            <input type="text" id="username" placeholder="Masukin Nama Lo..." class="w-full bg-[#2a3942] border-none rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#00a884] outline-none mb-3">
-            <button onclick="joinGroup()" class="w-full wa-green py-3 rounded-lg font-bold text-sm text-black hover:bg-[#008f6f] transition">GABUNG VOICE CHAT</button>
-        </div>
-
-        <div id="voice-controls" class="hidden flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="relative">
-                    <div id="mic-indicator" class="hidden pulse absolute inset-0 bg-green-500 rounded-full"></div>
-                    <button id="mute-btn" onclick="toggleMute()" class="relative z-10 p-3 bg-gray-700 rounded-full">
-                        <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                    </button>
-                </div>
-                <div class="text-xs">
-                    <p class="font-bold text-green-500">VOICE AKTIF</p>
-                    <p class="text-[10px] opacity-50">Enkripsi P2P Aktif</p>
-                </div>
+    <!-- Active Controls -->
+    <footer id="controls" class="hidden wa-dark p-6 border-t border-gray-800 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <button id="muteBtn" onclick="toggleMute()" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600">
+                <svg id="micIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+            </button>
+            <div>
+                <p id="my-name-display" class="font-bold text-sm text-green-500">Connecting...</p>
+                <p class="text-[10px] opacity-50 uppercase tracking-widest">Enkripsi P2P Aktif</p>
             </div>
-            <button onclick="leaveGroup()" class="bg-red-500/20 text-red-500 px-4 py-2 rounded-lg text-xs font-bold border border-red-500/30">KELUAR</button>
         </div>
+        <button onclick="location.reload()" class="text-red-500 text-xs font-bold border border-red-500/30 px-4 py-2 rounded-lg">KELUAR</button>
     </footer>
 
-    <!-- Audio Containers -->
-    <div id="remote-audios"></div>
+    <div id="audio-dump" class="hidden"></div>
 
     <script>
         const firebaseConfig = {
@@ -77,198 +75,178 @@
             projectId: "apktroj",
             storageBucket: "apktroj.firebasestorage.app",
             messagingSenderId: "943833619122",
-            appId: "1:943833619122:web:d757ced4d56267abf247ab",
-            measurementId: "G-WR01BDY3G6"
+            appId: "1:943833619122:web:d757ced4d56267abf247ab"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-        
-        let myId = "USR-" + Math.random().toString(36).substr(2, 5).toUpperCase();
-        let myName = "";
-        let localStream;
+        const myId = "U" + Math.floor(Math.random() * 1000000);
+        let localStream, myName;
         let peers = {};
         let isMuted = false;
 
-        // 1. Monitor Members Online
-        db.ref('group/members').on('value', snap => {
-            const list = document.getElementById('members-list');
-            const count = document.getElementById('online-count');
-            const data = snap.val() || {};
-            
-            list.innerHTML = '';
-            const members = Object.keys(data);
-            count.innerText = `${members.length} Member Online`;
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
 
-            members.forEach(id => {
-                const isMe = id === myId;
-                list.innerHTML += `
-                    <div id="card-${id}" class="member-card wa-dark p-3 rounded-lg flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-xs font-bold">
-                                ${data[id].name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                                <h3 class="text-sm font-medium">${data[id].name} ${isMe ? '(Lo)' : ''}</h3>
-                                <p class="text-[10px] text-green-500">${data[id].status || 'Mendengarkan...'}</p>
-                            </div>
-                        </div>
-                        ${isMe ? '' : `<div class="text-[10px] opacity-30 italic">P2P Linked</div>`}
-                    </div>
-                `;
-            });
-        });
-
-        // 2. Gabung Group
-        async function joinGroup() {
-            myName = document.getElementById('username').value || "Guest_" + myId.substr(-3);
+        async function join() {
+            myName = document.getElementById('username').value || "User_" + myId.slice(-3);
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                document.getElementById('setup-panel').classList.add('hidden');
-                document.getElementById('voice-controls').classList.remove('hidden');
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('controls').classList.remove('hidden');
+                document.getElementById('my-name-display').innerText = myName;
 
-                // Register ke DB
-                const userRef = db.ref('group/members/' + myId);
-                userRef.set({ name: myName, status: 'Lagi Ngomong...' });
-                userRef.onDisconnect().remove();
+                // 1. Sinkronisasi Member
+                const memberRef = db.ref('v2/members/' + myId);
+                memberRef.set({ name: myName, speaking: false });
+                memberRef.onDisconnect().remove();
 
-                // Listen for new offers from others
-                db.ref('group/calls/' + myId).on('child_added', async snap => {
-                    const call = snap.val();
-                    await handleOffer(call.from, call.offer);
+                // 2. Listen Signaling (Signaling diperbaiki)
+                db.ref('v2/signal/' + myId).on('child_added', async snap => {
+                    const data = snap.val();
+                    const fromId = data.from;
+                    
+                    if (!peers[fromId]) setupPeer(fromId, false);
+                    
+                    const pc = peers[fromId];
+                    if (data.type === 'offer') {
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        db.ref(`v2/signal/${fromId}`).push({ from: myId, type: 'answer', sdp: answer });
+                    } else if (data.type === 'answer') {
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                    } else if (data.type === 'ice') {
+                        pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(e => {});
+                    }
+                    snap.ref.remove();
                 });
 
-                // Broadcast presence to all existing members to initiate call
-                const allMembers = await db.ref('group/members').once('value');
-                const members = allMembers.val();
-                for (let id in members) {
-                    if (id !== myId) initiateCall(id);
-                }
+                // 3. Monitor Member Masuk
+                db.ref('v2/members').on('value', snap => {
+                    const users = snap.val() || {};
+                    updateUI(users);
+                    
+                    // Inisiasi koneksi ke member baru (Hanya jika ID kita lebih kecil - Anti Tabrakan)
+                    Object.keys(users).forEach(userId => {
+                        if (userId !== myId && !peers[userId] && parseInt(myId.slice(1)) < parseInt(userId.slice(1))) {
+                            setupPeer(userId, true);
+                        }
+                    });
+                });
 
-                startMicMonitor();
+                startVoiceMonitor();
             } catch (e) {
-                alert("Woi, izinin Mic dulu!");
+                alert("Woi! Izinkan Mic di browser lo!");
             }
         }
 
-        // 3. WebRTC Logic (Mesh Network)
-        async function initiateCall(targetId) {
+        function setupPeer(targetId, isOfferer) {
             const pc = new RTCPeerConnection(rtcConfig);
             peers[targetId] = pc;
 
-            localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
             pc.onicecandidate = e => {
-                if (e.candidate) db.ref(`group/ice/${targetId}/${myId}`).push(e.candidate.toJSON());
+                if (e.candidate) db.ref(`v2/signal/${targetId}`).push({ from: myId, type: 'ice', candidate: e.candidate.toJSON() });
             };
 
             pc.ontrack = e => {
-                addRemoteAudio(targetId, e.streams[0]);
+                let audio = document.getElementById('audio-' + targetId);
+                if (!audio) {
+                    audio = document.createElement('audio');
+                    audio.id = 'audio-' + targetId;
+                    audio.autoplay = true;
+                    document.getElementById('audio-dump').appendChild(audio);
+                }
+                audio.srcObject = e.streams[0];
             };
 
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-
-            db.ref(`group/calls/${targetId}/${myId}`).set({ from: myId, offer: { type: offer.type, sdp: offer.sdp } });
-
-            // Listen for answer
-            db.ref(`group/answers/${myId}/${targetId}`).on('value', async snap => {
-                const ans = snap.val();
-                if (ans && !pc.currentRemoteDescription) await pc.setRemoteDescription(new RTCSessionDescription(ans));
-            });
-
-            // Listen for ICE
-            db.ref(`group/ice/${myId}/${targetId}`).on('child_added', snap => {
-                pc.addIceCandidate(new RTCIceCandidate(snap.val()));
-            });
-        }
-
-        async function handleOffer(fromId, offer) {
-            const pc = new RTCPeerConnection(rtcConfig);
-            peers[fromId] = pc;
-
-            localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-
-            pc.onicecandidate = e => {
-                if (e.candidate) db.ref(`group/ice/${fromId}/${myId}`).push(e.candidate.toJSON());
-            };
-
-            pc.ontrack = e => {
-                addRemoteAudio(fromId, e.streams[0]);
-            };
-
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            const ans = await pc.createAnswer();
-            await pc.setLocalDescription(ans);
-
-            db.ref(`group/answers/${fromId}/${myId}`).set({ type: ans.type, sdp: ans.sdp });
-
-            db.ref(`group/ice/${myId}/${fromId}`).on('child_added', snap => {
-                pc.addIceCandidate(new RTCIceCandidate(snap.val()));
-            });
-        }
-
-        function addRemoteAudio(id, stream) {
-            let audio = document.getElementById('audio-' + id);
-            if (!audio) {
-                audio = document.createElement('audio');
-                audio.id = 'audio-' + id;
-                audio.autoplay = true;
-                document.getElementById('remote-audios').appendChild(audio);
+            if (isOfferer) {
+                pc.onnegotiationneeded = async () => {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    db.ref(`v2/signal/${targetId}`).push({ from: myId, type: 'offer', sdp: offer });
+                };
             }
-            audio.srcObject = stream;
+        }
+
+        function updateUI(users) {
+            const container = document.getElementById('list-container');
+            const stats = document.getElementById('stats');
+            const keys = Object.keys(users);
+            stats.innerText = `${keys.length} Member Online`;
+            
+            container.innerHTML = '';
+            keys.forEach(id => {
+                const u = users[id];
+                const isMe = id === myId;
+                const activeClass = u.speaking ? 'is-speaking' : '';
+                
+                container.innerHTML += `
+                    <div class="member-item p-4 flex items-center justify-between ${activeClass}">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center font-bold text-white uppercase border-2 ${u.speaking ? 'border-green-500' : 'border-gray-500'}">
+                                ${u.name.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-sm">${u.name} ${isMe ? '(Lo)' : ''}</h3>
+                                <p class="text-[10px] opacity-50 flex items-center gap-1">
+                                    <span class="status-dot ${u.speaking ? 'bg-green-500' : 'bg-gray-500'}"></span>
+                                    ${u.speaking ? 'Lagi Ngomong...' : 'Mendengarkan'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
         }
 
         function toggleMute() {
             isMuted = !isMuted;
             localStream.getAudioTracks()[0].enabled = !isMuted;
-            const btn = document.getElementById('mute-btn');
-            const icon = document.getElementById('mic-icon');
-            const indicator = document.getElementById('mic-indicator');
+            const btn = document.getElementById('muteBtn');
+            const icon = document.getElementById('micIcon');
             
             if (isMuted) {
-                btn.classList.add('bg-red-500');
+                btn.classList.add('bg-red-900');
                 icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />';
-                indicator.classList.add('hidden');
-                db.ref('group/members/' + myId + '/status').set('Mute');
+                db.ref('v2/members/' + myId + '/speaking').set(false);
             } else {
-                btn.classList.remove('bg-red-500');
+                btn.classList.remove('bg-red-900');
                 icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />';
-                db.ref('group/members/' + myId + '/status').set('Lagi Ngomong...');
             }
         }
 
-        function startMicMonitor() {
+        function startVoiceMonitor() {
             const ctx = new AudioContext();
             const src = ctx.createMediaStreamSource(localStream);
             const analyzer = ctx.createAnalyser();
             src.connect(analyzer);
             const data = new Uint8Array(analyzer.frequencyBinCount);
-            
+            let lastSpeaking = false;
+
             function check() {
                 analyzer.getByteFrequencyData(data);
                 const vol = data.reduce((a, b) => a + b) / data.length;
-                const indicator = document.getElementById('mic-indicator');
-                const myCard = document.getElementById('card-' + myId);
+                const speaking = vol > 12 && !isMuted;
                 
-                if (vol > 15 && !isMuted) {
-                    indicator.classList.remove('hidden');
-                    if (myCard) myCard.classList.add('speaking');
-                } else {
-                    indicator.classList.add('hidden');
-                    if (myCard) myCard.classList.remove('speaking');
+                if (speaking !== lastSpeaking) {
+                    db.ref('v2/members/' + myId + '/speaking').set(speaking);
+                    lastSpeaking = speaking;
                 }
                 requestAnimationFrame(check);
             }
             check();
         }
 
-        function leaveGroup() {
-            db.ref('group/members/' + myId).remove();
-            location.reload();
-        }
+        // Clean up on start
+        db.ref('v2/members').once('value', s => { if(!s.exists()) db.ref('v2').remove(); });
     </script>
 </body>
 </html>
