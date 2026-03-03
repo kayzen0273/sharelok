@@ -646,8 +646,10 @@ body::after {
     <div class="fp-judul">📊 PERINGKAT AKHIR</div>
     <div id="finalBaris"></div>
   </div>
-  <br>
-  <button class="tombol-lagi" onclick="location.reload()">🔄 MAIN LAGI!</button>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding-bottom:16px;">
+    <button class="tombol-lagi" onclick="mainLagi()">🔄 MAIN LAGI!</button>
+    <button class="tombol-lagi" style="background:var(--kartu2);border-color:rgba(255,214,0,.3);font-size:1.1rem;padding:13px 36px;" onclick="kembaliKeMenu()">🏠 Menu Awal</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -2043,6 +2045,37 @@ function konfeti() {
 // ═══════════════════════════════════════════════
 // BOOT: check for saved session on page load
 // ═══════════════════════════════════════════════
+async function mainLagi() {
+  // Simpan pemain & totalRonde, reset sisanya
+  const pemainLama = G.pemain.slice();
+  const rondeYg    = G.totalRonde;
+
+  clearSession();
+  if (roomListener) { roomListener(); roomListener = null; }
+  if (onlineTimerInterval) clearInterval(onlineTimerInterval);
+
+  G = { pemain: pemainLama, totalRonde: rondeYg, ronde: 0, soal: [], jawaban: {}, penilaian: {}, skorTotal: {} };
+  G.pemain.forEach(p => G.skorTotal[p.nama] = 0);
+  onlineMode = false; isHost = false; roomCode = null;
+
+  tampilLayar('loading');
+  try {
+    G.soal = await ambilSoal(G.totalRonde);
+  } catch(e) {
+    G.soal = soalCadangan(G.totalRonde);
+  }
+  mulaiRonde();
+}
+
+function kembaliKeMenu() {
+  clearSession();
+  G = { pemain:[], totalRonde:5, ronde:0, soal:[], jawaban:{}, penilaian:{}, skorTotal:{} };
+  onlineMode = false; isHost = false; roomCode = null;
+  if (roomListener) { roomListener(); roomListener = null; }
+  if (onlineTimerInterval) clearInterval(onlineTimerInterval);
+  tampilLayar('modeSelect');
+}
+
 checkAndRestoreSession();
 </script>
 </body>
