@@ -1452,6 +1452,10 @@ HANYA kembalikan raw JSON array, tidak ada teks lain:
       }
     }
 
+    // Buang entry AI yang bukan pemain yang jawab (anti-halusinasi)
+    const namaYangJawab = new Set(adaJawaban.map(([, p]) => p.nama));
+    hasilAI = hasilAI.filter(h => namaYangJawab.has(h.nama));
+
     // Samakan skor jawaban identik
     Object.values(grupJawaban).forEach(namaGrup => {
       if (namaGrup.length > 1) {
@@ -1461,10 +1465,9 @@ HANYA kembalikan raw JSON array, tidak ada teks lain:
       }
     });
 
-    // Pemain tidak jawab → skor 0
+    // Pemain tidak jawab → skor null (tidak dinilai, tidak ditambah ke total)
     const hasilTidakJawab = tidakJawaban.map(([, p]) => ({
-      nama: p.nama, skor: 0,
-      komentar: 'Diem aja kayak patung. Bahkan patung punya alasan kenapa diem. LOGIKA! 😶'
+      nama: p.nama, skor: null, komentar: null
     }));
 
     let hasil = [...hasilAI, ...hasilTidakJawab];
@@ -1472,17 +1475,23 @@ HANYA kembalikan raw JSON array, tidak ada teks lain:
     // Pastikan semua pemain ada
     playerList.forEach(([, p]) => {
       if (!hasil.find(h => h.nama === p.nama))
-        hasil.push({ nama: p.nama, skor: 0, komentar: 'Entah kemana, yang penting LOGIKA! 😶' });
+        hasil.push({ nama: p.nama, skor: null, komentar: null });
     });
 
-    hasil.sort((a, b) => b.skor - a.skor);
+    hasil.sort((a, b) => {
+      if (a.skor === null && b.skor === null) return 0;
+      if (a.skor === null) return 1;
+      if (b.skor === null) return -1;
+      return b.skor - a.skor;
+    });
 
-    // Update total scores
+    // Update total scores — hanya yang jawab (skor bukan null)
     const newSkorTotal = { ...(data.skorTotal || {}) };
     const namaToId = {};
     Object.entries(players).forEach(([id, p]) => { namaToId[p.nama] = id; });
 
     hasil.forEach(h => {
+      if (h.skor === null) return; // skip yang tidak jawab
       const pid = namaToId[h.nama];
       if (pid) newSkorTotal[pid] = (newSkorTotal[pid] || 0) + h.skor;
     });
@@ -1875,11 +1884,14 @@ HANYA kembalikan raw JSON array, tidak ada teks lain:
     }
   }
 
-  // Normalisasi nama
-  hasilAI = hasilAI.map(h => {
-    const cocok = G.pemain.find(p => p.nama.toLowerCase() === (h.nama||'').toLowerCase());
-    return { ...h, nama: cocok ? cocok.nama : h.nama };
-  });
+  // Normalisasi nama — buang entry AI yang bukan pemain yang jawab
+  const namaYangJawab = new Set(adaJawaban.map(([n]) => n));
+  hasilAI = hasilAI
+    .map(h => {
+      const cocok = G.pemain.find(p => p.nama.toLowerCase() === (h.nama||'').toLowerCase());
+      return { ...h, nama: cocok ? cocok.nama : h.nama };
+    })
+    .filter(h => namaYangJawab.has(h.nama)); // buang kalau AI halusinasi nama
 
   // Samakan skor untuk jawaban identik
   Object.values(grupJawaban).forEach(namaGrup => {
@@ -1890,24 +1902,33 @@ HANYA kembalikan raw JSON array, tidak ada teks lain:
     }
   });
 
-  // Tambah pemain yang tidak jawab dengan skor 0
+  // Hanya pemain yang jawab yang masuk hasil dengan skor
   const hasilTidakJawab = tidakJawaban.map(([nama]) => ({
-    nama, skor: 0,
-    komentar: 'Diem aja kayak patung. Bahkan patung punya alasan kenapa diem. LOGIKA! 😶'
+    nama, skor: null, // null = tidak dinilai
+    komentar: null
   }));
 
   let hasil = [...hasilAI, ...hasilTidakJawab];
 
-  // Pastikan semua pemain ada di hasil
+  // Pastikan semua pemain masuk hasil (misal ada yang tidak ter-cover)
   G.pemain.forEach(p => {
-    if (!hasil.find(h => h.nama === p.nama)) {
-      hasil.push({ nama: p.nama, skor: 0, komentar: 'Entah kemana, yang penting LOGIKA! 😶' });
-    }
+    if (!hasil.find(h => h.nama === p.nama))
+      hasil.push({ nama: p.nama, skor: null, komentar: null });
   });
 
-  hasil.sort((a, b) => b.skor - a.skor);
+  hasil.sort((a, b) => {
+    if (a.skor === null && b.skor === null) return 0;
+    if (a.skor === null) return 1;
+    if (b.skor === null) return -1;
+    return b.skor - a.skor;
+  });
+
   G.penilaian[G.ronde] = hasil;
-  hasil.forEach(h => { if (G.skorTotal[h.nama] !== undefined) G.skorTotal[h.nama] += h.skor; });
+  // Hanya tambah skor untuk yang benar-benar jawab (skor bukan null)
+  hasil.forEach(h => {
+    if (h.skor !== null && G.skorTotal[h.nama] !== undefined)
+      G.skorTotal[h.nama] += h.skor;
+  });
   tampilHasil();
 }
 
@@ -1998,17 +2019,17 @@ function tampilHasil() {
   const posEmoji = ['🥇','🥈','🥉'];
   ps.innerHTML   = '';
   sorted.forEach((p, i) => {
-    const rondeH  = G.penilaian[G.ronde].find(h => h.nama === p.nama);
-    const delta   = rondeH ? rondeH.skor : 0;
+    const rondeH   = G.penilaian[G.ronde].find(h => h.nama === p.nama);
     const tidakJwb = isJawabanKosong(G.jawaban[G.ronde]?.[p.nama]);
-    const row     = document.createElement('div');
-    row.className = 'ps-baris';
-    row.innerHTML = `
+    const delta    = (!tidakJwb && rondeH && rondeH.skor !== null) ? rondeH.skor : null;
+    const row      = document.createElement('div');
+    row.className  = 'ps-baris';
+    row.innerHTML  = `
       <div class="ps-pos">${posEmoji[i]||'#'+(i+1)}</div>
       <div class="ps-bulat" style="background:${p.warna};border-radius:50%"></div>
       <div class="ps-nama">${p.nama}</div>
       <div class="ps-total">${G.skorTotal[p.nama]}</div>
-      <div class="ps-delta" style="${tidakJwb?'color:var(--redup)':''}${!tidakJwb&&delta>0?'color:#4AFF7A':''}">${tidakJwb?'-':'+'+delta}</div>
+      <div class="ps-delta" style="color:${delta===null?'var(--redup)':delta>0?'#4AFF7A':'var(--redup)'}">${delta===null?'-':'+'+delta}</div>
     `;
     ps.appendChild(row);
   });
