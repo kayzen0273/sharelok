@@ -680,6 +680,11 @@ const db = firebase.firestore();
 // ═══════════════════════════════════════════════
 const WARNA = ['#FF4500','#FFB800','#00CC55','#00B4FF','#FF2D78','#CC88FF','#FF6B35','#00DDCC'];
 const DETIK = 60;
+const JAWABAN_KOSONG = ['(diam sambil garuk kepala 🤔)', '(kehabisan waktu berpikir ⏰)', '(tidak menjawab)', '(tidak jawab)'];
+function isJawabanKosong(j) {
+  if (!j || !j.trim()) return true;
+  return JAWABAN_KOSONG.some(k => j.trim().toLowerCase().includes(k.toLowerCase().replace(/[🤔⏰]/g,'').trim()));
+}
 const LINGKARAN = 2 * Math.PI * 22;
 
 // ═══════════════════════════════════════════════
@@ -1382,53 +1387,81 @@ async function nilaiOnline() {
     const answers = data.answers?.[ronde] || {};
     const players = data.players || {};
 
-    const daftar = Object.entries(players).map(([id, p]) => {
-      const j = answers[id] || '(tidak menjawab)';
-      return `- ${p.nama}: "${j}"`;
-    }).join('\n');
+    // Pisahkan pemain yang jawab vs tidak
+    const playerList    = Object.entries(players);
+    const adaJawaban    = playerList.filter(([id]) => !isJawabanKosong(answers[id]));
+    const tidakJawaban  = playerList.filter(([id]) =>  isJawabanKosong(answers[id]));
 
-    let hasil;
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1200,
-          system: `Kamu adalah Cak Lontong versi AI yang menilai jawaban isian kreatif peserta game logika sesat.
+    // Deteksi jawaban duplikat
+    const grupJawaban = {};
+    adaJawaban.forEach(([id, p]) => {
+      const key = (answers[id] || '').trim().toLowerCase();
+      if (!grupJawaban[key]) grupJawaban[key] = [];
+      grupJawaban[key].push(p.nama);
+    });
 
-Nilai berdasarkan:
-- Kreativitas: apakah jawabannya original dan tidak terduga?
-- Kelogisan Sesat: terdengar tidak masuk akal tapi entah kenapa relate?
-- Kelucuan: apakah bisa bikin orang ngakak atau manggut-manggut sekaligus bingung?
-- Kesesuaian prompt: apakah menjawab pertanyaan dengan ngawur yang pas?
+    const daftar = adaJawaban.map(([id, p]) => `- ${p.nama}: "${answers[id]}"`).join('\n');
 
-Kriteria skor (0–100):
-- 85–100: Jenius sesat — jawaban bikin ngakak sekaligus "iya juga ya beneran"
-- 65–84: Oke — ada lucunya, ada sesat logikanya
-- 45–64: Lumayan — niat menjawab tapi kurang nendang
-- 0–44: Flat, logika normal membosankan
+    let hasilAI = [];
+    if (adaJawaban.length > 0) {
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1200,
+            system: `Kamu adalah Cak Lontong versi AI yang menilai jawaban isian kreatif peserta game logika sesat.
 
-Komentar harus bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", spesifik menyebut isi jawaban, max 30 kata.
+Nilai berdasarkan kreativitas, kelogisan sesat, kelucuan, dan kesesuaian prompt. Skor 0–100.
+
+ATURAN WAJIB:
+1. Jika dua pemain jawaban SAMA PERSIS atau sangat mirip → skor HARUS SAMA PERSIS.
+2. Nilai hanya jawaban yang diberikan di sini, jangan tambah pemain lain.
+3. Komentar bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", spesifik nyebut isi jawaban, max 30 kata.
 
 HANYA kembalikan raw JSON array:
 [{"nama":"NamaPemain","skor":75,"komentar":"komentar ala Cak Lontong"}]`,
-          messages: [{
-            role: 'user',
-            content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban. Return ONLY raw JSON array.`
-          }]
-        })
-      });
-      const resData = await res.json();
-      const raw   = resData.content.map(c => c.text || '').join('');
-      hasil = JSON.parse(raw.replace(/```json|```/g, '').trim());
-    } catch(e) {
-      hasil = Object.entries(players).map(([, p]) => ({
-        nama: p.nama,
-        skor: 40 + Math.floor(Math.random() * 55),
-        komentar: 'Jawaban yang... sungguh membagongkan. LOGIKA! 🤔'
-      }));
+            messages: [{
+              role: 'user',
+              content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban. Return ONLY raw JSON array.`
+            }]
+          })
+        });
+        const resData = await res.json();
+        const raw = resData.content.map(c => c.text || '').join('');
+        hasilAI = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      } catch(e) {
+        hasilAI = adaJawaban.map(([, p]) => ({
+          nama: p.nama,
+          skor: 40 + Math.floor(Math.random() * 30),
+          komentar: 'Jawaban yang... sungguh membagongkan. LOGIKA! 🤔'
+        }));
+      }
     }
+
+    // Samakan skor jawaban identik
+    Object.values(grupJawaban).forEach(namaGrup => {
+      if (namaGrup.length > 1) {
+        const skorGrup = hasilAI.filter(h => namaGrup.includes(h.nama)).map(h => h.skor);
+        const skorRata = Math.round(skorGrup.reduce((a, b) => a + b, 0) / skorGrup.length);
+        hasilAI.forEach(h => { if (namaGrup.includes(h.nama)) h.skor = skorRata; });
+      }
+    });
+
+    // Pemain tidak jawab → skor 0
+    const hasilTidakJawab = tidakJawaban.map(([, p]) => ({
+      nama: p.nama, skor: 0,
+      komentar: 'Diem aja kayak patung. Bahkan patung punya alasan kenapa diem. LOGIKA! 😶'
+    }));
+
+    let hasil = [...hasilAI, ...hasilTidakJawab];
+
+    // Pastikan semua pemain ada
+    playerList.forEach(([, p]) => {
+      if (!hasil.find(h => h.nama === p.nama))
+        hasil.push({ nama: p.nama, skor: 0, komentar: 'Entah kemana, yang penting LOGIKA! 😶' });
+    });
 
     hasil.sort((a, b) => b.skor - a.skor);
 
@@ -1763,53 +1796,94 @@ function autoIsi() {
 async function lakukanPenilaian() {
   tampilLayar('menilai');
 
-  const soal  = G.soal[G.ronde - 1];
-  const jwb   = G.jawaban[G.ronde];
-  const daftar = Object.entries(jwb).map(([n, j]) => `- ${n}: "${j}"`).join('\n');
+  const soal = G.soal[G.ronde - 1];
+  const jwb  = G.jawaban[G.ronde];
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1200,
-        system: `Kamu adalah Cak Lontong versi AI yang menilai jawaban isian kreatif peserta game logika sesat.
+  // Pisahkan pemain yang jawab vs tidak jawab
+  const adaJawaban   = Object.entries(jwb).filter(([, j]) => !isJawabanKosong(j));
+  const tidakJawaban = Object.entries(jwb).filter(([, j]) =>  isJawabanKosong(j));
+
+  // Cek jawaban duplikat agar skor sama
+  const grupJawaban = {};
+  adaJawaban.forEach(([n, j]) => {
+    const key = j.trim().toLowerCase();
+    if (!grupJawaban[key]) grupJawaban[key] = [];
+    grupJawaban[key].push(n);
+  });
+
+  const daftar = adaJawaban.map(([n, j]) => `- ${n}: "${j}"`).join('\n');
+
+  let hasilAI = [];
+  if (adaJawaban.length > 0) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1200,
+          system: `Kamu adalah Cak Lontong versi AI yang menilai jawaban isian kreatif peserta game logika sesat.
 
 Nilai berdasarkan kreativitas, kelogisan sesat, kelucuan, dan kesesuaian prompt. Skor 0–100.
-Komentar bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", spesifik nyebut isi jawaban, max 30 kata.
+
+ATURAN WAJIB:
+1. Jika dua pemain jawaban SAMA PERSIS atau sangat mirip → skor HARUS SAMA PERSIS.
+2. Nilai hanya jawaban yang diberikan di sini, jangan tambah pemain lain.
+3. Komentar bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", spesifik nyebut isi jawaban, max 30 kata.
 
 HANYA kembalikan raw JSON array:
 [{"nama":"NamaPemain","skor":75,"komentar":"komentar roast ala Cak Lontong"}]`,
-        messages: [{
-          role: 'user',
-          content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban. Return ONLY raw JSON array.`
-        }]
-      })
-    });
-    const data = await res.json();
-    const raw  = data.content.map(c => c.text || '').join('');
-    let hasil  = JSON.parse(raw.replace(/```json|```/g, '').trim());
-
-    hasil = hasil.map(h => {
-      const cocok = G.pemain.find(p => p.nama.toLowerCase() === (h.nama||'').toLowerCase());
-      return { ...h, nama: cocok ? cocok.nama : h.nama };
-    });
-
-    hasil.sort((a, b) => b.skor - a.skor);
-    G.penilaian[G.ronde] = hasil;
-    hasil.forEach(h => { if (G.skorTotal[h.nama] !== undefined) G.skorTotal[h.nama] += h.skor; });
-
-    tampilHasil();
-  } catch(e) {
-    const hasil = Object.entries(jwb).map(([nama]) => ({
-      nama, skor: 40 + Math.floor(Math.random() * 55),
-      komentar: 'Jawaban yang... sungguh membagongkan. LOGIKA! 🤔'
-    })).sort((a, b) => b.skor - a.skor);
-    G.penilaian[G.ronde] = hasil;
-    hasil.forEach(h => { if (G.skorTotal[h.nama] !== undefined) G.skorTotal[h.nama] += h.skor; });
-    tampilHasil();
+          messages: [{
+            role: 'user',
+            content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban. Return ONLY raw JSON array.`
+          }]
+        })
+      });
+      const data = await res.json();
+      const raw  = data.content.map(c => c.text || '').join('');
+      hasilAI = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } catch(e) {
+      hasilAI = adaJawaban.map(([nama]) => ({
+        nama, skor: 40 + Math.floor(Math.random() * 30),
+        komentar: 'Jawaban yang... sungguh membagongkan. LOGIKA! 🤔'
+      }));
+    }
   }
+
+  // Normalisasi nama
+  hasilAI = hasilAI.map(h => {
+    const cocok = G.pemain.find(p => p.nama.toLowerCase() === (h.nama||'').toLowerCase());
+    return { ...h, nama: cocok ? cocok.nama : h.nama };
+  });
+
+  // Samakan skor untuk jawaban identik
+  Object.values(grupJawaban).forEach(namaGrup => {
+    if (namaGrup.length > 1) {
+      const skorGrup = hasilAI.filter(h => namaGrup.includes(h.nama)).map(h => h.skor);
+      const skorRata = Math.round(skorGrup.reduce((a, b) => a + b, 0) / skorGrup.length);
+      hasilAI.forEach(h => { if (namaGrup.includes(h.nama)) h.skor = skorRata; });
+    }
+  });
+
+  // Tambah pemain yang tidak jawab dengan skor 0
+  const hasilTidakJawab = tidakJawaban.map(([nama]) => ({
+    nama, skor: 0,
+    komentar: 'Diem aja kayak patung. Bahkan patung punya alasan kenapa diem. LOGIKA! 😶'
+  }));
+
+  let hasil = [...hasilAI, ...hasilTidakJawab];
+
+  // Pastikan semua pemain ada di hasil
+  G.pemain.forEach(p => {
+    if (!hasil.find(h => h.nama === p.nama)) {
+      hasil.push({ nama: p.nama, skor: 0, komentar: 'Entah kemana, yang penting LOGIKA! 😶' });
+    }
+  });
+
+  hasil.sort((a, b) => b.skor - a.skor);
+  G.penilaian[G.ronde] = hasil;
+  hasil.forEach(h => { if (G.skorTotal[h.nama] !== undefined) G.skorTotal[h.nama] += h.skor; });
+  tampilHasil();
 }
 
 // ═══════════════════════════════════════════════
