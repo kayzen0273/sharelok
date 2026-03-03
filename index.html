@@ -682,8 +682,7 @@ const WARNA = ['#FF4500','#FFB800','#00CC55','#00B4FF','#FF2D78','#CC88FF','#FF6
 const DETIK = 60;
 const JAWABAN_KOSONG = ['(diam sambil garuk kepala 🤔)', '(kehabisan waktu berpikir ⏰)', '(tidak menjawab)', '(tidak jawab)'];
 function isJawabanKosong(j) {
-  if (!j || !j.trim()) return true;
-  return JAWABAN_KOSONG.some(k => j.trim().toLowerCase().includes(k.toLowerCase().replace(/[🤔⏰]/g,'').trim()));
+  return !j || !j.trim();
 }
 const LINGKARAN = 2 * Math.PI * 22;
 
@@ -1411,20 +1410,33 @@ async function nilaiOnline() {
           body: JSON.stringify({
             model: 'claude-sonnet-4-20250514',
             max_tokens: 1200,
-            system: `Kamu adalah Cak Lontong versi AI yang menilai jawaban isian kreatif peserta game logika sesat.
+            system: `Kamu adalah juri game "Logika Sesat" ala Cak Lontong. Tugasmu menilai jawaban peserta secara KONSISTEN dan ADIL berdasarkan rubrik ketat berikut.
 
-Nilai berdasarkan kreativitas, kelogisan sesat, kelucuan, dan kesesuaian prompt. Skor 0–100.
+CARA MENILAI (lakukan langkah ini dalam pikiran sebelum beri skor):
+1. Baca pertanyaan — pahami apa yang ditanyakan.
+2. Baca jawaban — apakah jawaban RELEVAN menjawab pertanyaan itu?
+3. Nilai dengan rubrik ini:
 
-ATURAN WAJIB:
-1. Jika dua pemain jawaban SAMA PERSIS atau sangat mirip → skor HARUS SAMA PERSIS.
-2. Nilai hanya jawaban yang diberikan di sini, jangan tambah pemain lain.
-3. Komentar bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", spesifik nyebut isi jawaban, max 30 kata.
+RUBRIK SKOR (0–100):
+• 85–100 → Jawaban relevan + punya "logika sesat" yang kuat: terdengar masuk akal tapi sebenarnya ngawur, ada hubungan kausal yang lucu-tapi-nyambung dengan pertanyaan.
+• 65–84  → Jawaban relevan + ada unsur sesat logika, tapi koneksinya kurang kuat atau kurang original.
+• 40–64  → Jawaban cukup relevan tapi generik, terlalu normal, atau logikanya lemah.
+• 10–39  → Jawaban tidak relevan dengan pertanyaan, atau hanya asal tulis tanpa koneksi.
+• 0–9    → Jawaban satu kata, noise, atau tidak ada usaha sama sekali.
 
-HANYA kembalikan raw JSON array:
-[{"nama":"NamaPemain","skor":75,"komentar":"komentar ala Cak Lontong"}]`,
+ATURAN KONSISTENSI (WAJIB):
+- Jawaban yang SAMA atau SANGAT MIRIP → skor HARUS SAMA PERSIS, tulis komentar yang sama juga.
+- Nilai ABSOLUT berdasarkan kualitas jawaban itu sendiri, BUKAN relatif dibanding jawaban lain.
+- Jangan naikkan skor hanya karena semua jawaban lain jelek.
+- Jangan turunkan skor hanya karena ada jawaban yang lebih bagus.
+
+KOMENTAR: Bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", sebut isi jawaban secara spesifik, max 25 kata.
+
+HANYA kembalikan raw JSON array, tidak ada teks lain:
+[{"nama":"NamaPemain","skor":75,"komentar":"..."}]`,
             messages: [{
               role: 'user',
-              content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban. Return ONLY raw JSON array.`
+              content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban sesuai rubrik. Return ONLY raw JSON array.`
             }]
           })
         });
@@ -1768,8 +1780,8 @@ function tampilGiliran(idx) {
 
 function kirimJawab() {
   const el  = document.getElementById('inputJawab');
-  const val = (el ? el.value.trim() : '') || '(diam sambil garuk kepala 🤔)';
-  G.jawaban[G.ronde][G.pemain[G.idxJawab].nama] = val;
+  const val = el ? el.value.trim() : '';
+  G.jawaban[G.ronde][G.pemain[G.idxJawab].nama] = val || null;
   G.idxJawab++;
 
   if (!onlineMode) saveLocalSession();
@@ -1785,7 +1797,7 @@ function kirimJawab() {
 function autoIsi() {
   for (let i = G.idxJawab; i < G.pemain.length; i++) {
     if (G.jawaban[G.ronde][G.pemain[i].nama] === undefined)
-      G.jawaban[G.ronde][G.pemain[i].nama] = '(kehabisan waktu berpikir ⏰)';
+      G.jawaban[G.ronde][G.pemain[i].nama] = null;
   }
   lakukanPenilaian();
 }
@@ -1822,20 +1834,33 @@ async function lakukanPenilaian() {
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1200,
-          system: `Kamu adalah Cak Lontong versi AI yang menilai jawaban isian kreatif peserta game logika sesat.
+          system: `Kamu adalah juri game "Logika Sesat" ala Cak Lontong. Tugasmu menilai jawaban peserta secara KONSISTEN dan ADIL berdasarkan rubrik ketat berikut.
 
-Nilai berdasarkan kreativitas, kelogisan sesat, kelucuan, dan kesesuaian prompt. Skor 0–100.
+CARA MENILAI (lakukan langkah ini dalam pikiran sebelum beri skor):
+1. Baca pertanyaan — pahami apa yang ditanyakan.
+2. Baca jawaban — apakah jawaban RELEVAN menjawab pertanyaan itu?
+3. Nilai dengan rubrik ini:
 
-ATURAN WAJIB:
-1. Jika dua pemain jawaban SAMA PERSIS atau sangat mirip → skor HARUS SAMA PERSIS.
-2. Nilai hanya jawaban yang diberikan di sini, jangan tambah pemain lain.
-3. Komentar bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", spesifik nyebut isi jawaban, max 30 kata.
+RUBRIK SKOR (0–100):
+• 85–100 → Jawaban relevan + punya "logika sesat" yang kuat: terdengar masuk akal tapi sebenarnya ngawur, ada hubungan kausal yang lucu-tapi-nyambung dengan pertanyaan.
+• 65–84  → Jawaban relevan + ada unsur sesat logika, tapi koneksinya kurang kuat atau kurang original.
+• 40–64  → Jawaban cukup relevan tapi generik, terlalu normal, atau logikanya lemah.
+• 10–39  → Jawaban tidak relevan dengan pertanyaan, atau hanya asal tulis tanpa koneksi.
+• 0–9    → Jawaban satu kata, noise, atau tidak ada usaha sama sekali.
 
-HANYA kembalikan raw JSON array:
-[{"nama":"NamaPemain","skor":75,"komentar":"komentar roast ala Cak Lontong"}]`,
+ATURAN KONSISTENSI (WAJIB):
+- Jawaban yang SAMA atau SANGAT MIRIP → skor HARUS SAMA PERSIS, tulis komentar yang sama juga.
+- Nilai ABSOLUT berdasarkan kualitas jawaban itu sendiri, BUKAN relatif dibanding jawaban lain.
+- Jangan naikkan skor hanya karena semua jawaban lain jelek.
+- Jangan turunkan skor hanya karena ada jawaban yang lebih bagus.
+
+KOMENTAR: Bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", sebut isi jawaban secara spesifik, max 25 kata.
+
+HANYA kembalikan raw JSON array, tidak ada teks lain:
+[{"nama":"NamaPemain","skor":75,"komentar":"..."}]`,
           messages: [{
             role: 'user',
-            content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban. Return ONLY raw JSON array.`
+            content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban sesuai rubrik. Return ONLY raw JSON array.`
           }]
         })
       });
@@ -1901,17 +1926,20 @@ function tampilHasil() {
   const rankClass = ['p1','p2','p3'];
   const rankEmoji = ['🥇','🥈','🥉'];
 
+  // Pisah: yang jawab vs tidak jawab
+  const hasilJawab    = hasil.filter(h => !isJawabanKosong(G.jawaban[G.ronde]?.[h.nama]));
+  const hasilTidakJwb = hasil.filter(h =>  isJawabanKosong(G.jawaban[G.ronde]?.[h.nama]));
+
   list.innerHTML = '';
-  hasil.forEach((h, i) => {
+
+  // Render yang jawab dengan ranking normal
+  hasilJawab.forEach((h, i) => {
     const pemain = G.pemain.find(p => p.nama === h.nama);
     const warna  = pemain ? pemain.warna : WARNA[i % WARNA.length];
     const kard   = document.createElement('div');
     kard.className = `kh ${rankClass[i] || 'pn'}`;
     kard.style.animationDelay = (i * .1) + 's';
-
     const pctBar = Math.min(100, Math.max(0, h.skor));
-    const jawaban = G.jawaban[G.ronde][h.nama] || '-';
-
     kard.innerHTML = `
       <div class="stamp-logika">LOGIKA!</div>
       <div class="kh-baris-atas">
@@ -1921,7 +1949,7 @@ function tampilHasil() {
             <div class="kh-bulat" style="background:${warna}"></div>
             <div class="kh-nama" style="color:${warna}">${h.nama}</div>
           </div>
-          <div class="kh-jawaban">"${jawaban}"</div>
+          <div class="kh-jawaban">"${G.jawaban[G.ronde][h.nama]}"</div>
         </div>
       </div>
       <div class="komentar-ai">
@@ -1942,22 +1970,45 @@ function tampilHasil() {
     list.appendChild(kard);
   });
 
+  // Render yang tidak jawab — tanpa rank, tanpa skor bar, tanpa komentar AI
+  hasilTidakJwb.forEach((h) => {
+    const pemain = G.pemain.find(p => p.nama === h.nama);
+    const warna  = pemain ? pemain.warna : '#9A7055';
+    const kard   = document.createElement('div');
+    kard.className = 'kh pn';
+    kard.style.opacity = '0.6';
+    kard.innerHTML = `
+      <div class="kh-baris-atas">
+        <div class="kh-rank" style="font-size:1.5rem">😶</div>
+        <div style="flex:1">
+          <div class="kh-baris-nama">
+            <div class="kh-bulat" style="background:${warna}"></div>
+            <div class="kh-nama" style="color:${warna}">${h.nama}</div>
+          </div>
+          <div class="kh-jawaban" style="color:var(--redup);font-style:italic">Tidak menjawab</div>
+        </div>
+      </div>
+    `;
+    list.appendChild(kard);
+  });
+
   // Total score board
   const sorted   = [...G.pemain].sort((a, b) => G.skorTotal[b.nama] - G.skorTotal[a.nama]);
   const ps       = document.getElementById('psBaris');
   const posEmoji = ['🥇','🥈','🥉'];
   ps.innerHTML   = '';
   sorted.forEach((p, i) => {
-    const rondeH = G.penilaian[G.ronde].find(h => h.nama === p.nama);
-    const delta  = rondeH ? rondeH.skor : 0;
-    const row    = document.createElement('div');
+    const rondeH  = G.penilaian[G.ronde].find(h => h.nama === p.nama);
+    const delta   = rondeH ? rondeH.skor : 0;
+    const tidakJwb = isJawabanKosong(G.jawaban[G.ronde]?.[p.nama]);
+    const row     = document.createElement('div');
     row.className = 'ps-baris';
     row.innerHTML = `
       <div class="ps-pos">${posEmoji[i]||'#'+(i+1)}</div>
       <div class="ps-bulat" style="background:${p.warna};border-radius:50%"></div>
       <div class="ps-nama">${p.nama}</div>
       <div class="ps-total">${G.skorTotal[p.nama]}</div>
-      <div class="ps-delta">+${delta}</div>
+      <div class="ps-delta" style="${tidakJwb?'color:var(--redup)':''}${!tidakJwb&&delta>0?'color:#4AFF7A':''}">${tidakJwb?'-':'+'+delta}</div>
     `;
     ps.appendChild(row);
   });
