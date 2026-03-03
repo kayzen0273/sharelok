@@ -627,6 +627,138 @@ let hasShownResults     = {};  // {ronde: true}
 let hasShownFinal       = false;
 
 // ═══════════════════════════════════════════════
+// SESSION PERSISTENCE
+// ═══════════════════════════════════════════════
+const SESSION_KEY = 'logika_session';
+
+function saveOnlineSession() {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      type:     'online',
+      roomCode,
+      myId,
+      isHost,
+      ts:       Date.now()
+    }));
+  } catch(e) {}
+}
+
+function saveLocalSession() {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      type:       'local',
+      G:          { ...G, timer: null },
+      lp,
+      ts:         Date.now()
+    }));
+  } catch(e) {}
+}
+
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
+}
+
+async function checkAndRestoreSession() {
+  let sess;
+  try { sess = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e) { return; }
+  if (!sess) return;
+
+  // Expire sessions older than 2 hours
+  if (Date.now() - sess.ts > 7200000) { clearSession(); return; }
+
+  if (sess.type === 'online') {
+    // Verify room still exists in Firestore
+    try {
+      const snap = await db.collection('rooms').doc(sess.roomCode).get();
+      if (!snap.exists) { clearSession(); return; }
+      const data = snap.data();
+      if (!data.players?.[sess.myId]) { clearSession(); return; }
+      // States where rejoining makes no sense
+      if (data.state === 'waiting' && !Object.keys(data.players).includes(sess.myId)) { clearSession(); return; }
+
+      // Restore identity
+      myId      = sess.myId;
+      isHost    = sess.isHost;
+      roomCode  = sess.roomCode;
+      onlineMode = true;
+      scoringInProgress = false;
+      hasShownResults   = {};
+      hasShownFinal     = false;
+      myAnsweredRonde   = {};
+
+      document.getElementById('kodeDisplay').textContent = roomCode;
+
+      if (data.state === 'waiting') {
+        if (isHost) {
+          document.getElementById('wrRondeKotak').style.display  = '';
+          document.getElementById('btnMulaiOnline').style.display = '';
+          document.getElementById('wrMinInfo').style.display      = '';
+        } else {
+          document.getElementById('wrTungguMsg').style.display = '';
+        }
+        tampilLayar('waitingRoom');
+      }
+
+      showToast('🔄 Kamu kembali ke sesi sebelumnya!');
+      dengarRoom();
+    } catch(e) { clearSession(); }
+
+  } else if (sess.type === 'local') {
+    // Only restore if game was mid-round (not on lobby/mode select)
+    if (!sess.G || sess.G.ronde < 1) { clearSession(); return; }
+
+    const confirmed = confirm('Kamu punya game yang belum selesai. Lanjutkan?');
+    if (!confirmed) { clearSession(); return; }
+
+    // Restore local game state
+    Object.assign(G, sess.G);
+    lp = sess.lp || lp;
+    onlineMode = false;
+
+    // Re-render lobby data in case they go back
+    renderLobby();
+
+    // Show the question screen again for current round
+    document.getElementById('rNum').textContent   = G.ronde;
+    document.getElementById('rTot').textContent   = G.totalRonde;
+    document.getElementById('ksTeks').textContent = G.soal[G.ronde - 1];
+
+    // Figure out who hasn't answered yet this round
+    const answered = G.jawaban[G.ronde] || {};
+    G.idxJawab = G.pemain.findIndex(p => answered[p.nama] === undefined);
+    if (G.idxJawab < 0) G.idxJawab = G.pemain.length; // all answered, go to scoring
+
+    if (G.idxJawab >= G.pemain.length) {
+      // All answered, redo scoring
+      tampilLayar('loading');
+      lakukanPenilaian();
+    } else {
+      renderDotProgress();
+      tampilLayar('pertanyaan');
+      tampilGiliran(G.idxJawab);
+      mulaiTimer();
+    }
+
+    showToast('🔄 Game dilanjutkan dari sesi sebelumnya!');
+  }
+}
+
+// Warn before leaving during an active game
+window.addEventListener('beforeunload', e => {
+  const activeGame = onlineMode
+    ? (roomCode !== null)
+    : (G.ronde > 0 && G.ronde <= G.totalRonde);
+
+  if (!activeGame) return;
+
+  // Auto-save local session on unload
+  if (!onlineMode && G.ronde > 0) saveLocalSession();
+
+  e.preventDefault();
+  e.returnValue = '';
+});
+
+// ═══════════════════════════════════════════════
 // ONLINE: TAB SWITCHER
 // ═══════════════════════════════════════════════
 function switchTab(tab) {
@@ -694,6 +826,7 @@ async function buatRoom() {
     document.getElementById('wrRondeKotak').style.display = '';
     document.getElementById('btnMulaiOnline').style.display = '';
     document.getElementById('wrMinInfo').style.display = '';
+    saveOnlineSession();
     tampilLayar('waitingRoom');
     dengarRoom();
   } catch(e) {
@@ -747,6 +880,7 @@ async function gabungRoom() {
 
     document.getElementById('kodeDisplay').textContent = roomCode;
     document.getElementById('wrTungguMsg').style.display = '';
+    saveOnlineSession();
     tampilLayar('waitingRoom');
     dengarRoom();
   } catch(e) {
@@ -1436,6 +1570,7 @@ function mulaiRonde() {
   tampilLayar('pertanyaan');
   tampilGiliran(0);
   mulaiTimer();
+  if (!onlineMode) saveLocalSession();
 }
 
 function renderDotProgress() {
@@ -1514,6 +1649,8 @@ function kirimJawab() {
   const val = (el ? el.value.trim() : '') || '(diam sambil garuk kepala 🤔)';
   G.jawaban[G.ronde][G.pemain[G.idxJawab].nama] = val;
   G.idxJawab++;
+
+  if (!onlineMode) saveLocalSession();
 
   if (G.idxJawab >= G.pemain.length) {
     clearInterval(G.timer);
@@ -1715,6 +1852,7 @@ function tampilFinal() {
   tampilLayar('final');
   tunjukStamp('JUARA!');
   setTimeout(konfeti, 800);
+  clearSession();
 }
 
 // ═══════════════════════════════════════════════
@@ -1762,6 +1900,11 @@ function konfeti() {
     }, i * 22);
   }
 }
+// ═══════════════════════════════════════════════
+// BOOT: check for saved session on page load
+// ═══════════════════════════════════════════════
+checkAndRestoreSession();
 </script>
 </body>
 </html>
+l
