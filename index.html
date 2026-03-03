@@ -31,7 +31,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Batik-ish pattern bg */
 body::before {
   content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
   opacity:.04;
@@ -43,7 +42,6 @@ body::before {
   background-size: 40px 40px;
 }
 
-/* Top stripe dekoratif */
 body::after {
   content:''; position:fixed; top:0; left:0; right:0; height:5px; z-index:999;
   background: repeating-linear-gradient(90deg, var(--merah) 0, var(--merah) 33.33%, var(--putih) 33.33%, var(--putih) 66.66%, var(--hijau) 66.66%, var(--hijau) 100%);
@@ -62,226 +60,197 @@ body::after {
 @keyframes geserKanan { from{transform:translateX(30px);opacity:0} to{transform:none;opacity:1} }
 @keyframes terbang    { 0%{transform:translateY(0) rotate(0);opacity:1} 100%{transform:translateY(-60px) rotate(20deg);opacity:0} }
 
+/* ══════════════ MODE SELECT ══════════════ */
+#modeSelect {
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  gap: 18px;
+}
+
+.ms-logo-wrap { text-align: center; animation: masukAtas .5s ease; }
+.ms-logo { font-family:'Lilita One',cursive; font-size:clamp(4rem,18vw,7rem); line-height:.9; color:var(--kuning); text-shadow:4px 4px 0 var(--merah),7px 7px 0 #7A0A00; animation:goyang 3s ease-in-out infinite; display:inline-block; }
+.ms-sub  { font-family:'Lilita One',cursive; font-size:.95rem; color:var(--merah2); letter-spacing:3px; margin-top:4px; }
+
+.mode-btn {
+  width:100%; max-width:460px; padding:20px 24px;
+  border-radius:18px; cursor:pointer; transition:.25s;
+  font-family:'Lilita One',cursive; font-size:1.45rem; letter-spacing:1.5px;
+  display:flex; align-items:center; gap:16px;
+  animation: masukBawah .4s ease backwards;
+}
+.mode-btn:nth-child(3){animation-delay:.08s}
+.mode-btn:nth-child(4){animation-delay:.16s}
+
+.mode-btn.lokal {
+  background: var(--kartu2); border:2px solid rgba(255,214,0,.18);
+  color: var(--kuning);
+  box-shadow: 0 6px 0 #1A0800;
+}
+.mode-btn.lokal:hover { transform:translateY(-3px); box-shadow:0 10px 0 #1A0800; border-color:var(--kuning); }
+
+.mode-btn.online {
+  background: var(--merah); border:2px solid var(--kuning);
+  color: var(--kuning);
+  box-shadow: 0 6px 0 #7A0A00, 0 10px 24px rgba(204,26,0,.4);
+}
+.mode-btn.online:hover { transform:translateY(-3px); box-shadow:0 10px 0 #7A0A00, 0 16px 32px rgba(204,26,0,.5); }
+
+.mode-btn-icon { font-size:2.2rem; }
+.mode-btn-info { text-align:left; }
+.mode-btn-desc { font-family:'Nunito',sans-serif; font-size:.75rem; font-weight:800; opacity:.7; margin-top:2px; }
+
 /* ══════════════ LOBBY ══════════════ */
 #lobby { align-items:center; padding:28px 16px 40px; }
 
-.header-dekor {
-  width:100%; max-width:480px; text-align:center;
-  margin-bottom:24px; animation:masukAtas .5s ease;
-}
+.header-dekor { width:100%; max-width:480px; text-align:center; margin-bottom:24px; animation:masukAtas .5s ease; }
+.logo-cak { font-family:'Lilita One', cursive; font-size: clamp(5rem, 20vw, 8rem); line-height: .9; color: var(--kuning); text-shadow:0 0 0 var(--kuning),4px 4px 0 var(--merah),7px 7px 0 #7A0A00,0 8px 32px rgba(255,214,0,.4); animation: goyang 3s ease-in-out infinite; display: inline-block; }
+.logo-sub { font-family:'Lilita One',cursive; font-size:1rem; color:var(--merah2); letter-spacing:3px; text-transform:uppercase; margin-top:4px; }
+.stiker-ai { display:inline-block; background:var(--merah); color:var(--kuning); font-family:'Lilita One',cursive; font-size:.78rem; padding:4px 14px; border-radius:20px; letter-spacing:2px; margin-top:8px; border:2px solid var(--kuning); transform: rotate(-1.5deg); }
 
-.logo-cak {
-  font-family:'Lilita One', cursive;
-  font-size: clamp(5rem, 20vw, 8rem);
-  line-height: .9;
-  color: var(--kuning);
-  text-shadow:
-    0 0 0 var(--kuning),
-    4px 4px 0 var(--merah),
-    7px 7px 0 #7A0A00,
-    0 8px 32px rgba(255,214,0,.4);
-  animation: goyang 3s ease-in-out infinite;
-  display: inline-block;
-}
+.lk { width:100%; max-width:480px; background:var(--kartu); border:1px solid var(--border); border-radius:16px; padding:18px 20px; margin-bottom:14px; animation:masukBawah .4s ease backwards; }
+.lk:nth-child(2){animation-delay:.05s}.lk:nth-child(3){animation-delay:.1s}.lk:nth-child(4){animation-delay:.15s}
+.lk-judul { font-family:'Lilita One',cursive; font-size:1rem; color:var(--kuning); letter-spacing:1px; margin-bottom:14px; }
 
-.logo-sub {
-  font-family:'Lilita One',cursive;
-  font-size:1rem; color:var(--merah2);
-  letter-spacing:3px; text-transform:uppercase;
-  margin-top:4px;
-}
-
-.stiker-ai {
-  display:inline-block; background:var(--merah);
-  color:var(--kuning); font-family:'Lilita One',cursive;
-  font-size:.78rem; padding:4px 14px; border-radius:20px;
-  letter-spacing:2px; margin-top:8px; border:2px solid var(--kuning);
-  transform: rotate(-1.5deg);
-}
-
-/* Card lobby */
-.lk {
-  width:100%; max-width:480px; background:var(--kartu);
-  border:1px solid var(--border); border-radius:16px;
-  padding:18px 20px; margin-bottom:14px;
-  animation:masukBawah .4s ease backwards;
-}
-.lk:nth-child(2){animation-delay:.05s}
-.lk:nth-child(3){animation-delay:.1s}
-.lk:nth-child(4){animation-delay:.15s}
-
-.lk-judul {
-  font-family:'Lilita One',cursive; font-size:1rem;
-  color:var(--kuning); letter-spacing:1px; margin-bottom:14px;
-}
-
-/* Pemain */
 .baris-p { display:flex; gap:9px; align-items:center; margin-bottom:9px; }
 .bulat-p { width:32px;height:32px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.15); }
-.input-p {
-  flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,214,0,.15);
-  border-radius:10px; padding:10px 14px; color:var(--teks);
-  font-family:'Nunito',sans-serif; font-size:.95rem; font-weight:800; outline:none; transition:.2s;
-}
+.input-p { flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,214,0,.15); border-radius:10px; padding:10px 14px; color:var(--teks); font-family:'Nunito',sans-serif; font-size:.95rem; font-weight:800; outline:none; transition:.2s; }
 .input-p:focus { border-color:var(--kuning); box-shadow:0 0 0 3px rgba(255,214,0,.12); }
-.hapus-p {
-  background:none; border:1px solid rgba(255,255,255,.1); border-radius:8px;
-  color:var(--redup); cursor:pointer; padding:7px 9px; font-size:.9rem; transition:.2s;
-}
+.hapus-p { background:none; border:1px solid rgba(255,255,255,.1); border-radius:8px; color:var(--redup); cursor:pointer; padding:7px 9px; font-size:.9rem; transition:.2s; }
 .hapus-p:hover { color:var(--merah2); border-color:var(--merah2); }
-.tambah-p {
-  width:100%; margin-top:6px; padding:10px;
-  background:none; border:1px dashed rgba(255,214,0,.2); border-radius:10px;
-  color:var(--redup); font-family:'Nunito',sans-serif; font-weight:800; font-size:.88rem;
-  cursor:pointer; transition:.2s;
-}
+.tambah-p { width:100%; margin-top:6px; padding:10px; background:none; border:1px dashed rgba(255,214,0,.2); border-radius:10px; color:var(--redup); font-family:'Nunito',sans-serif; font-weight:800; font-size:.88rem; cursor:pointer; transition:.2s; }
 .tambah-p:hover { border-color:var(--kuning); color:var(--kuning); }
 
-/* Ronde pill */
 .r-pills { display:flex; gap:8px; }
-.r-pill {
-  flex:1; padding:11px; background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.09); border-radius:10px;
-  color:var(--redup); font-family:'Lilita One',cursive; font-size:1.1rem;
-  cursor:pointer; transition:.2s; text-align:center;
-}
+.r-pill { flex:1; padding:11px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:10px; color:var(--redup); font-family:'Lilita One',cursive; font-size:1.1rem; cursor:pointer; transition:.2s; text-align:center; }
 .r-pill.aktif { background:rgba(204,26,0,.2); border-color:var(--merah); color:var(--merah2); }
 
-/* Tips */
-.tips-kotak {
-  background:rgba(255,214,0,.06); border:1px solid rgba(255,214,0,.2);
-  border-radius:12px; padding:14px 16px; font-size:.83rem;
-  color:rgba(255,236,110,.9); line-height:1.7;
-}
+.tips-kotak { background:rgba(255,214,0,.06); border:1px solid rgba(255,214,0,.2); border-radius:12px; padding:14px 16px; font-size:.83rem; color:rgba(255,236,110,.9); line-height:1.7; }
 
-.tombol-mulai {
-  width:100%; max-width:480px; padding:18px;
-  background:var(--merah); border:3px solid var(--kuning); border-radius:16px;
-  font-family:'Lilita One',cursive; font-size:1.8rem; letter-spacing:2px;
-  color:var(--kuning); cursor:pointer; transition:.3s;
-  box-shadow: 0 8px 0 #7A0A00, 0 12px 24px rgba(204,26,0,.5);
-  animation:masukBawah .4s .2s ease backwards;
-}
-.tombol-mulai:hover:not(:disabled) {
-  transform:translateY(-3px);
-  box-shadow: 0 12px 0 #7A0A00, 0 18px 32px rgba(204,26,0,.6);
-}
+.tombol-mulai { width:100%; max-width:480px; padding:18px; background:var(--merah); border:3px solid var(--kuning); border-radius:16px; font-family:'Lilita One',cursive; font-size:1.8rem; letter-spacing:2px; color:var(--kuning); cursor:pointer; transition:.3s; box-shadow: 0 8px 0 #7A0A00, 0 12px 24px rgba(204,26,0,.5); animation:masukBawah .4s .2s ease backwards; }
+.tombol-mulai:hover:not(:disabled) { transform:translateY(-3px); box-shadow: 0 12px 0 #7A0A00, 0 18px 32px rgba(204,26,0,.6); }
 .tombol-mulai:active:not(:disabled) { transform:translateY(2px); box-shadow:0 4px 0 #7A0A00; }
 .tombol-mulai:disabled { opacity:.35; cursor:not-allowed; }
 
+/* ══════════════ ONLINE SETUP ══════════════ */
+#onlineSetup { align-items:center; padding:24px 16px 40px; }
+
+.os-back { align-self:flex-start; background:none; border:1px solid rgba(255,255,255,.1); border-radius:10px; color:var(--redup); cursor:pointer; padding:8px 14px; font-family:'Nunito',sans-serif; font-weight:800; font-size:.85rem; margin-bottom:18px; transition:.2s; }
+.os-back:hover { color:var(--teks); border-color:rgba(255,255,255,.25); }
+
+.os-header { text-align:center; margin-bottom:20px; animation:masukAtas .4s ease; }
+.os-judul { font-family:'Lilita One',cursive; font-size:1.8rem; color:var(--kuning); text-shadow:2px 2px 0 var(--merah); }
+.os-sub { color:var(--redup); font-size:.82rem; font-weight:800; margin-top:4px; }
+
+.os-panel { width:100%; max-width:460px; }
+
+.os-tab-bar { display:flex; gap:8px; margin-bottom:16px; }
+.os-tab { flex:1; padding:11px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:10px; color:var(--redup); font-family:'Lilita One',cursive; font-size:.95rem; cursor:pointer; transition:.2s; text-align:center; letter-spacing:.5px; }
+.os-tab.aktif { background:rgba(204,26,0,.2); border-color:var(--merah); color:var(--merah2); }
+
+.os-form { background:var(--kartu); border:1px solid var(--border); border-radius:16px; padding:18px 20px; }
+.os-label { font-family:'Lilita One',cursive; font-size:.8rem; color:var(--redup); letter-spacing:1px; margin-bottom:7px; display:block; }
+.os-input { width:100%; background:rgba(255,255,255,.06); border:1px solid rgba(255,214,0,.15); border-radius:10px; padding:11px 14px; color:var(--teks); font-family:'Nunito',sans-serif; font-size:.95rem; font-weight:800; outline:none; transition:.2s; margin-bottom:14px; }
+.os-input:focus { border-color:var(--kuning); box-shadow:0 0 0 3px rgba(255,214,0,.12); }
+.os-input.kode { text-transform:uppercase; font-family:'Lilita One',cursive; font-size:1.4rem; letter-spacing:6px; text-align:center; }
+.os-input.kode::placeholder { letter-spacing:2px; font-size:1rem; font-family:'Nunito',sans-serif; }
+
+.os-btn { width:100%; padding:14px; background:var(--merah); border:2px solid var(--kuning); border-radius:12px; font-family:'Lilita One',cursive; font-size:1.3rem; letter-spacing:1.5px; color:var(--kuning); cursor:pointer; transition:.25s; box-shadow:0 5px 0 #7A0A00; }
+.os-btn:hover { transform:translateY(-2px); box-shadow:0 8px 0 #7A0A00; }
+.os-btn:active { transform:translateY(1px); box-shadow:0 3px 0 #7A0A00; }
+.os-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+
+.os-ronde-wrap { margin-bottom:14px; }
+
+/* ══════════════ WAITING ROOM ══════════════ */
+#waitingRoom { align-items:center; padding:24px 16px 40px; }
+
+.wr-header { text-align:center; width:100%; max-width:460px; margin-bottom:18px; animation:masukAtas .4s ease; }
+.wr-judul { font-family:'Lilita One',cursive; font-size:1.4rem; color:var(--kuning); letter-spacing:2px; text-shadow:2px 2px 0 var(--merah); }
+
+.wr-kode-kotak { background:var(--kartu); border:2px solid rgba(255,214,0,.25); border-radius:18px; padding:18px 24px; text-align:center; width:100%; max-width:460px; margin-bottom:14px; animation:masukBawah .4s ease; }
+.wr-kode-lbl { font-family:'Lilita One',cursive; font-size:.75rem; color:var(--redup); letter-spacing:2px; margin-bottom:8px; }
+.wr-kode { font-family:'Lilita One',cursive; font-size:3.2rem; color:var(--kuning); letter-spacing:10px; text-shadow:3px 3px 0 var(--merah); line-height:1; }
+.wr-copy-btn { margin-top:12px; padding:8px 20px; background:none; border:1px solid rgba(255,214,0,.25); border-radius:8px; color:var(--redup); font-family:'Nunito',sans-serif; font-weight:800; font-size:.8rem; cursor:pointer; transition:.2s; }
+.wr-copy-btn:hover { border-color:var(--kuning); color:var(--kuning); }
+
+.wr-pemain-kotak { width:100%; max-width:460px; background:var(--kartu); border:1px solid var(--border); border-radius:16px; padding:16px 18px; margin-bottom:14px; animation:masukBawah .4s .05s ease backwards; }
+.wr-pemain-judul { font-family:'Lilita One',cursive; font-size:.85rem; color:var(--kuning); letter-spacing:1px; margin-bottom:12px; }
+.wr-pemain-list { display:flex; flex-direction:column; gap:8px; }
+.wr-pemain-item { display:flex; align-items:center; gap:10px; padding:9px 12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:10px; font-weight:800; font-size:.88rem; animation:geserKanan .3s ease; }
+.wr-dot { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
+.wr-host-badge { font-family:'Lilita One',cursive; font-size:.6rem; background:var(--merah); color:var(--kuning); border:1px solid var(--kuning); border-radius:5px; padding:2px 7px; letter-spacing:1px; margin-left:auto; }
+
+.wr-ronde-kotak { width:100%; max-width:460px; background:var(--kartu); border:1px solid var(--border); border-radius:16px; padding:14px 18px; margin-bottom:14px; animation:masukBawah .4s .1s ease backwards; }
+.wr-ronde-judul { font-family:'Lilita One',cursive; font-size:.85rem; color:var(--kuning); letter-spacing:1px; margin-bottom:12px; }
+
+.wr-tunggu { color:var(--redup); font-weight:800; font-size:.88rem; text-align:center; padding:16px; animation:kedip 2s ease-in-out infinite; }
+
+.wr-mulai-btn { width:100%; max-width:460px; padding:16px; background:var(--merah); border:3px solid var(--kuning); border-radius:16px; font-family:'Lilita One',cursive; font-size:1.6rem; letter-spacing:2px; color:var(--kuning); cursor:pointer; transition:.3s; box-shadow:0 6px 0 #7A0A00; animation:masukBawah .4s .15s ease backwards; }
+.wr-mulai-btn:hover:not(:disabled) { transform:translateY(-3px); box-shadow:0 10px 0 #7A0A00; }
+.wr-mulai-btn:disabled { opacity:.35; cursor:not-allowed; }
+
+.wr-min-info { color:var(--redup); font-size:.76rem; font-weight:800; text-align:center; margin-top:8px; }
+
 /* ══════════════ LOADING ══════════════ */
 #loading { align-items:center; justify-content:center; text-align:center; gap:20px; }
-
 .muka-cak { font-size:5rem; animation:goyang 1.5s ease-in-out infinite; display:inline-block; }
-.loading-judul {
-  font-family:'Lilita One',cursive; font-size:1.6rem; color:var(--kuning); letter-spacing:2px;
-  text-shadow:2px 2px 0 var(--merah);
-}
+.loading-judul { font-family:'Lilita One',cursive; font-size:1.6rem; color:var(--kuning); letter-spacing:2px; text-shadow:2px 2px 0 var(--merah); }
 .loading-info { color:var(--redup); font-size:.85rem; max-width:260px; line-height:1.5; font-weight:700; }
-.titik-titik span {
-  display:inline-block; width:10px; height:10px; border-radius:50%;
-  margin:0 4px; background:var(--merah2);
-  animation:kedip 1.2s infinite;
-}
+.titik-titik span { display:inline-block; width:10px; height:10px; border-radius:50%; margin:0 4px; background:var(--merah2); animation:kedip 1.2s infinite; }
 .titik-titik span:nth-child(2){ animation-delay:.2s; background:var(--kuning); }
 .titik-titik span:nth-child(3){ animation-delay:.4s; background:var(--kuning2); }
 
 /* ══════════════ PERTANYAAN ══════════════ */
 #pertanyaan { padding:16px; align-items:center; }
-
-.bar-atas {
-  display:flex; align-items:center; justify-content:space-between;
-  width:100%; max-width:560px; margin-bottom:16px;
-}
-.tag-ronde {
-  font-family:'Lilita One',cursive; font-size:.95rem; color:var(--redup);
-}
+.bar-atas { display:flex; align-items:center; justify-content:space-between; width:100%; max-width:560px; margin-bottom:16px; }
+.tag-ronde { font-family:'Lilita One',cursive; font-size:.95rem; color:var(--redup); }
 .tag-ronde span { color:var(--kuning); }
 
-/* Timer lingkaran */
 .timer-lingkaran { position:relative; width:52px; height:52px; flex-shrink:0; }
 .timer-lingkaran svg { transform:rotate(-90deg); }
 .tl-bg { fill:none; stroke:rgba(255,255,255,.07); stroke-width:5; }
 .tl-isi { fill:none; stroke-width:5; stroke-linecap:round; transition:stroke-dashoffset 1s linear, stroke .3s; }
-.tl-num {
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  font-family:'Lilita One',cursive; font-size:1.1rem;
-}
+.tl-num { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Lilita One',cursive; font-size:1.1rem; }
 
-/* Kartu soal - desain kertas kuning ala teka-teki */
-.kartu-soal {
-  width:100%; max-width:560px;
-  background:var(--kuning2);
-  border:3px solid var(--kuning); border-radius:16px;
-  padding:22px 20px; margin-bottom:16px; position:relative;
-  box-shadow: 0 6px 0 #B89A00, 0 8px 24px rgba(0,0,0,.4);
-  animation:pop .5s cubic-bezier(.34,1.56,.64,1);
-}
-.kartu-soal::before {
-  content:''; position:absolute; top:6px; right:6px;
-  width:12px; height:12px; border-radius:50%;
-  background:var(--merah); border:2px solid #7A0A00;
-}
-.kartu-soal::after {
-  content:''; position:absolute; top:6px; left:6px;
-  width:12px; height:12px; border-radius:50%;
-  background:var(--merah); border:2px solid #7A0A00;
-}
+.kartu-soal { width:100%; max-width:560px; background:var(--kuning2); border:3px solid var(--kuning); border-radius:16px; padding:22px 20px; margin-bottom:16px; position:relative; box-shadow: 0 6px 0 #B89A00, 0 8px 24px rgba(0,0,0,.4); animation:pop .5s cubic-bezier(.34,1.56,.64,1); }
+.kartu-soal::before { content:''; position:absolute; top:6px; right:6px; width:12px; height:12px; border-radius:50%; background:var(--merah); border:2px solid #7A0A00; }
+.kartu-soal::after  { content:''; position:absolute; top:6px; left:6px;  width:12px; height:12px; border-radius:50%; background:var(--merah); border:2px solid #7A0A00; }
+.ks-label { font-family:'Lilita One',cursive; font-size:.75rem; color:var(--merah); letter-spacing:2px; text-align:center; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:6px; }
+.ks-teks  { font-size:1.15rem; font-weight:900; line-height:1.5; color:#1A0800; text-align:center; }
 
-.ks-label {
-  font-family:'Lilita One',cursive; font-size:.75rem; color:var(--merah);
-  letter-spacing:2px; text-align:center; margin-bottom:10px;
-  display:flex; align-items:center; justify-content:center; gap:6px;
-}
-.ks-teks {
-  font-size:1.15rem; font-weight:900; line-height:1.5;
-  color:#1A0800; text-align:center;
-}
-
-/* Area jawab */
 .area-jawab { width:100%; max-width:560px; }
-
-.siapa-badge {
-  display:flex; align-items:center; gap:11px;
-  background:var(--kartu2); border-radius:13px; padding:13px 16px;
-  margin-bottom:10px; border:1px solid rgba(255,255,255,.07);
-  animation:geserKanan .3s ease;
-}
-.sapa-av {
-  width:42px; height:42px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  font-family:'Lilita One',cursive; font-size:1.3rem; flex-shrink:0;
-}
-.sapa-lbl { font-size:.7rem; color:var(--redup); text-transform:uppercase; letter-spacing:.5px; font-weight:800; }
+.siapa-badge { display:flex; align-items:center; gap:11px; background:var(--kartu2); border-radius:13px; padding:13px 16px; margin-bottom:10px; border:1px solid rgba(255,255,255,.07); animation:geserKanan .3s ease; }
+.sapa-av   { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Lilita One',cursive; font-size:1.3rem; flex-shrink:0; }
+.sapa-lbl  { font-size:.7rem; color:var(--redup); text-transform:uppercase; letter-spacing:.5px; font-weight:800; }
 .sapa-nama { font-weight:900; font-size:1rem; }
 
-.bisik-pesan {
-  background:rgba(255,214,0,.06); border:1px dashed rgba(255,214,0,.2);
-  border-radius:10px; padding:10px 14px; margin-bottom:10px;
-  font-size:.8rem; color:rgba(255,236,110,.7); font-weight:800;
-  display:flex; align-items:center; gap:8px;
-}
+.bisik-pesan { background:rgba(255,214,0,.06); border:1px dashed rgba(255,214,0,.2); border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size:.8rem; color:rgba(255,236,110,.7); font-weight:800; display:flex; align-items:center; gap:8px; }
 
-.area-input {
-  width:100%; background:rgba(255,255,255,.07);
-  border:2px solid rgba(255,214,0,.2); border-radius:12px;
-  padding:13px 16px; color:var(--teks);
-  font-family:'Nunito',sans-serif; font-size:1.05rem; font-weight:800;
-  outline:none; resize:none; transition:.2s;
-}
+.area-input { width:100%; background:rgba(255,255,255,.07); border:2px solid rgba(255,214,0,.2); border-radius:12px; padding:13px 16px; color:var(--teks); font-family:'Nunito',sans-serif; font-size:1.05rem; font-weight:800; outline:none; resize:none; transition:.2s; }
 .area-input:focus { border-color:var(--kuning); box-shadow:0 0 0 3px rgba(255,214,0,.12); }
+.area-input:disabled { opacity:.5; }
 
-.tombol-kirim {
-  width:100%; margin-top:10px; padding:14px;
-  background:var(--hijau); border:2px solid rgba(255,255,255,.2); border-radius:12px;
-  color:#fff; font-family:'Lilita One',cursive; font-size:1.3rem; letter-spacing:1.5px;
-  cursor:pointer; transition:.2s;
-  box-shadow:0 5px 0 #0A4A00;
-}
-.tombol-kirim:hover { transform:translateY(-2px); box-shadow:0 7px 0 #0A4A00; }
-.tombol-kirim:active { transform:translateY(2px); box-shadow:0 2px 0 #0A4A00; }
+.tombol-kirim { width:100%; margin-top:10px; padding:14px; background:var(--hijau); border:2px solid rgba(255,255,255,.2); border-radius:12px; color:#fff; font-family:'Lilita One',cursive; font-size:1.3rem; letter-spacing:1.5px; cursor:pointer; transition:.2s; box-shadow:0 5px 0 #0A4A00; }
+.tombol-kirim:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 7px 0 #0A4A00; }
+.tombol-kirim:active:not(:disabled) { transform:translateY(2px); box-shadow:0 2px 0 #0A4A00; }
+.tombol-kirim:disabled { opacity:.5; cursor:not-allowed; }
 
-/* Progress dots */
+/* Online answer progress */
+.online-progress { margin-top:12px; background:var(--kartu); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+.op-lbl { font-size:.72rem; color:var(--redup); font-weight:800; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+.op-dots { display:flex; gap:8px; flex-wrap:wrap; }
+.op-dot-item { display:flex; align-items:center; gap:5px; }
+.op-dot { width:10px; height:10px; border-radius:50%; transition:.3s; }
+.op-dot-name { font-size:.72rem; font-weight:800; color:var(--redup); }
+.op-dot.selesai + .op-dot-name { color:var(--putih); }
+
+/* Submitted state */
+.sudah-kirim { background:rgba(26,122,0,.15); border:1px solid rgba(26,122,0,.35); border-radius:12px; padding:14px 16px; text-align:center; margin-bottom:10px; }
+.sk-icon { font-size:1.8rem; display:block; margin-bottom:4px; }
+.sk-teks { font-family:'Lilita One',cursive; font-size:1rem; color:#4AFF7A; letter-spacing:1px; }
+.sk-sub  { font-size:.78rem; color:var(--redup); font-weight:800; margin-top:4px; }
+
 .dot-progress { display:flex; gap:7px; justify-content:center; margin-top:12px; }
 .dpt { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.12); transition:.3s; }
 .dpt.selesai { background:var(--hijau); }
@@ -289,188 +258,72 @@ body::after {
 
 /* ══════════════ MENILAI ══════════════ */
 #menilai { align-items:center; justify-content:center; text-align:center; gap:18px; }
-
-.hakim-icon { font-size:4rem; animation:putar 2s linear infinite; display:inline-block; }
-.hakim-judul {
-  font-family:'Lilita One',cursive; font-size:1.6rem; color:var(--merah2); letter-spacing:2px;
-  text-shadow:2px 2px 0 #7A0A00;
-}
-.hakim-sub { color:var(--redup); font-size:.85rem; max-width:260px; line-height:1.5; font-weight:700; }
+.hakim-icon  { font-size:4rem; animation:putar 2s linear infinite; display:inline-block; }
+.hakim-judul { font-family:'Lilita One',cursive; font-size:1.6rem; color:var(--merah2); letter-spacing:2px; text-shadow:2px 2px 0 #7A0A00; }
+.hakim-sub   { color:var(--redup); font-size:.85rem; max-width:260px; line-height:1.5; font-weight:700; }
 
 /* ══════════════ HASIL ══════════════ */
 #hasil { padding:16px; align-items:center; }
-
 .hasil-header { text-align:center; width:100%; max-width:560px; margin-bottom:16px; }
-.hasil-ronde-tag {
-  font-family:'Lilita One',cursive; font-size:.9rem; color:var(--redup); letter-spacing:1.5px;
-}
-.hasil-soal {
-  font-size:.95rem; font-weight:800; color:rgba(255,248,238,.7);
-  background:var(--kartu); border-radius:10px; padding:10px 14px;
-  border-left:4px solid var(--merah); margin-top:8px; text-align:left;
-}
+.hasil-ronde-tag { font-family:'Lilita One',cursive; font-size:.9rem; color:var(--redup); letter-spacing:1.5px; }
+.hasil-soal { font-size:.95rem; font-weight:800; color:rgba(255,248,238,.7); background:var(--kartu); border-radius:10px; padding:10px 14px; border-left:4px solid var(--merah); margin-top:8px; text-align:left; }
 
-/* Kartu hasil pemain */
 .kartu-hasil-list { width:100%; max-width:560px; display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
-
-.kh {
-  background:var(--kartu2); border:1px solid var(--border);
-  border-radius:16px; padding:16px 18px; position:relative; overflow:hidden;
-  animation:geserKanan .4s ease backwards;
-}
+.kh { background:var(--kartu2); border:1px solid var(--border); border-radius:16px; padding:16px 18px; position:relative; overflow:hidden; animation:geserKanan .4s ease backwards; }
 .kh::before { content:''; position:absolute; left:0; top:0; bottom:0; width:5px; border-radius:4px 0 0 4px; }
-.kh.p1::before { background:var(--kuning); }
-.kh.p2::before { background:#C0C0C0; }
-.kh.p3::before { background:#CD7F32; }
-.kh.pn::before { background:var(--redup); }
-
-/* Stamp LOGIKA */
-.stamp-logika {
-  position:absolute; top:-4px; right:-4px;
-  font-family:'Lilita One',cursive; font-size:.65rem;
-  color:var(--merah); background:var(--kuning);
-  border:2px solid var(--merah); border-radius:6px;
-  padding:3px 8px; letter-spacing:1px;
-  transform:rotate(8deg);
-}
-
+.kh.p1::before{background:var(--kuning)}.kh.p2::before{background:#C0C0C0}.kh.p3::before{background:#CD7F32}.kh.pn::before{background:var(--redup)}
+.stamp-logika { position:absolute; top:-4px; right:-4px; font-family:'Lilita One',cursive; font-size:.65rem; color:var(--merah); background:var(--kuning); border:2px solid var(--merah); border-radius:6px; padding:3px 8px; letter-spacing:1px; transform:rotate(8deg); }
 .kh-baris-atas { display:flex; align-items:flex-start; gap:11px; margin-bottom:10px; }
-.kh-rank {
-  font-family:'Lilita One',cursive; font-size:2rem; line-height:1; min-width:36px;
-}
-.kh-rank.emas { color:var(--kuning); text-shadow:2px 2px 0 #B89A00; }
-.kh-rank.perak { color:#D0D0D0; }
-.kh-rank.perunggu { color:#CD7F32; }
-
+.kh-rank { font-family:'Lilita One',cursive; font-size:2rem; line-height:1; min-width:36px; }
+.kh-rank.emas{color:var(--kuning);text-shadow:2px 2px 0 #B89A00}.kh-rank.perak{color:#D0D0D0}.kh-rank.perunggu{color:#CD7F32}
 .kh-baris-nama { display:flex; align-items:center; gap:7px; margin-bottom:4px; }
 .kh-bulat { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
 .kh-nama { font-weight:900; font-size:.95rem; }
-.kh-jawaban {
-  font-size:1rem; font-weight:900; color:var(--putih);
-  font-style:italic; line-height:1.4;
-}
-
-/* Komentar AI */
-.komentar-ai {
-  background:rgba(204,26,0,.12); border:1px solid rgba(204,26,0,.3);
-  border-radius:10px; padding:10px 14px; margin-top:10px;
-  font-size:.84rem; line-height:1.5; color:rgba(255,220,180,.9);
-}
-.komentar-ai-label {
-  font-family:'Lilita One',cursive; font-size:.7rem;
-  color:var(--merah2); letter-spacing:1.5px; margin-bottom:4px;
-  display:flex; align-items:center; gap:5px;
-}
-.komentar-ai-label::before {
-  content:''; width:6px; height:6px; border-radius:50%;
-  background:var(--merah2); animation:kedip .8s infinite;
-}
-
-/* Skor bar */
+.kh-jawaban { font-size:1rem; font-weight:900; color:var(--putih); font-style:italic; line-height:1.4; }
+.komentar-ai { background:rgba(204,26,0,.12); border:1px solid rgba(204,26,0,.3); border-radius:10px; padding:10px 14px; margin-top:10px; font-size:.84rem; line-height:1.5; color:rgba(255,220,180,.9); }
+.komentar-ai-label { font-family:'Lilita One',cursive; font-size:.7rem; color:var(--merah2); letter-spacing:1.5px; margin-bottom:4px; display:flex; align-items:center; gap:5px; }
+.komentar-ai-label::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--merah2); animation:kedip .8s infinite; }
 .skor-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; margin-bottom:5px; }
 .skor-lbl { font-size:.7rem; color:var(--redup); font-weight:800; text-transform:uppercase; letter-spacing:.5px; }
-.skor-angka {
-  font-family:'Lilita One',cursive; font-size:1.4rem; color:var(--kuning);
-  text-shadow:1px 1px 0 #B89A00;
-}
+.skor-angka { font-family:'Lilita One',cursive; font-size:1.4rem; color:var(--kuning); text-shadow:1px 1px 0 #B89A00; }
 .skor-rel { font-size:.72rem; color:#4AFF7A; font-weight:800; }
-.skor-track {
-  height:7px; background:rgba(255,255,255,.07); border-radius:4px; overflow:hidden;
-}
-.skor-isi {
-  height:100%; border-radius:4px;
-  background:linear-gradient(90deg, var(--merah), var(--kuning));
-  animation:geserKanan .8s ease backwards;
-  transform-origin:left;
-}
+.skor-track { height:7px; background:rgba(255,255,255,.07); border-radius:4px; overflow:hidden; }
+.skor-isi { height:100%; border-radius:4px; background:linear-gradient(90deg, var(--merah), var(--kuning)); animation:geserKanan .8s ease backwards; transform-origin:left; }
 
-/* Papan skor */
-.papan-skor {
-  width:100%; max-width:560px;
-  background:var(--kartu); border-radius:16px; padding:16px;
-  border:1px solid var(--border); margin-bottom:18px;
-}
-.ps-judul {
-  font-family:'Lilita One',cursive; font-size:.9rem; color:var(--kuning);
-  letter-spacing:1.5px; margin-bottom:12px;
-  text-shadow:1px 1px 0 var(--merah);
-}
-.ps-baris {
-  display:flex; align-items:center; gap:10px;
-  padding:7px 0; border-bottom:1px solid rgba(255,255,255,.04);
-}
+.papan-skor { width:100%; max-width:560px; background:var(--kartu); border-radius:16px; padding:16px; border:1px solid var(--border); margin-bottom:18px; }
+.ps-judul { font-family:'Lilita One',cursive; font-size:.9rem; color:var(--kuning); letter-spacing:1.5px; margin-bottom:12px; text-shadow:1px 1px 0 var(--merah); }
+.ps-baris { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.04); }
 .ps-baris:last-child { border:none; }
-.ps-pos { font-family:'Lilita One',cursive; font-size:1rem; color:var(--redup); min-width:22px; }
-.ps-bulat { width:9px;height:9px;border-radius:50%;flex-shrink:0; }
+.ps-pos  { font-family:'Lilita One',cursive; font-size:1rem; color:var(--redup); min-width:22px; }
+.ps-bulat{ width:9px;height:9px;border-radius:50%;flex-shrink:0; }
 .ps-nama { flex:1; font-weight:800; font-size:.88rem; }
-.ps-total { font-family:'Lilita One',cursive; font-size:1.1rem; color:var(--kuning); }
-.ps-delta { font-size:.72rem; color:#4AFF7A; font-weight:800; min-width:34px; text-align:right; }
+.ps-total{ font-family:'Lilita One',cursive; font-size:1.1rem; color:var(--kuning); }
+.ps-delta{ font-size:.72rem; color:#4AFF7A; font-weight:800; min-width:34px; text-align:right; }
 
-.tombol-lanjut {
-  padding:15px 40px; border:3px solid var(--kuning); border-radius:14px;
-  font-family:'Lilita One',cursive; font-size:1.5rem; letter-spacing:2px;
-  cursor:pointer; transition:.25s; color:var(--kuning);
-  background:var(--merah);
-  box-shadow:0 6px 0 #7A0A00, 0 10px 24px rgba(204,26,0,.4);
-}
-.tombol-lanjut:hover { transform:translateY(-3px); box-shadow:0 10px 0 #7A0A00, 0 16px 32px rgba(204,26,0,.5); }
+.tombol-lanjut { padding:15px 40px; border:3px solid var(--kuning); border-radius:14px; font-family:'Lilita One',cursive; font-size:1.5rem; letter-spacing:2px; cursor:pointer; transition:.25s; color:var(--kuning); background:var(--merah); box-shadow:0 6px 0 #7A0A00, 0 10px 24px rgba(204,26,0,.4); }
+.tombol-lanjut:hover:not(:disabled) { transform:translateY(-3px); box-shadow:0 10px 0 #7A0A00, 0 16px 32px rgba(204,26,0,.5); }
+.tombol-lanjut:disabled { opacity:.4; cursor:not-allowed; transform:none !important; box-shadow: none !important; }
+
+.tunggu-host-msg { color:var(--redup); font-weight:800; font-size:.82rem; text-align:center; margin-top:10px; animation:kedip 2s ease-in-out infinite; }
 
 /* ══════════════ FINAL ══════════════ */
 #final { align-items:center; justify-content:center; text-align:center; padding:40px 16px; gap:14px; }
-
 .final-mahkota { font-size:5rem; animation:pop .6s ease; display:inline-block; }
-.final-nama {
-  font-family:'Lilita One',cursive; font-size:clamp(2.2rem,9vw,4rem);
-  color:var(--kuning); letter-spacing:3px;
-  text-shadow:4px 4px 0 var(--merah), 7px 7px 0 #7A0A00;
-}
-.final-sub { color:var(--redup); font-weight:800; font-size:.9rem; }
-.final-stiker {
-  font-family:'Lilita One',cursive; font-size:1.1rem;
-  background:var(--merah); color:var(--kuning); border:2px solid var(--kuning);
-  border-radius:12px; padding:8px 20px; letter-spacing:1px; margin:4px 0;
-}
-.final-papan {
-  width:100%; max-width:460px;
-  background:var(--kartu); border-radius:18px; padding:18px;
-  border:1px solid var(--border);
-}
-.fp-judul {
-  font-family:'Lilita One',cursive; font-size:.9rem; color:var(--kuning);
-  letter-spacing:1.5px; margin-bottom:12px;
-}
-.tombol-lagi {
-  padding:16px 44px; border:3px solid var(--kuning); border-radius:14px;
-  font-family:'Lilita One',cursive; font-size:1.6rem; letter-spacing:2px;
-  cursor:pointer; background:var(--merah); color:var(--kuning); transition:.25s;
-  box-shadow:0 6px 0 #7A0A00;
-}
+.final-nama { font-family:'Lilita One',cursive; font-size:clamp(2.2rem,9vw,4rem); color:var(--kuning); letter-spacing:3px; text-shadow:4px 4px 0 var(--merah), 7px 7px 0 #7A0A00; }
+.final-sub   { color:var(--redup); font-weight:800; font-size:.9rem; }
+.final-stiker{ font-family:'Lilita One',cursive; font-size:1.1rem; background:var(--merah); color:var(--kuning); border:2px solid var(--kuning); border-radius:12px; padding:8px 20px; letter-spacing:1px; margin:4px 0; }
+.final-papan { width:100%; max-width:460px; background:var(--kartu); border-radius:18px; padding:18px; border:1px solid var(--border); }
+.fp-judul { font-family:'Lilita One',cursive; font-size:.9rem; color:var(--kuning); letter-spacing:1.5px; margin-bottom:12px; }
+.tombol-lagi { padding:16px 44px; border:3px solid var(--kuning); border-radius:14px; font-family:'Lilita One',cursive; font-size:1.6rem; letter-spacing:2px; cursor:pointer; background:var(--merah); color:var(--kuning); transition:.25s; box-shadow:0 6px 0 #7A0A00; }
 .tombol-lagi:hover { transform:translateY(-3px); }
 
 /* STAMP overlay */
-.stamp-overlay {
-  position:fixed; inset:0; z-index:500;
-  display:flex; align-items:center; justify-content:center;
-  pointer-events:none;
-}
-.stamp-teks {
-  font-family:'Lilita One',cursive; font-size:clamp(4rem,18vw,8rem);
-  color:var(--kuning); opacity:0;
-  text-shadow:5px 5px 0 var(--merah), 9px 9px 0 #7A0A00;
-  border:8px solid var(--kuning); border-radius:20px;
-  padding:10px 30px; background:rgba(26,8,0,.85);
-  letter-spacing:4px; transform:rotate(-8deg);
-}
+.stamp-overlay { position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.stamp-teks { font-family:'Lilita One',cursive; font-size:clamp(4rem,18vw,8rem); color:var(--kuning); opacity:0; text-shadow:5px 5px 0 var(--merah), 9px 9px 0 #7A0A00; border:8px solid var(--kuning); border-radius:20px; padding:10px 30px; background:rgba(26,8,0,.85); letter-spacing:4px; transform:rotate(-8deg); }
 .stamp-teks.show { animation:stamp .7s cubic-bezier(.34,1.56,.64,1) forwards; }
 
 /* Toast */
-.toast {
-  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-  background:var(--kartu2); border:1px solid rgba(255,214,0,.2);
-  border-radius:10px; padding:10px 22px;
-  font-weight:800; font-size:.88rem; z-index:9000;
-  opacity:0; transition:.3s; pointer-events:none; white-space:nowrap; color:var(--teks);
-}
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--kartu2); border:1px solid rgba(255,214,0,.2); border-radius:10px; padding:10px 22px; font-weight:800; font-size:.88rem; z-index:9000; opacity:0; transition:.3s; pointer-events:none; white-space:nowrap; color:var(--teks); }
 .toast.show { opacity:1; }
 
 /* Confetti */
@@ -487,50 +340,166 @@ body::after {
   <div class="stamp-teks" id="stampTeks">LOGIKA!</div>
 </div>
 
-<!-- ══ LOBBY ══ -->
-<div id="lobby" class="screen active">
-  <div class="header-dekor">
-    <div class="logo-cak">LOGIKA!</div>
-    <div class="logo-sub">Game Sesat Ala Cak Lontong</div>
-    <div class="stiker-ai">🤖 SOAL & NILAI BY CLAUDE AI</div>
+<!-- ══ MODE SELECT ══ -->
+<div id="modeSelect" class="screen active">
+  <div class="ms-logo-wrap">
+    <div class="ms-logo">LOGIKA!</div>
+    <div class="ms-sub">Game Sesat Ala Cak Lontong</div>
   </div>
 
-  <div class="lk">
-    <div class="lk-judul">👥 SIAPA AJA YANG MAIN?</div>
-    <div id="daftarPemain"></div>
-    <button class="tambah-p" id="btnTambah">＋ Tambah Pemain</button>
-  </div>
+  <button class="mode-btn lokal" onclick="tampilLayar('lobby')">
+    <span class="mode-btn-icon">🏠</span>
+    <div class="mode-btn-info">
+      <div>MAIN BARENG</div>
+      <div class="mode-btn-desc">Satu perangkat, gantian jawab</div>
+    </div>
+  </button>
 
-  <div class="lk">
-    <div class="lk-judul">🔄 BERAPA RONDE?</div>
-    <div class="r-pills">
-      <button class="r-pill" data-r="3">3</button>
-      <button class="r-pill aktif" data-r="5">5</button>
-      <button class="r-pill" data-r="7">7</button>
-      <button class="r-pill" data-r="10">10</button>
+  <button class="mode-btn online" onclick="tampilLayar('onlineSetup')">
+    <span class="mode-btn-icon">🌐</span>
+    <div class="mode-btn-info">
+      <div>MAIN ONLINE</div>
+      <div class="mode-btn-desc">Jarak jauh, tiap orang di HP sendiri</div>
+    </div>
+  </button>
+</div>
+
+<!-- ══ LOBBY (mode lokal) ══ -->
+<div id="lobby" class="screen">
+  <div style="text-align:center;padding:12px 16px 0;">
+    <button class="os-back" onclick="tampilLayar('modeSelect')">← Kembali</button>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;padding:0 16px 40px;">
+    <div class="header-dekor">
+      <div class="logo-cak">LOGIKA!</div>
+      <div class="logo-sub">Game Sesat Ala Cak Lontong</div>
+      <div class="stiker-ai">🤖 DITENAGAI AI</div>
+    </div>
+
+    <div class="lk">
+      <div class="lk-judul">👥 SIAPA AJA YANG MAIN?</div>
+      <div id="daftarPemain"></div>
+      <button class="tambah-p" id="btnTambah">＋ Tambah Pemain</button>
+    </div>
+
+    <div class="lk">
+      <div class="lk-judul">🔄 BERAPA RONDE?</div>
+      <div class="r-pills" id="rPillsLokal">
+        <button class="r-pill" data-r="3">3</button>
+        <button class="r-pill aktif" data-r="5">5</button>
+        <button class="r-pill" data-r="7">7</button>
+        <button class="r-pill" data-r="10">10</button>
+      </div>
+    </div>
+
+    <div class="lk">
+      <div class="tips-kotak">
+        🎤 <strong>CARA MAIN LOGIKA!</strong><br>
+        AI Cak Lontong kasih <strong>pertanyaan nyeleneh</strong> → tiap pemain jawab dengan alasan sengokil dan seabstrak mungkin → AI nilai siapa yang paling logis-tidak-logis!<br><br>
+        💡 <strong>Contoh soal:</strong> <em>"Kenapa orang Indonesia kalau makan mi instan harus pakai nasi?"</em><br>
+        💬 <strong>Contoh jawaban bagus:</strong> <em>"Karena mi itu sayur, bumbunya lauk, nasinya karbohidrat. Kalau dipisah nanti gizinya demo."</em><br><br>
+        🏆 Poin dari AI Cak Lontong. Jawaban makin <strong>ngawur tapi relate</strong> = makin tinggi!
+      </div>
+    </div>
+
+    <button class="tombol-mulai" id="btnMulai" disabled>🎤 MULAI! LOGIKA!</button>
+  </div>
+</div>
+
+<!-- ══ ONLINE SETUP ══ -->
+<div id="onlineSetup" class="screen">
+  <div style="padding:24px 16px 0;width:100%;max-width:460px;margin:0 auto;">
+    <button class="os-back" onclick="tampilLayar('modeSelect')">← Kembali</button>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;padding:0 16px 40px;">
+    <div class="os-header">
+      <div class="os-judul">🌐 MAIN ONLINE</div>
+      <div class="os-sub">Buat ruangan atau masuk ke ruangan teman</div>
+    </div>
+
+    <div class="os-panel">
+      <div class="os-tab-bar">
+        <button class="os-tab aktif" id="tabBuat" onclick="switchTab('buat')">🎮 Buat Ruangan</button>
+        <button class="os-tab" id="tabGabung" onclick="switchTab('gabung')">🚀 Gabung Ruangan</button>
+      </div>
+
+      <!-- Panel Buat -->
+      <div id="panelBuat" class="os-form">
+        <label class="os-label">NAMA KAMU</label>
+        <input class="os-input" id="namaHost" placeholder="Masukkan nama kamu..." maxlength="20" />
+
+        <div class="os-ronde-wrap">
+          <label class="os-label">JUMLAH RONDE</label>
+          <div class="r-pills" id="rPillsOnline">
+            <button class="r-pill" data-r="3">3</button>
+            <button class="r-pill aktif" data-r="5">5</button>
+            <button class="r-pill" data-r="7">7</button>
+            <button class="r-pill" data-r="10">10</button>
+          </div>
+        </div>
+
+        <button class="os-btn" id="btnBuat" onclick="buatRoom()">🎮 BUAT RUANGAN!</button>
+      </div>
+
+      <!-- Panel Gabung -->
+      <div id="panelGabung" class="os-form" style="display:none;">
+        <label class="os-label">NAMA KAMU</label>
+        <input class="os-input" id="namaGabung" placeholder="Masukkan nama kamu..." maxlength="20" />
+        <label class="os-label">KODE RUANGAN</label>
+        <input class="os-input kode" id="kodeGabung" placeholder="XXXXXX" maxlength="6" oninput="this.value=this.value.toUpperCase()" />
+        <button class="os-btn" id="btnGabung" onclick="gabungRoom()">🚀 GABUNG!</button>
+      </div>
+
+      <div style="margin-top:12px;background:rgba(255,214,0,.05);border:1px dashed rgba(255,214,0,.15);border-radius:10px;padding:10px 14px;font-size:.76rem;color:rgba(255,236,110,.6);line-height:1.6;font-weight:800;">
+        ⚠️ Pastikan Firestore Database sudah diaktifkan di project Firebase kamu, dan rules sudah diset ke <code>allow read, write: if true;</code> untuk testing.
+      </div>
     </div>
   </div>
+</div>
 
-  <div class="lk">
-    <div class="tips-kotak">
-      🎤 <strong>CARA MAIN LOGIKA!</strong><br>
-      AI Cak Lontong kasih <strong>soal isian terbuka</strong> → tiap pemain isi dengan jawaban sengokil mungkin → AI nilai siapa yang paling kreatif-sesat!<br><br>
-      💡 <strong>Contoh soal:</strong> <em>"Lanjutkan kalimat ini: Saat ketahuan belum mandi tapi sudah pakai parfum, aku langsung bilang..."</em><br>
-      💬 <strong>Contoh jawaban bagus:</strong> <em>"...ini bukan parfum, ini aroma alami tubuh yang sudah difermentasi 8 jam. PREMIUM."</em><br><br>
-      🏆 Poin dari AI Cak Lontong. Jawaban makin <strong>tidak masuk akal tapi relate</strong> = makin tinggi!
+<!-- ══ WAITING ROOM ══ -->
+<div id="waitingRoom" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center;padding:24px 16px 40px;">
+    <div class="wr-header">
+      <div class="wr-judul">🎮 RUANGAN GAME</div>
     </div>
-  </div>
 
-  <button class="tombol-mulai" id="btnMulai" disabled>🎤 MULAI! LOGIKA!</button>
-  <div id="errBox" style="display:none;margin-top:12px;width:100%;max-width:480px;background:rgba(204,26,0,.15);border:1px solid rgba(204,26,0,.4);border-radius:12px;padding:12px 16px;font-size:.85rem;color:#FF8080;font-weight:800;text-align:center;line-height:1.5"></div>
+    <div class="wr-kode-kotak">
+      <div class="wr-kode-lbl">🔑 KODE RUANGAN</div>
+      <div class="wr-kode" id="kodeDisplay">------</div>
+      <button class="wr-copy-btn" onclick="copyKode()">📋 Salin Kode</button>
+    </div>
+
+    <div class="wr-pemain-kotak">
+      <div class="wr-pemain-judul">👥 PEMAIN TERGABUNG</div>
+      <div class="wr-pemain-list" id="daftarOnlinePemain">
+        <div style="color:var(--redup);font-size:.82rem;font-weight:800;text-align:center;padding:8px;">Memuat pemain...</div>
+      </div>
+    </div>
+
+    <div class="wr-ronde-kotak" id="wrRondeKotak" style="display:none;">
+      <div class="wr-ronde-judul">🔄 JUMLAH RONDE</div>
+      <div class="r-pills" id="rPillsWR">
+        <button class="r-pill" data-r="3">3</button>
+        <button class="r-pill aktif" data-r="5">5</button>
+        <button class="r-pill" data-r="7">7</button>
+        <button class="r-pill" data-r="10">10</button>
+      </div>
+    </div>
+
+    <div class="wr-tunggu" id="wrTungguMsg" style="display:none;">⏳ Menunggu host memulai game...</div>
+
+    <button class="wr-mulai-btn" id="btnMulaiOnline" style="display:none;" disabled onclick="mulaiOnlineGame()">🎤 MULAI GAME!</button>
+    <div class="wr-min-info" id="wrMinInfo" style="display:none;">Minimal 2 pemain untuk mulai</div>
+  </div>
 </div>
 
 <!-- ══ LOADING ══ -->
 <div id="loading" class="screen">
-  <div class="muka-cak">🤖</div>
-  <div class="loading-judul">AI LAGI NGACO...</div>
+  <div class="muka-cak">🎤</div>
+  <div class="loading-judul">CAK AI LAGI MIKIR...</div>
   <div class="titik-titik"><span></span><span></span><span></span></div>
-  <div class="loading-info" id="loadingInfo">AI sedang meramu soal-soal sesat yang belum pernah ada sebelumnya... 🌀</div>
+  <div class="loading-info">Sedang menyusun soal-soal sesat yang masuk akal tidak masuk akal... 🌀</div>
 </div>
 
 <!-- ══ PERTANYAAN ══ -->
@@ -547,7 +516,7 @@ body::after {
   </div>
 
   <div class="kartu-soal">
-    <div class="ks-label">🤖 SOAL DARI CAK AI</div>
+    <div class="ks-label">🎤 SOAL CAK AI</div>
     <div class="ks-teks" id="ksTeks"></div>
   </div>
 
@@ -574,7 +543,10 @@ body::after {
     <div class="ps-judul">🏆 TOTAL SKOR</div>
     <div id="psBaris"></div>
   </div>
-  <button class="tombol-lanjut" id="btnLanjut">RONDE BERIKUTNYA →</button>
+  <div style="display:flex;flex-direction:column;align-items:center;padding-bottom:40px;">
+    <button class="tombol-lanjut" id="btnLanjut">RONDE BERIKUTNYA →</button>
+    <div class="tunggu-host-msg" id="tungguHostMsg" style="display:none;">⏳ Menunggu host melanjutkan...</div>
+  </div>
 </div>
 
 <!-- ══ FINAL ══ -->
@@ -593,31 +565,715 @@ body::after {
 
 <div class="toast" id="toast"></div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <script>
-// ─── KONSTANTA ───
+// ═══════════════════════════════════════════════
+// FIREBASE CONFIG
+// ═══════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBlZnJpNiV7H36typWd-ICW_mkQgv0yQ-o",
+  authDomain: "gamez-90450.firebaseapp.com",
+  projectId: "gamez-90450",
+  storageBucket: "gamez-90450.firebasestorage.app",
+  messagingSenderId: "576365222982",
+  appId: "1:576365222982:web:249cd622bfc5709c2fbe47",
+  measurementId: "G-C9N0M4GR9Z"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ═══════════════════════════════════════════════
+// KONSTANTA
+// ═══════════════════════════════════════════════
 const WARNA = ['#FF4500','#FFB800','#00CC55','#00B4FF','#FF2D78','#CC88FF','#FF6B35','#00DDCC'];
 const DETIK = 60;
 const LINGKARAN = 2 * Math.PI * 22;
 
-// ─── STATE ───
+// ═══════════════════════════════════════════════
+// LOCAL GAME STATE
+// ═══════════════════════════════════════════════
 let G = {
   pemain: [],
   totalRonde: 5,
   ronde: 0,
   soal: [],
-  jawaban: {},    // ronde -> { namaP: teks }
-  penilaian: {},  // ronde -> [{nama,jawaban,skor,komentar}] sorted
+  jawaban: {},
+  penilaian: {},
   skorTotal: {},
   idxJawab: 0,
   timer: null,
   sisa: DETIK,
 };
 
-// ─── LOBBY ───
+// ═══════════════════════════════════════════════
+// ONLINE STATE
+// ═══════════════════════════════════════════════
+let onlineMode    = false;
+let myId          = Math.random().toString(36).substr(2, 9);
+let isHost        = false;
+let roomCode      = null;
+let roomListener  = null;
+let onlineTotalRonde = 5;
+let scoringInProgress = false;
+let currentOnlineRonde = 0;
+let myAnsweredRonde = {};
+let onlineTimerInterval = null;
+let hostPollInterval    = null;
+let hasShownResults     = {};  // {ronde: true}
+let hasShownFinal       = false;
+
+// ═══════════════════════════════════════════════
+// ONLINE: TAB SWITCHER
+// ═══════════════════════════════════════════════
+function switchTab(tab) {
+  document.getElementById('tabBuat').classList.toggle('aktif', tab === 'buat');
+  document.getElementById('tabGabung').classList.toggle('aktif', tab === 'gabung');
+  document.getElementById('panelBuat').style.display   = tab === 'buat'   ? '' : 'none';
+  document.getElementById('panelGabung').style.display = tab === 'gabung' ? '' : 'none';
+}
+
+// Round pills for online setup
+document.querySelectorAll('#rPillsOnline .r-pill').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('#rPillsOnline .r-pill').forEach(x => x.classList.remove('aktif'));
+    b.classList.add('aktif');
+    onlineTotalRonde = +b.dataset.r;
+  };
+});
+document.querySelectorAll('#rPillsWR .r-pill').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('#rPillsWR .r-pill').forEach(x => x.classList.remove('aktif'));
+    b.classList.add('aktif');
+    onlineTotalRonde = +b.dataset.r;
+  };
+});
+
+// ═══════════════════════════════════════════════
+// ONLINE: GENERATE ROOM CODE
+// ═══════════════════════════════════════════════
+function generateRoomCode() {
+  return Math.random().toString(36).substr(2, 6).toUpperCase();
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: BUAT ROOM (host)
+// ═══════════════════════════════════════════════
+async function buatRoom() {
+  const nama = (document.getElementById('namaHost').value || '').trim();
+  if (!nama) { showToast('Isi nama kamu dulu!'); return; }
+
+  const btn = document.getElementById('btnBuat');
+  btn.disabled = true;
+  btn.textContent = 'Membuat ruangan...';
+
+  try {
+    isHost   = true;
+    onlineMode = true;
+    roomCode = generateRoomCode();
+    const warna = WARNA[0];
+
+    await db.collection('rooms').doc(roomCode).set({
+      host:        myId,
+      state:       'waiting',
+      totalRonde:  onlineTotalRonde,
+      currentRonde: 0,
+      soal:        [],
+      timerEnd:    null,
+      players:     { [myId]: { nama, warna } },
+      answers:     {},
+      scoring:     {},
+      skorTotal:   { [myId]: 0 },
+      createdAt:   firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    document.getElementById('kodeDisplay').textContent = roomCode;
+    document.getElementById('wrRondeKotak').style.display = '';
+    document.getElementById('btnMulaiOnline').style.display = '';
+    document.getElementById('wrMinInfo').style.display = '';
+    tampilLayar('waitingRoom');
+    dengarRoom();
+  } catch(e) {
+    console.error(e);
+    showToast('Gagal membuat ruangan: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🎮 BUAT RUANGAN!';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: GABUNG ROOM (non-host)
+// ═══════════════════════════════════════════════
+async function gabungRoom() {
+  const nama = (document.getElementById('namaGabung').value || '').trim();
+  const kode = (document.getElementById('kodeGabung').value || '').trim().toUpperCase();
+
+  if (!nama) { showToast('Isi nama kamu dulu!'); return; }
+  if (kode.length < 4) { showToast('Masukkan kode ruangan!'); return; }
+
+  const btn = document.getElementById('btnGabung');
+  btn.disabled = true;
+  btn.textContent = 'Mencari ruangan...';
+
+  try {
+    const docRef = db.collection('rooms').doc(kode);
+    const snap   = await docRef.get();
+
+    if (!snap.exists) { showToast('Ruangan tidak ditemukan!'); return; }
+
+    const data = snap.data();
+    if (data.state !== 'waiting') { showToast('Game sudah dimulai, tidak bisa bergabung!'); return; }
+
+    const playerCount = Object.keys(data.players || {}).length;
+    if (playerCount >= 8) { showToast('Ruangan sudah penuh (max 8 pemain)!'); return; }
+
+    // Check name duplicate
+    const namaTaken = Object.values(data.players || {}).some(p => p.nama.toLowerCase() === nama.toLowerCase());
+    if (namaTaken) { showToast('Nama itu sudah dipakai pemain lain!'); return; }
+
+    isHost     = false;
+    onlineMode = true;
+    roomCode   = kode;
+
+    const warna = WARNA[playerCount % WARNA.length];
+    await docRef.update({
+      [`players.${myId}`]:    { nama, warna },
+      [`skorTotal.${myId}`]:  0
+    });
+
+    document.getElementById('kodeDisplay').textContent = roomCode;
+    document.getElementById('wrTungguMsg').style.display = '';
+    tampilLayar('waitingRoom');
+    dengarRoom();
+  } catch(e) {
+    console.error(e);
+    showToast('Gagal bergabung: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 GABUNG!';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: COPY ROOM CODE
+// ═══════════════════════════════════════════════
+function copyKode() {
+  if (navigator.clipboard && roomCode) {
+    navigator.clipboard.writeText(roomCode);
+    showToast('Kode "' + roomCode + '" berhasil disalin!');
+  } else {
+    showToast('Kode ruangan: ' + roomCode);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: LISTEN TO ROOM CHANGES
+// ═══════════════════════════════════════════════
+function dengarRoom() {
+  if (roomListener) roomListener();
+  roomListener = db.collection('rooms').doc(roomCode).onSnapshot(snap => {
+    if (!snap.exists) return;
+    handleRoomUpdate(snap.data());
+  }, err => {
+    console.error('Room listener error:', err);
+    showToast('Koneksi terputus: ' + err.message);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: HANDLE ROOM STATE CHANGES
+// ═══════════════════════════════════════════════
+function handleRoomUpdate(data) {
+  const players = data.players || {};
+
+  // Always sync G.pemain from Firebase
+  G.pemain = Object.entries(players).map(([id, p]) => ({ id, nama: p.nama, warna: p.warna }));
+  G.totalRonde  = data.totalRonde;
+  G.ronde       = data.currentRonde;
+  G.soal        = data.soal || [];
+  G.skorTotal   = {};
+  G.pemain.forEach(p => { G.skorTotal[p.nama] = data.skorTotal?.[p.id] || 0; });
+
+  // ── waiting ──
+  if (data.state === 'waiting') {
+    renderWaitingRoom(data);
+    if (!document.getElementById('waitingRoom').classList.contains('active'))
+      tampilLayar('waitingRoom');
+    return;
+  }
+
+  // ── loading ──
+  if (data.state === 'loading') {
+    tampilLayar('loading');
+    return;
+  }
+
+  // ── answering ──
+  if (data.state === 'answering') {
+    const ronde   = data.currentRonde;
+    const isOnQ   = document.getElementById('pertanyaan').classList.contains('active');
+    const isSameR = ronde === currentOnlineRonde;
+
+    if (isOnQ && isSameR) {
+      // Update progress only
+      updateAnswerProgress(data);
+      // Check if my answer was registered (reconnect case)
+      const myAnswered = data.answers?.[ronde]?.[myId] !== undefined;
+      if (myAnswered) updateSubmittedUI();
+    } else {
+      tampilPertanyaanOnline(data);
+    }
+
+    // Host: check if all answered
+    if (isHost && !scoringInProgress) {
+      const answers   = data.answers?.[ronde] || {};
+      const allDone   = G.pemain.every(p => answers[p.id] !== undefined);
+      const timerDone = data.timerEnd && Date.now() > data.timerEnd + 2000;
+      if (allDone || timerDone) {
+        fillMissingAnswers(data).then(() => nilaiOnline());
+      }
+    }
+    return;
+  }
+
+  // ── scoring ──
+  if (data.state === 'scoring') {
+    tampilLayar('menilai');
+    return;
+  }
+
+  // ── results ──
+  if (data.state === 'results') {
+    const ronde = data.currentRonde;
+    if (hasShownResults[ronde]) {
+      // Update lanjut button state only
+      updateLanjutBtn(data);
+      return;
+    }
+    hasShownResults[ronde] = true;
+
+    G.penilaian = G.penilaian || {};
+    G.penilaian[ronde] = data.scoring?.[ronde] || [];
+
+    G.jawaban = G.jawaban || {};
+    G.jawaban[ronde] = {};
+    const answers = data.answers?.[ronde] || {};
+    G.pemain.forEach(p => { G.jawaban[ronde][p.nama] = answers[p.id] || '(tidak menjawab)'; });
+
+    tampilHasil();
+    return;
+  }
+
+  // ── final ──
+  if (data.state === 'final') {
+    if (!hasShownFinal) {
+      hasShownFinal = true;
+      tampilFinal();
+    }
+    return;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: RENDER WAITING ROOM
+// ═══════════════════════════════════════════════
+function renderWaitingRoom(data) {
+  const players = data.players || {};
+  const list = document.getElementById('daftarOnlinePemain');
+  list.innerHTML = '';
+  Object.entries(players).forEach(([id, p]) => {
+    const div = document.createElement('div');
+    div.className = 'wr-pemain-item';
+    div.innerHTML = `
+      <div class="wr-dot" style="background:${p.warna}"></div>
+      <span>${p.nama}</span>
+      ${id === data.host ? '<span class="wr-host-badge">HOST</span>' : ''}
+    `;
+    list.appendChild(div);
+  });
+
+  const count = Object.keys(players).length;
+  const btn   = document.getElementById('btnMulaiOnline');
+  if (btn) {
+    btn.disabled = count < 2;
+    const mi = document.getElementById('wrMinInfo');
+    if (mi) mi.style.display = count < 2 ? '' : 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: HOST STARTS GAME
+// ═══════════════════════════════════════════════
+async function mulaiOnlineGame() {
+  if (!isHost) return;
+  const btn = document.getElementById('btnMulaiOnline');
+  btn.disabled = true;
+  btn.textContent = 'Memuat soal...';
+
+  scoringInProgress = false;
+  hasShownResults   = {};
+  hasShownFinal     = false;
+  myAnsweredRonde   = {};
+
+  // Write totalRonde from current selection
+  await db.collection('rooms').doc(roomCode).update({
+    state:       'loading',
+    totalRonde:  onlineTotalRonde
+  });
+
+  try {
+    const soal = await ambilSoal(onlineTotalRonde);
+    await db.collection('rooms').doc(roomCode).update({
+      soal,
+      state:        'answering',
+      currentRonde: 1,
+      timerEnd:     Date.now() + DETIK * 1000,
+      answers:      {},
+      scoring:      {},
+      skorTotal:    Object.fromEntries(G.pemain.map(p => [p.id, 0]))
+    });
+  } catch(e) {
+    const soal = soalCadangan(onlineTotalRonde);
+    await db.collection('rooms').doc(roomCode).update({
+      soal,
+      state:        'answering',
+      currentRonde: 1,
+      timerEnd:     Date.now() + DETIK * 1000,
+      answers:      {},
+      scoring:      {},
+      skorTotal:    Object.fromEntries(G.pemain.map(p => [p.id, 0]))
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: SHOW QUESTION (each player on own device)
+// ═══════════════════════════════════════════════
+function tampilPertanyaanOnline(data) {
+  const ronde   = data.currentRonde;
+  currentOnlineRonde = ronde;
+
+  document.getElementById('rNum').textContent  = ronde;
+  document.getElementById('rTot').textContent  = data.totalRonde;
+  document.getElementById('ksTeks').textContent = data.soal[ronde - 1] || '...';
+
+  const myPlayer  = data.players?.[myId] || { nama: '?', warna: '#FF4500' };
+  const myAnswered = data.answers?.[ronde]?.[myId] !== undefined;
+
+  const area = document.getElementById('areaJawab');
+  area.innerHTML = `
+    <div class="siapa-badge">
+      <div class="sapa-av" style="background:${myPlayer.warna}22;color:${myPlayer.warna};border:2px solid ${myPlayer.warna}">
+        ${myPlayer.nama[0].toUpperCase()}
+      </div>
+      <div>
+        <div class="sapa-lbl">jawaban kamu</div>
+        <div class="sapa-nama" style="color:${myPlayer.warna}">${myPlayer.nama}</div>
+      </div>
+    </div>
+    ${myAnswered
+      ? `<div class="sudah-kirim"><span class="sk-icon">✅</span><div class="sk-teks">JAWABAN TERKIRIM!</div><div class="sk-sub">Menunggu pemain lain...</div></div>`
+      : `<textarea class="area-input" id="inputJawab" rows="3" placeholder="Ketik alasan ter-ngawur tapi paling meyakinkanmu di sini..." maxlength="200"></textarea>
+         <button class="tombol-kirim" id="btnKirimOnline" onclick="kirimJawabanOnline()">✅ KIRIM JAWABAN!</button>`
+    }
+    <div id="answerProgress"></div>
+  `;
+
+  // Hide local dot progress
+  document.getElementById('dotProgress').innerHTML = '';
+
+  updateAnswerProgress(data);
+  startOnlineTimer(data.timerEnd, ronde);
+
+  if (isHost) startHostPoll(data.timerEnd, ronde);
+
+  tampilLayar('pertanyaan');
+
+  if (!myAnswered) {
+    setTimeout(() => { const el = document.getElementById('inputJawab'); if (el) el.focus(); }, 80);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: UPDATE ANSWER PROGRESS DOTS
+// ═══════════════════════════════════════════════
+function updateAnswerProgress(data) {
+  const ronde   = data.currentRonde;
+  const answers = data.answers?.[ronde] || {};
+  const players = data.players || {};
+  const total   = Object.keys(players).length;
+  const done    = Object.keys(answers).length;
+
+  const el = document.getElementById('answerProgress');
+  if (!el) return;
+
+  el.innerHTML = `
+    <div class="online-progress">
+      <div class="op-lbl">Sudah menjawab: ${done}/${total}</div>
+      <div class="op-dots">
+        ${Object.entries(players).map(([id, p]) => {
+          const ok = answers[id] !== undefined;
+          return `<div class="op-dot-item">
+            <div class="op-dot ${ok ? 'selesai' : ''}" style="background:${ok ? p.warna : 'rgba(255,255,255,.15)'}"></div>
+            <span class="op-dot-name" style="${ok ? 'color:' + p.warna : ''}">${p.nama.split(' ')[0]}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function updateSubmittedUI() {
+  const input = document.getElementById('inputJawab');
+  const btn   = document.getElementById('btnKirimOnline');
+  if (input && !input.disabled) {
+    input.disabled = true;
+    if (btn) { btn.textContent = '✅ Terkirim!'; btn.disabled = true; }
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: SYNCED TIMER
+// ═══════════════════════════════════════════════
+function startOnlineTimer(timerEnd, ronde) {
+  if (onlineTimerInterval) clearInterval(onlineTimerInterval);
+
+  function tick() {
+    const rem = Math.max(0, Math.ceil((timerEnd - Date.now()) / 1000));
+    G.sisa = rem;
+    updateTimer();
+
+    if (rem <= 0) {
+      clearInterval(onlineTimerInterval);
+      // Auto-submit if not answered
+      if (!myAnsweredRonde[ronde]) {
+        myAnsweredRonde[ronde] = true;
+        db.collection('rooms').doc(roomCode).update({
+          [`answers.${ronde}.${myId}`]: '(kehabisan waktu ⏰)'
+        }).catch(console.error);
+        updateSubmittedUI();
+      }
+    }
+  }
+
+  tick();
+  onlineTimerInterval = setInterval(tick, 1000);
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: SUBMIT ANSWER
+// ═══════════════════════════════════════════════
+async function kirimJawabanOnline() {
+  const ronde = G.ronde;
+  if (myAnsweredRonde[ronde]) return;
+  myAnsweredRonde[ronde] = true;
+
+  const el  = document.getElementById('inputJawab');
+  const val = (el ? el.value.trim() : '') || '(diam sambil garuk kepala 🤔)';
+
+  // Disable UI immediately
+  if (el) el.disabled = true;
+  const btn = document.getElementById('btnKirimOnline');
+  if (btn) { btn.textContent = '✅ Mengirim...'; btn.disabled = true; }
+
+  try {
+    await db.collection('rooms').doc(roomCode).update({
+      [`answers.${ronde}.${myId}`]: val
+    });
+    if (btn) btn.textContent = '✅ Terkirim! Menunggu pemain lain...';
+  } catch(e) {
+    showToast('Gagal kirim: ' + e.message);
+    myAnsweredRonde[ronde] = false;
+    if (el) el.disabled = false;
+    if (btn) { btn.textContent = '✅ KIRIM JAWABAN!'; btn.disabled = false; }
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: HOST POLL (check all answered / timer)
+// ═══════════════════════════════════════════════
+function startHostPoll(timerEnd, ronde) {
+  if (!isHost) return;
+  if (hostPollInterval) clearInterval(hostPollInterval);
+
+  hostPollInterval = setInterval(async () => {
+    if (scoringInProgress) { clearInterval(hostPollInterval); return; }
+
+    const snap = await db.collection('rooms').doc(roomCode).get();
+    const data = snap.data();
+    if (!data || data.state !== 'answering' || data.currentRonde !== ronde) {
+      clearInterval(hostPollInterval); return;
+    }
+
+    const answers   = data.answers?.[ronde] || {};
+    const players   = data.players || {};
+    const allDone   = Object.keys(players).every(pid => answers[pid] !== undefined);
+    const timerDone = Date.now() > timerEnd + 2000;
+
+    if (allDone || timerDone) {
+      clearInterval(hostPollInterval);
+      await fillMissingAnswers(data);
+      await nilaiOnline();
+    }
+  }, 2000);
+}
+
+async function fillMissingAnswers(data) {
+  const ronde   = data.currentRonde;
+  const answers = data.answers?.[ronde] || {};
+  const players = data.players || {};
+  const updates = {};
+
+  Object.keys(players).forEach(pid => {
+    if (!answers[pid]) {
+      updates[`answers.${ronde}.${pid}`] = '(kehabisan waktu ⏰)';
+    }
+  });
+
+  if (Object.keys(updates).length > 0) {
+    await db.collection('rooms').doc(roomCode).update(updates);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: HOST SCORES ROUND
+// ═══════════════════════════════════════════════
+async function nilaiOnline() {
+  if (!isHost || scoringInProgress) return;
+  scoringInProgress = true;
+
+  try {
+    const snap = await db.collection('rooms').doc(roomCode).get();
+    const data = snap.data();
+    const ronde = data.currentRonde;
+
+    if (data.scoring?.[ronde]?.length) { scoringInProgress = false; return; }
+
+    await db.collection('rooms').doc(roomCode).update({ state: 'scoring' });
+
+    const soal    = data.soal[ronde - 1];
+    const answers = data.answers?.[ronde] || {};
+    const players = data.players || {};
+
+    const daftar = Object.entries(players).map(([id, p]) => {
+      const j = answers[id] || '(tidak menjawab)';
+      return `- ${p.nama}: "${j}"`;
+    }).join('\n');
+
+    let hasil;
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1200,
+          system: `Kamu adalah Cak Lontong versi AI yang menilai jawaban isian kreatif peserta game logika sesat.
+
+Nilai berdasarkan:
+- Kreativitas: apakah jawabannya original dan tidak terduga?
+- Kelogisan Sesat: terdengar tidak masuk akal tapi entah kenapa relate?
+- Kelucuan: apakah bisa bikin orang ngakak atau manggut-manggut sekaligus bingung?
+- Kesesuaian prompt: apakah menjawab pertanyaan dengan ngawur yang pas?
+
+Kriteria skor (0–100):
+- 85–100: Jenius sesat — jawaban bikin ngakak sekaligus "iya juga ya beneran"
+- 65–84: Oke — ada lucunya, ada sesat logikanya
+- 45–64: Lumayan — niat menjawab tapi kurang nendang
+- 0–44: Flat, logika normal membosankan
+
+Komentar harus bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", spesifik menyebut isi jawaban, max 30 kata.
+
+HANYA kembalikan raw JSON array:
+[{"nama":"NamaPemain","skor":75,"komentar":"komentar ala Cak Lontong"}]`,
+          messages: [{
+            role: 'user',
+            content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban. Return ONLY raw JSON array.`
+          }]
+        })
+      });
+      const resData = await res.json();
+      const raw   = resData.content.map(c => c.text || '').join('');
+      hasil = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } catch(e) {
+      hasil = Object.entries(players).map(([, p]) => ({
+        nama: p.nama,
+        skor: 40 + Math.floor(Math.random() * 55),
+        komentar: 'Jawaban yang... sungguh membagongkan. LOGIKA! 🤔'
+      }));
+    }
+
+    hasil.sort((a, b) => b.skor - a.skor);
+
+    // Update total scores
+    const newSkorTotal = { ...(data.skorTotal || {}) };
+    const namaToId = {};
+    Object.entries(players).forEach(([id, p]) => { namaToId[p.nama] = id; });
+
+    hasil.forEach(h => {
+      const pid = namaToId[h.nama];
+      if (pid) newSkorTotal[pid] = (newSkorTotal[pid] || 0) + h.skor;
+    });
+
+    await db.collection('rooms').doc(roomCode).update({
+      [`scoring.${ronde}`]: hasil,
+      skorTotal: newSkorTotal,
+      state: 'results'
+    });
+  } catch(e) {
+    console.error('Scoring error:', e);
+    showToast('Error saat menilai: ' + e.message);
+  } finally {
+    scoringInProgress = false;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ONLINE: NEXT ROUND / FINAL
+// ═══════════════════════════════════════════════
+async function lanjutOnline() {
+  if (!isHost) return;
+  const ronde  = G.ronde;
+  const isLast = ronde >= G.totalRonde;
+
+  if (isLast) {
+    await db.collection('rooms').doc(roomCode).update({ state: 'final' });
+  } else {
+    const nextRonde = ronde + 1;
+    scoringInProgress = false;
+    await db.collection('rooms').doc(roomCode).update({
+      state:        'answering',
+      currentRonde: nextRonde,
+      timerEnd:     Date.now() + DETIK * 1000
+    });
+  }
+}
+
+function updateLanjutBtn(data) {
+  const btn = document.getElementById('btnLanjut');
+  const msg = document.getElementById('tungguHostMsg');
+  if (!btn) return;
+  if (isHost) {
+    btn.disabled = false;
+    btn.style.display = '';
+    if (msg) msg.style.display = 'none';
+  } else {
+    btn.style.display = 'none';
+    if (msg) msg.style.display = '';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// LOBBY (LOCAL MODE)
+// ═══════════════════════════════════════════════
 let lp = [
-  {nama:'Budi', warna:WARNA[0]},
-  {nama:'Sari', warna:WARNA[1]},
-  {nama:'Anto', warna:WARNA[2]},
+  { nama:'Budi', warna:WARNA[0] },
+  { nama:'Sari', warna:WARNA[1] },
+  { nama:'Anto', warna:WARNA[2] },
 ];
 
 function renderLobby() {
@@ -643,13 +1299,13 @@ function cekMulai() {
 
 document.getElementById('btnTambah').onclick = () => {
   if (lp.length >= 8) return;
-  lp.push({nama:`Pemain ${lp.length+1}`, warna:WARNA[lp.length % WARNA.length]});
+  lp.push({ nama:`Pemain ${lp.length+1}`, warna:WARNA[lp.length % WARNA.length] });
   renderLobby();
 };
 
-document.querySelectorAll('.r-pill').forEach(b => {
+document.querySelectorAll('#rPillsLokal .r-pill').forEach(b => {
   b.onclick = () => {
-    document.querySelectorAll('.r-pill').forEach(x => x.classList.remove('aktif'));
+    document.querySelectorAll('#rPillsLokal .r-pill').forEach(x => x.classList.remove('aktif'));
     b.classList.add('aktif');
     G.totalRonde = +b.dataset.r;
   };
@@ -658,129 +1314,122 @@ document.querySelectorAll('.r-pill').forEach(b => {
 document.getElementById('btnMulai').onclick = initGame;
 renderLobby();
 
-// ─── INISIALISASI ───
+// ═══════════════════════════════════════════════
+// LOCAL: INIT GAME
+// ═══════════════════════════════════════════════
 async function initGame() {
-  G.pemain = lp.map(p => ({nama: p.nama.trim() || '?', warna: p.warna}));
-  G.skorTotal = {};
+  G.pemain     = lp.map(p => ({ nama: p.nama.trim() || '?', warna: p.warna }));
+  G.skorTotal  = {};
   G.pemain.forEach(p => G.skorTotal[p.nama] = 0);
-  G.jawaban = {};
-  G.penilaian = {};
-  G.ronde = 0;
+  G.jawaban    = {};
+  G.penilaian  = {};
+  G.ronde      = 0;
+  onlineMode   = false;
 
   tampilLayar('loading');
-  document.getElementById('errBox').style.display = 'none';
 
   try {
     G.soal = await ambilSoal(G.totalRonde);
-    mulaiRonde();
   } catch(e) {
-    // Tampilkan error ke user
-    tampilLayar('lobby');
-    const pesan = e.message || 'Gagal menghubungi Gemini';
-    document.getElementById('errBox').style.display = 'block';
-    document.getElementById('errBox').textContent = '⚠️ ' + pesan;
+    G.soal = soalCadangan(G.totalRonde);
   }
+
+  mulaiRonde();
 }
 
-// ─── AI: AMBIL SOAL (via Anthropic — selalu fresh tiap sesi) ───
+// ═══════════════════════════════════════════════
+// AI: AMBIL SOAL
+// ═══════════════════════════════════════════════
 async function ambilSoal(n) {
-  const seed = Date.now();
-  const hari  = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][new Date().getDay()];
-  const jam   = new Date().getHours();
-  const sesiId = Math.random().toString(36).slice(2, 8).toUpperCase();
-
-  // Pool tema diacak setiap panggilan
-  const semuaTema = [
-    'kehidupan kos-kosan','ojek online','warung mie ayam','grup WhatsApp keluarga',
-    'mati lampu tiba-tiba','gorengan tengah malam','antri BPJS','macet total',
-    'kantin sekolah','begadang deadline','tukang parkir dadakan','koneksi lemot saat penting',
-    'baterai HP 1%','hujan deras tanpa payung','mie instan jam 2 pagi','abang bakso',
-    'arisan ibu-ibu RT','rebahan seharian','cas HP semalaman','sinyal hilang di hutan',
-    'foto profil WhatsApp lama','read tapi tidak dibalas','auto-correct salah waktu salting',
-    'antri kasir supermarket','parkiran motor penuh','kipas angin mati saat tidur',
-    'kucing tetangga masuk rumah','tiket sold out mendadak','nasi bungkus kehabisan lauk'
-  ];
-  const temaAcak = semuaTema.sort(() => Math.random() - .5).slice(0, n + 5).join(' | ');
-
-  const formatList = [
-    '"Lanjutkan kalimat ini: [kalimat absurd menggantung relate Indonesia]..."',
-    '"Tuliskan [surat/pidato/pengumuman/fatwa/peraturan] resmi dari [entitas lucu] tentang [situasi absurd]"',
-    '"Buatkan alasan ilmiah-tidak-ilmiah kenapa [fenomena sehari-hari Indonesia yang aneh]"',
-    '"Ceritakan secara sangat dramatis apa yang terjadi saat [skenario sepele tapi relate]"',
-    '"Buat judul berita BREAKING NEWS untuk kejadian: [situasi receh yang didramatisir]"',
-    '"Tulis caption Instagram sangat lebay dan puitis untuk foto: [momen biasa-biasa saja]"',
-    '"Jelaskan dengan bahasa seminar/jurnal ilmiah kenapa [kebiasaan absurd orang Indonesia]"',
-    '"Buat lirik lagu dangdut sedih tentang penderitaan: [situasi receh tapi menyentuh hati]"',
-    '"Tuliskan sumpah/janji setia dari [objek sehari-hari] kepada [objek lain yang tidak nyambung]"',
-    '"Buatkan tips dan trik profesional untuk menghadapi situasi: [skenario absurd relate]"',
-  ];
-
-  document.getElementById('loadingInfo').textContent =
-    'AI sedang meramu soal-soal sesat yang belum pernah ada sebelumnya... 🌀';
-
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
+    headers: { 'Content-Type':'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
-      system: `Kamu adalah Cak Lontong versi AI — komedian Indonesia master "logika sesat".
-Setiap kali dipanggil kamu WAJIB membuat soal yang 100% baru, tidak pernah ada sebelumnya.
+      max_tokens: 1400,
+      system: `Kamu adalah Cak Lontong versi AI — komedian Indonesia dengan humor "logika sesat" yang absurd tapi relate.
 
-SESI ID: ${sesiId} | TIMESTAMP: ${seed} | HARI: ${hari} | JAM: ${jam}
-(Gunakan info ini untuk memastikan soal selalu unik dan berbeda tiap sesi)
+Tugasmu: buat PERTANYAAN SINGKAT (Tanya Jawab), BUKAN skenario atau cerita panjang.
 
-TEMA HARI INI (gunakan sebagai inspirasi, boleh dikombinasikan): ${temaAcak}
+Contoh format:
+1. "Kenapa nyamuk kalau terbang bunyinya nging?"
+2. "Apa bedanya kambing sama orang pacaran?"
+3. "Kenapa orang Indonesia kalau makan mi instan harus pakai nasi?"
 
-FORMAT yang tersedia — ROTASI, jangan ada 2 soal dengan format sama:
-${formatList.join('\n')}
+Syarat:
+- HANYA PERTANYAAN SINGKAT.
+- TIDAK BISA dijawab dengan "ya"/"tidak"/satu kata.
+- Lucu, absurd, nyeleneh, tapi bikin orang penasaran.
+- Tiap soal tema BERBEDA. Max 15 kata per pertanyaan.
 
-ATURAN KERAS:
-✗ DILARANG dijawab "ya", "tidak", atau 1 kata
-✗ DILARANG ada 2 soal dengan format sama
-✗ DILARANG soal yang bisa dijawab pilihan ganda
-✓ Setiap soal HARUS memancing jawaban isian kreatif minimal 1 kalimat
-✓ Absurd, lucu, relate banget kehidupan Indonesia
-✓ Maks 35 kata per soal
-✓ Fresh total — bayangkan ini soal pertama yang pernah kamu buat di alam semesta
-
-Kembalikan HANYA raw JSON array of strings. Zero markdown. Zero backtick. Zero teks lain.`,
+Kembalikan HANYA raw JSON array of strings. Tidak ada markdown, tidak ada teks lain.`,
       messages: [{
         role: 'user',
-        content: `Buat TEPAT ${n} soal isian terbuka ala Cak Lontong. Sesi ${sesiId}, timestamp ${seed}. Semua beda format dan tema. Return ONLY raw JSON array.`
+        content: `Buat tepat ${n} pertanyaan isian lucu ala Cak Lontong, semua beda tema. Return ONLY raw JSON array.`
       }]
     })
   });
-
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-
-  const raw = data.content?.map(c => c.text || '').join('') || '';
-  const bersih = raw.replace(/```json|```/g, '').trim();
-  const match = bersih.match(/\[[\s\S]*\]/);
-  if (!match) throw new Error('Format JSON tidak valid dari AI');
-
-  const parsed = JSON.parse(match[0]);
-  if (!Array.isArray(parsed) || parsed.length < 1) throw new Error('AI tidak mengembalikan soal');
-
-  // Pastikan jumlahnya cukup
-  while (parsed.length < n) parsed.push(...parsed);
-  return parsed.slice(0, n);
+  const raw  = data.content.map(c => c.text || '').join('');
+  return JSON.parse(raw.replace(/```json|```/g, '').trim()).slice(0, n);
 }
 
-// ─── RONDE ───
+function soalCadangan(n) {
+  const pool = [
+    "Kenapa nyamuk kalau terbang bunyinya nging?",
+    "Apa bedanya kambing sama orang pacaran?",
+    "Kalau ada kecoak terbang ke arahmu, hal logis pertama yang kamu lakukan adalah...",
+    "Kenapa orang makan harus pakai sendok?",
+    "Ban apa yang paling bikin sakit hati?",
+    "Kenapa Batman pakainya sayap, bukan sarung bapak-bapak?",
+    "Apa persamaan antara hati dan kaca?",
+    "Hewan apa yang sering banget jadi korban pemerasan di kehidupan sehari-hari?",
+    "Kenapa matahari selalu tenggelamnya di barat?",
+    "Ikan apa yang paling cerewet di laut?",
+    "Benda apa yang kalau dipegang nyetrum, tapi kalau dilepas malah bikin kangen?",
+    "Kenapa orang Indonesia kalau makan mi instan harus pakai nasi?",
+    "Apa alasan logis kenapa ibu-ibu kalau naik motor sen kiri tapi beloknya ke kanan?",
+    "Kalau bumi itu bulat, kenapa orang yang jalan nggak ada yang menggelinding?",
+    "Kenapa kucing sering pura-pura nggak dengar kalau kita panggil pus pus?",
+    "Kenapa orang kalau lagi mikir susah sukanya garuk-garuk kepala padahal nggak gatal?",
+    "Benda apa yang paling sering pura-pura hilang pas lagi buru-buru dicari?",
+    "Secara logika, apa yang membedakan antara soto dan sop?",
+    "Kenapa kalau di film horor, hantunya selalu muncul pas lagunya lagi sepi?",
+    "Hewan apa yang kalau bersin suaranya paling sopan?",
+    "Kenapa gorengan abang-abang di pinggir jalan rasanya selalu lebih enak daripada bikin sendiri?",
+    "Benda apa yang kalau dipukul malah ngasih kita uang?",
+    "Tolong jelaskan secara ngawur kenapa air laut rasanya asin?",
+    "Apa alasan sebenarnya tuyul nggak berani ambil uang langsung di mesin ATM?",
+    "Kenapa orang kalau mau difoto sering banget disuruh bilang 'cheese'?",
+    "Kalau ayam sama telur ditanya duluan mana, jawaban ayamnya pasti apa?",
+    "Kenapa tanggal merah di kalender cuma ada di hari Minggu sama pas hari libur nasional?",
+    "Benda apa yang paling ditakuti sama nyamuk selain semprotan obat nyamuk?",
+    "Jelaskan kenapa zebra warnanya hitam putih dan bukan merah jambu?",
+    "Apa yang biasanya refleks dilakukan orang Indonesia saat melihat tulisan 'Awas Cat Basah'?",
+    "Kenapa helm kalau dipakai di kepala aman, tapi kalau dipakai di lutut malah susah jalan?",
+    "Alasan paling masuk akal kenapa porsi martabak manis kalau malam lebih cepat habis?",
+    "Binatang apa yang dinobatkan paling jago main petak umpet sepanjang masa?",
+    "Kenapa orang kalau lagi kaget sering teriak 'astaga', bukannya bilang 'eureka'?",
+    "Benda apa yang paling setia nemenin anak kos pas saldo ATM tinggal lima ribu?",
+    "Kalau Superman bisa terbang tembus awan, kenapa dia masih butuh pintu buat masuk rumah?",
+    "Kenapa kalau orang Jawa ngomong, di belakangnya sering ada kata 'yo' nya?",
+    "Apa bedanya dompet di tanggal 1 awal bulan sama di tanggal 30 akhir bulan?",
+    "Kenapa kalau hujan turun airnya selalu ke bawah, nggak nyamping?",
+    "Alasan logis kenapa laron selalu ngerubungin lampu padahal jelas-jelas bikin kepanasan?"
+  ];
+  return pool.sort(() => Math.random() - .5).slice(0, n);
+}
+
+// ═══════════════════════════════════════════════
+// LOCAL: RONDE
+// ═══════════════════════════════════════════════
 function mulaiRonde() {
   G.ronde++;
   G.jawaban[G.ronde] = {};
   G.idxJawab = 0;
 
-  document.getElementById('rNum').textContent = G.ronde;
-  document.getElementById('rTot').textContent = G.totalRonde;
+  document.getElementById('rNum').textContent  = G.ronde;
+  document.getElementById('rTot').textContent  = G.totalRonde;
   document.getElementById('ksTeks').textContent = G.soal[G.ronde - 1];
 
   renderDotProgress();
@@ -813,10 +1462,10 @@ function mulaiTimer() {
 }
 
 function updateTimer() {
-  const pct = G.sisa / DETIK;
+  const pct    = G.sisa / DETIK;
   const offset = LINGKARAN * (1 - pct);
-  const isi = document.getElementById('tlIsi');
-  isi.style.strokeDasharray = LINGKARAN;
+  const isi    = document.getElementById('tlIsi');
+  isi.style.strokeDasharray  = LINGKARAN;
   isi.style.strokeDashoffset = offset;
   const warna = pct > .5 ? '#00CC55' : pct > .25 ? '#FFB800' : '#FF2D00';
   isi.style.stroke = warna;
@@ -826,7 +1475,7 @@ function updateTimer() {
 }
 
 function tampilGiliran(idx) {
-  const p = G.pemain[idx];
+  const p    = G.pemain[idx];
   const area = document.getElementById('areaJawab');
 
   area.innerHTML = `
@@ -841,7 +1490,7 @@ function tampilGiliran(idx) {
     </div>
     <div class="bisik-pesan">🙈 Pemain lain tutup mata dulu! Hanya <strong>${p.nama}</strong> yang lihat layar.</div>
     <textarea class="area-input" id="inputJawab" rows="3"
-      placeholder="Isi dengan jawaban sengokil-sekreatif mungkin... (jangan cuma ya/tidak!)" maxlength="200"></textarea>
+      placeholder="Ketik alasan ter-ngawur tapi paling meyakinkanmu di sini..." maxlength="200"></textarea>
     <button class="tombol-kirim" onclick="kirimJawab()">✅ KIRIM JAWABAN!</button>
   `;
 
@@ -861,7 +1510,7 @@ function tampilGiliran(idx) {
 }
 
 function kirimJawab() {
-  const el = document.getElementById('inputJawab');
+  const el  = document.getElementById('inputJawab');
   const val = (el ? el.value.trim() : '') || '(diam sambil garuk kepala 🤔)';
   G.jawaban[G.ronde][G.pemain[G.idxJawab].nama] = val;
   G.idxJawab++;
@@ -882,116 +1531,86 @@ function autoIsi() {
   lakukanPenilaian();
 }
 
-// ─── AI: PENILAIAN ───
+// ═══════════════════════════════════════════════
+// LOCAL: AI PENILAIAN
+// ═══════════════════════════════════════════════
 async function lakukanPenilaian() {
   tampilLayar('menilai');
 
-  const soal = G.soal[G.ronde - 1];
-  const jwb = G.jawaban[G.ronde];
+  const soal  = G.soal[G.ronde - 1];
+  const jwb   = G.jawaban[G.ronde];
   const daftar = Object.entries(jwb).map(([n, j]) => `- ${n}: "${j}"`).join('\n');
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type':'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1200,
         system: `Kamu adalah Cak Lontong versi AI yang menilai jawaban isian kreatif peserta game logika sesat.
 
-Soalnya bukan ya/tidak — soalnya adalah prompt isian terbuka seperti "lanjutkan kalimat...", "tuliskan surat dari...", "buatkan alasan...". Jadi jawaban peserta adalah teks kreatif yang panjang.
-
-Nilai berdasarkan:
-- Kreativitas: apakah jawabannya original dan tidak terduga?
-- Kelogisan Sesat: terdengar tidak masuk akal tapi entah kenapa relate?
-- Kelucuan: apakah bisa bikin orang ngakak atau manggut-manggut sekaligus bingung?
-- Kesesuaian prompt: apakah menjawab promptnya dengan cara yang menarik?
-
-Kriteria skor (0–100):
-- 85–100: Jenius sesat — jawaban bikin ngakak sekaligus "iya juga ya beneran", kreatif dan original
-- 65–84: Oke — ada lucunya, ada sesat logikanya, tapi masih bisa lebih gila
-- 45–64: Lumayan — niat menjawab tapi kurang nendang atau terlalu generik
-- 0–44: Jawaban terlalu flat, terlalu singkat, atau tidak masuk konteks sama sekali
-
-Komentar kamu harus:
-- Bergaya Cak Lontong: awali dengan pujian/fakta serius, lalu twist absurd di akhir
-- WAJIB ada kata "LOGIKA!" di komentar
-- Spesifik nyebut isi jawaban mereka (bukan generik)
-- Max 30 kata, bahasa gaul Indonesia, terdengar seperti komentator gameshow
+Nilai berdasarkan kreativitas, kelogisan sesat, kelucuan, dan kesesuaian prompt. Skor 0–100.
+Komentar bergaya Cak Lontong, WAJIB ada kata "LOGIKA!", spesifik nyebut isi jawaban, max 30 kata.
 
 HANYA kembalikan raw JSON array:
 [{"nama":"NamaPemain","skor":75,"komentar":"komentar roast ala Cak Lontong"}]`,
         messages: [{
           role: 'user',
-          content: `Soal: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban. Return ONLY raw JSON array.`
+          content: `Pertanyaan: "${soal}"\n\nJawaban peserta:\n${daftar}\n\nNilai semua jawaban. Return ONLY raw JSON array.`
         }]
       })
     });
     const data = await res.json();
-    const raw = data.content.map(c => c.text || '').join('');
-    const bersih = raw.replace(/```json|```/g, '').trim();
-    let hasil = JSON.parse(bersih);
+    const raw  = data.content.map(c => c.text || '').join('');
+    let hasil  = JSON.parse(raw.replace(/```json|```/g, '').trim());
 
-    // Normalisasi nama (match ke pemain)
     hasil = hasil.map(h => {
-      const cocok = G.pemain.find(p =>
-        p.nama.toLowerCase() === (h.nama || '').toLowerCase()
-      );
-      return {...h, nama: cocok ? cocok.nama : h.nama};
+      const cocok = G.pemain.find(p => p.nama.toLowerCase() === (h.nama||'').toLowerCase());
+      return { ...h, nama: cocok ? cocok.nama : h.nama };
     });
 
-    // Sort descending skor
     hasil.sort((a, b) => b.skor - a.skor);
     G.penilaian[G.ronde] = hasil;
-
-    // Tambah skor total
-    hasil.forEach(h => {
-      if (G.skorTotal[h.nama] !== undefined)
-        G.skorTotal[h.nama] += h.skor;
-    });
+    hasil.forEach(h => { if (G.skorTotal[h.nama] !== undefined) G.skorTotal[h.nama] += h.skor; });
 
     tampilHasil();
   } catch(e) {
-    // Fallback: skor acak
-    const hasil = Object.entries(jwb).map(([nama, jwb]) => ({
+    const hasil = Object.entries(jwb).map(([nama]) => ({
       nama, skor: 40 + Math.floor(Math.random() * 55),
-      komentar: 'Jawaban yang... ada. LOGIKA! 🤔'
-    })).sort((a,b) => b.skor - a.skor);
+      komentar: 'Jawaban yang... sungguh membagongkan. LOGIKA! 🤔'
+    })).sort((a, b) => b.skor - a.skor);
     G.penilaian[G.ronde] = hasil;
     hasil.forEach(h => { if (G.skorTotal[h.nama] !== undefined) G.skorTotal[h.nama] += h.skor; });
     tampilHasil();
   }
 }
 
-// ─── TAMPIL HASIL ───
+// ═══════════════════════════════════════════════
+// TAMPIL HASIL (shared local + online)
+// ═══════════════════════════════════════════════
 function tampilHasil() {
   tampilLayar('hasil');
   tunjukStamp('LOGIKA!');
 
   const hasil = G.penilaian[G.ronde];
   document.getElementById('hRondeTag').textContent = `RONDE ${G.ronde} · HASIL`;
-  document.getElementById('hSoal').textContent = G.soal[G.ronde - 1];
+  document.getElementById('hSoal').textContent     = G.soal[G.ronde - 1];
 
-  // Kartu hasil
-  const list = document.getElementById('kartHasilList');
-  list.innerHTML = '';
+  const list      = document.getElementById('kartHasilList');
   const rankClass = ['p1','p2','p3'];
   const rankEmoji = ['🥇','🥈','🥉'];
 
+  list.innerHTML = '';
   hasil.forEach((h, i) => {
     const pemain = G.pemain.find(p => p.nama === h.nama);
-    const warna = pemain ? pemain.warna : WARNA[i % WARNA.length];
-    const kard = document.createElement('div');
+    const warna  = pemain ? pemain.warna : WARNA[i % WARNA.length];
+    const kard   = document.createElement('div');
     kard.className = `kh ${rankClass[i] || 'pn'}`;
     kard.style.animationDelay = (i * .1) + 's';
 
     const pctBar = Math.min(100, Math.max(0, h.skor));
     const jawaban = G.jawaban[G.ronde][h.nama] || '-';
-    const roundPts = h.skor;
 
     kard.innerHTML = `
       <div class="stamp-logika">LOGIKA!</div>
@@ -999,7 +1618,7 @@ function tampilHasil() {
         <div class="kh-rank ${i===0?'emas':i===1?'perak':i===2?'perunggu':''}">${rankEmoji[i]||'#'+(i+1)}</div>
         <div style="flex:1">
           <div class="kh-baris-nama">
-            <div class="kh-bulat" style="background:${warna};width:10px;height:10px;border-radius:50%"></div>
+            <div class="kh-bulat" style="background:${warna}"></div>
             <div class="kh-nama" style="color:${warna}">${h.nama}</div>
           </div>
           <div class="kh-jawaban">"${jawaban}"</div>
@@ -1012,7 +1631,7 @@ function tampilHasil() {
       <div class="skor-row">
         <span class="skor-lbl">SKOR RONDE</span>
         <div>
-          <span class="skor-angka">${roundPts}</span>
+          <span class="skor-angka">${h.skor}</span>
           <span class="skor-rel"> poin</span>
         </div>
       </div>
@@ -1023,15 +1642,15 @@ function tampilHasil() {
     list.appendChild(kard);
   });
 
-  // Papan skor
-  const sorted = [...G.pemain].sort((a,b) => G.skorTotal[b.nama] - G.skorTotal[a.nama]);
-  const ps = document.getElementById('psBaris');
-  ps.innerHTML = '';
+  // Total score board
+  const sorted   = [...G.pemain].sort((a, b) => G.skorTotal[b.nama] - G.skorTotal[a.nama]);
+  const ps       = document.getElementById('psBaris');
   const posEmoji = ['🥇','🥈','🥉'];
+  ps.innerHTML   = '';
   sorted.forEach((p, i) => {
     const rondeH = G.penilaian[G.ronde].find(h => h.nama === p.nama);
-    const delta = rondeH ? rondeH.skor : 0;
-    const row = document.createElement('div');
+    const delta  = rondeH ? rondeH.skor : 0;
+    const row    = document.createElement('div');
     row.className = 'ps-baris';
     row.innerHTML = `
       <div class="ps-pos">${posEmoji[i]||'#'+(i+1)}</div>
@@ -1043,24 +1662,44 @@ function tampilHasil() {
     ps.appendChild(row);
   });
 
-  // Tombol lanjut
-  const btn = document.getElementById('btnLanjut');
+  // Lanjut button
+  const btn    = document.getElementById('btnLanjut');
+  const msg    = document.getElementById('tungguHostMsg');
   const isAkhir = G.ronde >= G.totalRonde;
-  btn.textContent = isAkhir ? '🏆 LIHAT JUARA!' : `RONDE ${G.ronde+1} →`;
-  btn.onclick = isAkhir ? tampilFinal : mulaiRonde;
+
+  if (onlineMode) {
+    if (isHost) {
+      btn.textContent = isAkhir ? '🏆 LIHAT JUARA!' : `RONDE ${G.ronde+1} →`;
+      btn.onclick     = lanjutOnline;
+      btn.disabled    = false;
+      btn.style.display = '';
+      if (msg) msg.style.display = 'none';
+    } else {
+      btn.style.display = 'none';
+      if (msg) msg.style.display = '';
+    }
+  } else {
+    btn.style.display = '';
+    btn.disabled      = false;
+    if (msg) msg.style.display = 'none';
+    btn.textContent = isAkhir ? '🏆 LIHAT JUARA!' : `RONDE ${G.ronde+1} →`;
+    btn.onclick     = isAkhir ? tampilFinal : mulaiRonde;
+  }
 }
 
-// ─── FINAL ───
+// ═══════════════════════════════════════════════
+// TAMPIL FINAL (shared)
+// ═══════════════════════════════════════════════
 function tampilFinal() {
-  const sorted = [...G.pemain].sort((a,b) => G.skorTotal[b.nama] - G.skorTotal[a.nama]);
-  const juara = sorted[0];
+  const sorted = [...G.pemain].sort((a, b) => G.skorTotal[b.nama] - G.skorTotal[a.nama]);
+  const juara  = sorted[0];
 
   document.getElementById('finalNama').textContent = juara.nama;
   document.getElementById('finalNama').style.color = juara.warna;
 
-  const fb = document.getElementById('finalBaris');
-  fb.innerHTML = '';
+  const fb  = document.getElementById('finalBaris');
   const med = ['🥇','🥈','🥉'];
+  fb.innerHTML = '';
   sorted.forEach((p, i) => {
     const row = document.createElement('div');
     row.className = 'ps-baris';
@@ -1078,7 +1717,9 @@ function tampilFinal() {
   setTimeout(konfeti, 800);
 }
 
-// ─── UTILS ───
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
 function tampilLayar(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1091,6 +1732,15 @@ function tunjukStamp(teks) {
   void el.offsetWidth;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 1200);
+}
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
 function konfeti() {
