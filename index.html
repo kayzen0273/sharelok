@@ -317,68 +317,6 @@ body::after {
 .tombol-lagi { padding:16px 44px; border:3px solid var(--kuning); border-radius:14px; font-family:'Lilita One',cursive; font-size:1.6rem; letter-spacing:2px; cursor:pointer; background:var(--merah); color:var(--kuning); transition:.25s; box-shadow:0 6px 0 #7A0A00; }
 .tombol-lagi:hover { transform:translateY(-3px); }
 
-/* ══════════════ IN-GAME MENU ══════════════ */
-.titik-tiga {
-  background: none; border: 1px solid rgba(255,255,255,.1); border-radius: 9px;
-  color: var(--redup); cursor: pointer; padding: 0; font-size: 1.3rem;
-  transition: .2s; display: flex; align-items: center; justify-content: center;
-  flex-direction: column; gap: 3.5px; width: 38px; height: 38px;
-}
-.titik-tiga span { display: block; width: 4px; height: 4px; border-radius: 50%; background: currentColor; transition: .2s; }
-.titik-tiga:hover { color: var(--kuning); border-color: rgba(255,214,0,.3); }
-
-.menu-overlay {
-  position: fixed; inset: 0; z-index: 800;
-  background: rgba(0,0,0,0); pointer-events: none;
-  transition: background .25s;
-}
-.menu-overlay.buka { background: rgba(0,0,0,.6); pointer-events: all; }
-
-.menu-laci {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  background: var(--kartu2); border-radius: 22px 22px 0 0;
-  border-top: 2px solid rgba(255,214,0,.15);
-  padding: 12px 20px 40px;
-  transform: translateY(100%); transition: transform .3s cubic-bezier(.34,1.2,.64,1);
-}
-.menu-overlay.buka .menu-laci { transform: translateY(0); }
-
-.menu-handle { width: 38px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.15); margin: 0 auto 18px; }
-.menu-judul  { font-family: 'Lilita One', cursive; font-size: .8rem; color: var(--redup); letter-spacing: 2px; text-align: center; margin-bottom: 16px; }
-
-.menu-item {
-  width: 100%; padding: 14px 18px; border-radius: 12px; cursor: pointer;
-  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: .95rem;
-  display: flex; align-items: center; gap: 12px; transition: .2s; margin-bottom: 8px;
-  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); color: var(--teks);
-  text-align: left;
-}
-.menu-item:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.15); }
-.menu-item.bahaya { color: #FF6060; border-color: rgba(204,26,0,.2); background: rgba(204,26,0,.07); }
-.menu-item.bahaya:hover { background: rgba(204,26,0,.15); border-color: rgba(204,26,0,.4); }
-.menu-item-icon { font-size: 1.3rem; }
-.menu-divider { height: 1px; background: rgba(255,255,255,.06); margin: 4px 0 12px; }
-
-.konfirm-overlay {
-  position: fixed; inset: 0; z-index: 900;
-  background: rgba(0,0,0,.75); display: flex; align-items: center; justify-content: center;
-  padding: 20px; display: none;
-}
-.konfirm-overlay.buka { display: flex; }
-.konfirm-kotak {
-  background: var(--kartu2); border: 1px solid rgba(255,214,0,.2);
-  border-radius: 18px; padding: 24px 22px; max-width: 340px; width: 100%;
-  animation: pop .35s cubic-bezier(.34,1.56,.64,1); text-align: center;
-}
-.konfirm-icon  { font-size: 2.8rem; margin-bottom: 8px; }
-.konfirm-judul { font-family: 'Lilita One', cursive; font-size: 1.2rem; color: var(--kuning); margin-bottom: 6px; }
-.konfirm-sub   { font-size: .82rem; color: var(--redup); font-weight: 800; line-height: 1.5; margin-bottom: 18px; }
-.konfirm-tombol { display: flex; gap: 10px; }
-.konfirm-batal  { flex: 1; padding: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 11px; color: var(--redup); font-family: 'Nunito', sans-serif; font-weight: 800; cursor: pointer; font-size: .9rem; transition: .2s; }
-.konfirm-batal:hover { color: var(--teks); border-color: rgba(255,255,255,.25); }
-.konfirm-oke    { flex: 1; padding: 12px; background: var(--merah); border: 1px solid var(--kuning); border-radius: 11px; color: var(--kuning); font-family: 'Lilita One', cursive; font-size: 1rem; letter-spacing: 1px; cursor: pointer; transition: .2s; box-shadow: 0 3px 0 #7A0A00; }
-.konfirm-oke:hover { transform: translateY(-1px); box-shadow: 0 5px 0 #7A0A00; }
-
 /* STAMP overlay */
 .stamp-overlay { position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center; pointer-events:none; }
 .stamp-teks { font-family:'Lilita One',cursive; font-size:clamp(4rem,18vw,8rem); color:var(--kuning); opacity:0; text-shadow:5px 5px 0 var(--merah), 9px 9px 0 #7A0A00; border:8px solid var(--kuning); border-radius:20px; padding:10px 30px; background:rgba(26,8,0,.85); letter-spacing:4px; transform:rotate(-8deg); }
@@ -393,54 +331,66 @@ body::after {
 @keyframes cf-fall { 0%{opacity:1;transform:translateY(0) rotate(0)} 100%{opacity:0;transform:translateY(110vh) rotate(540deg)} }
 
 @media(max-width:420px) { .ks-teks{font-size:1rem} .kh-jawaban{font-size:.92rem} }
+
+/* ══════════════ TOMBOL KELUAR RONDE ══════════════ */
+.btn-keluar-ronde {
+  background: none;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 9px;
+  color: var(--redup);
+  cursor: pointer;
+  padding: 7px 10px;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: .2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+.btn-keluar-ronde:hover { border-color: rgba(255,255,255,.3); color: var(--teks); }
+.btn-keluar-ronde span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+}
+
+/* Modal konfirmasi keluar */
+.modal-keluar-overlay {
+  position: fixed; inset: 0; z-index: 8000;
+  background: rgba(0,0,0,.75);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+.modal-keluar-overlay.show { opacity: 1; pointer-events: all; }
+.modal-keluar-kotak {
+  background: var(--kartu2);
+  border: 2px solid rgba(255,214,0,.25);
+  border-radius: 20px;
+  padding: 28px 24px;
+  max-width: 340px;
+  width: 100%;
+  text-align: center;
+  animation: pop .35s cubic-bezier(.34,1.56,.64,1);
+}
+.mk-icon { font-size: 2.8rem; margin-bottom: 10px; display: block; }
+.mk-judul { font-family: 'Lilita One', cursive; font-size: 1.4rem; color: var(--kuning); letter-spacing: 1px; text-shadow: 2px 2px 0 var(--merah); margin-bottom: 8px; }
+.mk-sub { font-size: .84rem; color: var(--redup); font-weight: 800; line-height: 1.5; margin-bottom: 22px; }
+.mk-tombol-row { display: flex; gap: 10px; }
+.mk-batal { flex: 1; padding: 12px; background: none; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; color: var(--redup); font-family: 'Lilita One', cursive; font-size: 1rem; cursor: pointer; transition: .2s; }
+.mk-batal:hover { border-color: rgba(255,255,255,.3); color: var(--teks); }
+.mk-keluar { flex: 1; padding: 12px; background: var(--merah); border: 2px solid var(--kuning); border-radius: 12px; color: var(--kuning); font-family: 'Lilita One', cursive; font-size: 1rem; cursor: pointer; transition: .2s; box-shadow: 0 4px 0 #7A0A00; }
+.mk-keluar:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #7A0A00; }
 </style>
 </head>
 <body>
 
-<!-- ══ IN-GAME MENU OVERLAY ══ -->
-<div class="menu-overlay" id="menuOverlay" onclick="tutupMenu(event)">
-  <div class="menu-laci">
-    <div class="menu-handle"></div>
-    <div class="menu-judul">⚙️ MENU GAME</div>
-
-    <div id="menuInfoPemain" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:11px;padding:11px 14px;margin-bottom:12px;font-size:.8rem;color:var(--redup);font-weight:800;text-align:center;display:none;">
-      Kamu: <span id="menuNamaPemain" style="color:var(--kuning)"></span>
-    </div>
-
-    <button class="menu-item" onclick="tutupMenuSaja()">
-      <span class="menu-item-icon">▶️</span>
-      <div>
-        <div>Lanjutkan Game</div>
-        <div style="font-size:.72rem;color:var(--redup);margin-top:1px;">Kembali ke pertanyaan</div>
-      </div>
-    </button>
-
-    <div class="menu-divider"></div>
-
-    <button class="menu-item bahaya" onclick="konfirmasiKeluar()">
-      <span class="menu-item-icon">🚪</span>
-      <div>
-        <div>Keluar ke Menu Awal</div>
-        <div id="menuKeteranganKeluar" style="font-size:.72rem;opacity:.7;margin-top:1px;">Game lokal akan dihentikan</div>
-      </div>
-    </button>
-  </div>
-</div>
-
-<!-- ══ CONFIRM DIALOG ══ -->
-<div class="konfirm-overlay" id="konfirmOverlay">
-  <div class="konfirm-kotak">
-    <div class="konfirm-icon">🚪</div>
-    <div class="konfirm-judul">YAKIN MAU KELUAR?</div>
-    <div class="konfirm-sub" id="konfirmPesan">Progress game akan hilang. Kamu yakin ingin keluar ke menu awal?</div>
-    <div class="konfirm-tombol">
-      <button class="konfirm-batal" onclick="tutupKonfirm()">Batal</button>
-      <button class="konfirm-oke"   onclick="eksekusiKeluar()">KELUAR!</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ STAMP LOGIKA overlay ══ -->
+<!-- STAMP LOGIKA overlay -->
 <div class="stamp-overlay" id="stampOverlay">
   <div class="stamp-teks" id="stampTeks">LOGIKA!</div>
 </div>
@@ -607,21 +557,34 @@ body::after {
   <div class="loading-info">Sedang menyusun soal-soal sesat yang masuk akal tidak masuk akal... 🌀</div>
 </div>
 
+<!-- ══ MODAL KONFIRMASI KELUAR ══ -->
+<div class="modal-keluar-overlay" id="modalKeluar">
+  <div class="modal-keluar-kotak">
+    <span class="mk-icon">🚪</span>
+    <div class="mk-judul">KELUAR GAME?</div>
+    <div class="mk-sub">Progress ronde ini akan hilang.<br>Kamu yakin mau keluar ke menu awal?</div>
+    <div class="mk-tombol-row">
+      <button class="mk-batal" onclick="tutupModalKeluar()">← LANJUT MAIN</button>
+      <button class="mk-keluar" onclick="keluarKeMenuAwal()">🏠 KELUAR</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ PERTANYAAN ══ -->
 <div id="pertanyaan" class="screen">
   <div class="bar-atas">
     <div class="tag-ronde">RONDE <span id="rNum">1</span> / <span id="rTot">5</span></div>
     <div style="display:flex;align-items:center;gap:10px;">
-      <div class="timer-lingkaran">
-        <svg viewBox="0 0 52 52" width="52" height="52">
-          <circle class="tl-bg" cx="26" cy="26" r="22"/>
-          <circle class="tl-isi" id="tlIsi" cx="26" cy="26" r="22"/>
-        </svg>
-        <div class="tl-num" id="tlNum">60</div>
-      </div>
-      <button class="titik-tiga" onclick="bukaMenu()" title="Menu">
-        <span></span><span></span><span></span>
-      </button>
+    <div class="timer-lingkaran">
+      <svg viewBox="0 0 52 52" width="52" height="52">
+        <circle class="tl-bg" cx="26" cy="26" r="22"/>
+        <circle class="tl-isi" id="tlIsi" cx="26" cy="26" r="22"/>
+      </svg>
+      <div class="tl-num" id="tlNum">60</div>
+    </div>
+    <button class="btn-keluar-ronde" onclick="bukaModalKeluar()" title="Keluar ke Menu Awal">
+      <span></span><span></span><span></span>
+    </button>
     </div>
   </div>
 
@@ -735,127 +698,6 @@ let onlineTimerInterval = null;
 let hostPollInterval    = null;
 let hasShownResults     = {};  // {ronde: true}
 let hasShownFinal       = false;
-
-// ═══════════════════════════════════════════════
-// IN-GAME MENU
-// ═══════════════════════════════════════════════
-function bukaMenu() {
-  const overlay = document.getElementById('menuOverlay');
-  overlay.classList.add('buka');
-
-  // Show player name info in online mode
-  const infoEl = document.getElementById('menuInfoPemain');
-  const namaEl = document.getElementById('menuNamaPemain');
-  const ketEl  = document.getElementById('menuKeteranganKeluar');
-
-  if (onlineMode) {
-    const snap = G.pemain.find(p => p.id === myId);
-    if (snap) {
-      namaEl.textContent = snap.nama;
-      infoEl.style.display = '';
-    }
-    ketEl.textContent = 'Ronde tetap berlanjut untuk pemain lain';
-  } else {
-    infoEl.style.display = 'none';
-    ketEl.textContent = 'Game lokal akan dihentikan';
-  }
-}
-
-function tutupMenu(e) {
-  // Close only when clicking the dark backdrop, not the laci itself
-  if (e && e.target !== document.getElementById('menuOverlay')) return;
-  tutupMenuSaja();
-}
-
-function tutupMenuSaja() {
-  document.getElementById('menuOverlay').classList.remove('buka');
-}
-
-function konfirmasiKeluar() {
-  tutupMenuSaja();
-  const pesan = document.getElementById('konfirmPesan');
-  if (onlineMode) {
-    pesan.textContent = 'Kamu akan keluar dari ruangan. Ronde tetap berlanjut untuk pemain yang tersisa.';
-  } else {
-    pesan.textContent = 'Progress game lokal akan hilang. Kamu yakin ingin kembali ke menu awal?';
-  }
-  document.getElementById('konfirmOverlay').classList.add('buka');
-}
-
-function tutupKonfirm() {
-  document.getElementById('konfirmOverlay').classList.remove('buka');
-}
-
-async function eksekusiKeluar() {
-  tutupKonfirm();
-  clearSession();
-
-  if (onlineMode && roomCode) {
-    try {
-      const snap = await db.collection('rooms').doc(roomCode).get();
-      const data = snap.data();
-
-      if (data) {
-        const updates = {};
-        // Remove player from players list
-        updates[`players.${myId}`] = firebase.firestore.FieldValue.delete();
-        updates[`skorTotal.${myId}`] = firebase.firestore.FieldValue.delete();
-
-        const remainingPlayers = Object.keys(data.players || {}).filter(id => id !== myId);
-
-        // If host leaves, assign new host
-        if (isHost && remainingPlayers.length > 0) {
-          updates.host = remainingPlayers[0];
-        }
-
-        await db.collection('rooms').doc(roomCode).update(updates);
-
-        // If state is 'answering', also mark this player's answer as absent
-        if (data.state === 'answering') {
-          const ronde = data.currentRonde;
-          const myAnswer = data.answers?.[ronde]?.[myId];
-          if (!myAnswer) {
-            await db.collection('rooms').doc(roomCode).update({
-              [`answers.${ronde}.${myId}`]: '(keluar dari game 👋)'
-            });
-          }
-        }
-
-        // If no players left, delete the room
-        if (remainingPlayers.length === 0) {
-          await db.collection('rooms').doc(roomCode).delete();
-        }
-      }
-    } catch(e) {
-      console.error('Error leaving room:', e);
-    }
-
-    // Detach listener
-    if (roomListener) { roomListener(); roomListener = null; }
-    if (onlineTimerInterval) clearInterval(onlineTimerInterval);
-    if (hostPollInterval)    clearInterval(hostPollInterval);
-
-    // Reset online state
-    onlineMode = false;
-    isHost     = false;
-    roomCode   = null;
-    scoringInProgress = false;
-    hasShownResults   = {};
-    hasShownFinal     = false;
-    myAnsweredRonde   = {};
-  }
-
-  // Reset local game state
-  clearInterval(G.timer);
-  G.ronde = 0;
-  G.soal  = [];
-  G.jawaban   = {};
-  G.penilaian = {};
-  G.skorTotal = {};
-
-  tampilLayar('modeSelect');
-  showToast('👋 Kamu sudah keluar dari game');
-}
 
 // ═══════════════════════════════════════════════
 // SESSION PERSISTENCE
@@ -1163,13 +1005,6 @@ function handleRoomUpdate(data) {
   G.skorTotal   = {};
   G.pemain.forEach(p => { G.skorTotal[p.nama] = data.skorTotal?.[p.id] || 0; });
 
-  // Check if this player has been promoted to host
-  if (!isHost && data.host === myId) {
-    isHost = true;
-    saveOnlineSession();
-    showToast('👑 Kamu sekarang jadi Host!');
-  }
-
   // ── waiting ──
   if (data.state === 'waiting') {
     renderWaitingRoom(data);
@@ -1200,15 +1035,13 @@ function handleRoomUpdate(data) {
       tampilPertanyaanOnline(data);
     }
 
-    // Host: check if all remaining players answered
+    // Host: check if all answered
     if (isHost && !scoringInProgress) {
       const answers   = data.answers?.[ronde] || {};
       const allDone   = G.pemain.every(p => answers[p.id] !== undefined);
       const timerDone = data.timerEnd && Date.now() > data.timerEnd + 2000;
-      if ((allDone && G.pemain.length > 0) || timerDone) {
-        clearInterval(hostPollInterval);
-        await fillMissingAnswers(data);
-        await nilaiOnline();
+      if (allDone || timerDone) {
+        fillMissingAnswers(data).then(() => nilaiOnline());
       }
     }
     return;
@@ -1485,7 +1318,6 @@ function startHostPoll(timerEnd, ronde) {
 
     const answers   = data.answers?.[ronde] || {};
     const players   = data.players || {};
-    // Only check players still in the room
     const allDone   = Object.keys(players).every(pid => answers[pid] !== undefined);
     const timerDone = Date.now() > timerEnd + 2000;
 
@@ -1503,7 +1335,6 @@ async function fillMissingAnswers(data) {
   const players = data.players || {};
   const updates = {};
 
-  // Only fill for players still in the room
   Object.keys(players).forEach(pid => {
     if (!answers[pid]) {
       updates[`answers.${ronde}.${pid}`] = '(kehabisan waktu ⏰)';
@@ -2103,6 +1934,25 @@ function tampilFinal() {
 function tampilLayar(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════
+// KELUAR KE MENU AWAL
+// ═══════════════════════════════════════════════
+function bukaModalKeluar() {
+  document.getElementById('modalKeluar').classList.add('show');
+}
+function tutupModalKeluar() {
+  document.getElementById('modalKeluar').classList.remove('show');
+}
+function keluarKeMenuAwal() {
+  tutupModalKeluar();
+  if (onlineTimerInterval) clearInterval(onlineTimerInterval);
+  if (roomListener) { roomListener(); roomListener = null; }
+  clearSession();
+  G = { pemain:[], totalRonde:5, ronde:0, soal:[], jawaban:{}, penilaian:{}, skorTotal:{} };
+  onlineMode = false; isHost = false; roomCode = null;
+  tampilLayar('modeSelect');
 }
 
 function tunjukStamp(teks) {
