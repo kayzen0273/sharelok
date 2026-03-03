@@ -512,10 +512,24 @@ body::after {
   </div>
 </div>
 
+<!-- ══ MODAL KONFIRMASI KELUAR WAITING ROOM ══ -->
+<div class="modal-keluar-overlay" id="modalKeluarWR">
+  <div class="modal-keluar-kotak">
+    <span class="mk-icon">🚪</span>
+    <div class="mk-judul">TINGGALKAN RUANGAN?</div>
+    <div class="mk-sub" id="mkWRSub">Kamu yakin mau keluar dari ruangan ini?</div>
+    <div class="mk-tombol-row">
+      <button class="mk-batal" onclick="tutupModalKeluarWR()">← TETAP DI SINI</button>
+      <button class="mk-keluar" onclick="keluarDariWR()">🏠 KELUAR</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ WAITING ROOM ══ -->
 <div id="waitingRoom" class="screen">
   <div style="display:flex;flex-direction:column;align-items:center;padding:24px 16px 40px;">
-    <div class="wr-header">
+    <div class="wr-header" style="position:relative;">
+      <button class="os-back" style="position:absolute;left:0;top:50%;transform:translateY(-50%);" onclick="bukaModalKeluarWR()">← Kembali</button>
       <div class="wr-judul">🎮 RUANGAN GAME</div>
     </div>
 
@@ -1939,6 +1953,40 @@ function tampilLayar(id) {
 // ═══════════════════════════════════════════════
 // KELUAR KE MENU AWAL
 // ═══════════════════════════════════════════════
+function bukaModalKeluarWR() {
+  const sub = document.getElementById('mkWRSub');
+  if (isHost) {
+    sub.textContent = 'Kamu adalah host. Keluar akan membubarkan ruangan untuk semua pemain!';
+  } else {
+    sub.textContent = 'Kamu akan keluar dari ruangan ini.';
+  }
+  document.getElementById('modalKeluarWR').classList.add('show');
+}
+function tutupModalKeluarWR() {
+  document.getElementById('modalKeluarWR').classList.remove('show');
+}
+async function keluarDariWR() {
+  tutupModalKeluarWR();
+  if (roomListener) { roomListener(); roomListener = null; }
+  try {
+    if (roomCode) {
+      if (isHost) {
+        await db.collection('rooms').doc(roomCode).update({ state: 'dissolved' });
+      } else {
+        const snap = await db.collection('rooms').doc(roomCode).get();
+        if (snap.exists) {
+          const players = snap.data().players || {};
+          delete players[myId];
+          await db.collection('rooms').doc(roomCode).update({ players });
+        }
+      }
+    }
+  } catch(e) {}
+  clearSession();
+  roomCode = null; onlineMode = false; isHost = false;
+  tampilLayar('modeSelect');
+}
+
 function bukaModalKeluar() {
   document.getElementById('modalKeluar').classList.add('show');
 }
