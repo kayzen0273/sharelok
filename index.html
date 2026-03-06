@@ -583,6 +583,8 @@ window.renderPesan = function() {
   const empty = document.getElementById('emptyPesan');
   if(!data.length){list.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
+  const roleLabel = {'owner':'Owner','kasir':'Kasir','staff':'Staff','viewer':'Viewer'};
+  const roleClass = {'owner':'r-owner','kasir':'r-kasir','staff':'r-staff','viewer':'r-viewer'};
   list.innerHTML = data.map(f => {
     const name   = f.namaLengkap||f.username||'Tamu';
     const init   = name.charAt(0).toUpperCase();
@@ -590,18 +592,27 @@ window.renderPesan = function() {
     const msgs   = f.messages||[];
     const unread = msgs.filter(m=>m.role==='user'&&!m.readByAdmin).length;
     const last   = msgs[msgs.length-1];
-    const prev   = last ? (last.role==='admin'?'[Admin] ':'')+last.text : 'Belum ada pesan';
+    const typeIcon = last?.type==='bug'?'🐛':last?.type==='request'?'✨':last?.type==='masukkan'?'💡':'';
+    const prev   = last ? (last.role==='admin'?'[Admin] ': typeIcon+' ')+last.text : 'Belum ada pesan';
     const ts     = f.lastTime ? new Date(f.lastTime).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    const roleC  = roleClass[f.role]||'r-viewer';
+    const roleL  = roleLabel[f.role]||f.role||'User';
+    // f.id = authSession.id (permanen per akun)
     return `
     <div class="thread-card${unread?' has-unread':''}" onclick="openChat('${f.id}')">
       <div class="thread-av" style="background:${color}">${init}</div>
       <div class="thread-info">
-        <div class="thread-name">${name} <span style="font-size:10px;font-weight:600;color:#94a3b8">@${f.username||'-'}</span></div>
+        <div class="thread-name" style="display:flex;align-items:center;gap:6px">
+          <span>${name}</span>
+          <span class="oc-role ${roleC}" style="font-size:9px">${roleL}</span>
+        </div>
+        <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:2px">@${f.username||'-'}</div>
         <div class="thread-preview">${prev}</div>
       </div>
       <div class="thread-meta">
         <div class="thread-time">${ts}</div>
         ${unread?`<div class="thread-unread">${unread}</div>`:''}
+        <div style="font-size:9px;color:#cbd5e1;margin-top:3px">${msgs.length} pesan</div>
       </div>
     </div>`;
   }).join('');
