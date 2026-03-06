@@ -53,54 +53,71 @@ const DEFAULT_CL = [
   {id:'v47_7', position:3,version:'v47.7', date:'10 Feb 2025',title:'Perbaikan Sinkronisasi Firebase',  tag:'Bug Fix',     icon:'rotate',       items:['Fix sinkronisasi multi-user','Optimasi Firestore','Fix error offline']},
   {id:'v47_6', position:4,version:'v47.6', date:'01 Feb 2025',title:'Rekam Medis & Catatan',            tag:'Fitur Baru',  icon:'notes-medical',items:['Modul Rekam Medis','Papan Catatan','Kontrol akses per pengguna']},
 ];
-getDocs(W._coll(...P('changelog'))).then(snap => {
+// ── Seed changelog if empty, then start listeners ──
+// NOTE: module scripts run AFTER DOMContentLoaded, so we call everything directly here.
+try {
+  const snap = await getDocs(W._coll(...P('changelog')));
   if (snap.empty) {
     const b = W._batch();
     DEFAULT_CL.forEach(n => b.set(W._doc(...P('changelog', n.id)), n));
-    b.commit().catch(()=>{});
+    await b.commit().catch(()=>{});
   }
+} catch(e) { console.warn('Seed error:', e); }
+
+// ── Start real-time listeners ──
+// Changelog (with orderBy fallback if index not ready)
+const clQ = W._query(W._coll(...P('changelog')), W._order('position'));
+onSnapshot(clQ, snap => {
+  W._cl = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (typeof W.renderNotif === 'function') W.renderNotif();
+}, () => {
+  // Fallback: no orderBy index needed
+  onSnapshot(W._coll(...P('changelog')), snap => {
+    W._cl = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.position ?? 99) - (b.position ?? 99));
+    if (typeof W.renderNotif === 'function') W.renderNotif();
+  });
 });
 
-// ── Listeners ──
-function startListeners() {
-  // Changelog
-  const clQ = W._query(W._coll(...P('changelog')), W._order('position'));
-  W._snap(clQ, snap => {
-    W._cl = snap.docs.map(d=>({id:d.id,...d.data()}));
-    if(W._activeTab==='notif') W.renderNotif();
-  }, () => {
-    W._snap(W._coll(...P('changelog')), snap=>{
-      W._cl = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.position??99)-(b.position??99));
-      if(W._activeTab==='notif') W.renderNotif();
-    });
-  });
-  // Presence
-  W._snap(W._coll(...P('presence')), snap => {
-    const now = Date.now();
-    W._presence = snap.docs.map(d=>({id:d.id,...d.data()}))
-      .filter(p => p.lastSeen?.toMillis ? (now - p.lastSeen.toMillis() < 120000) : true)
-      .filter(p => p.online !== false);
-    if(W._activeTab==='online') W.renderOnline();
-    // Update topbar count
-    document.getElementById('onlineCount').textContent = W._presence.length;
-  });
-  // Feedback
-  W._snap(W._coll(...P('feedback')), snap => {
-    W._feedback = snap.docs.map(d=>({id:d.id,...d.data()}))
-      .sort((a,b)=> (b.lastTime||'') > (a.lastTime||'') ? 1:-1);
-    if(W._activeTab==='pesan') W.renderPesan();
-    const totalUnread = W._feedback.reduce((s,f)=>{
-      return s + (f.messages||[]).filter(m=>m.role==='user'&&!m.readByAdmin).length;
-    }, 0);
-    document.getElementById('pesanBadge').textContent = totalUnread || '';
-    document.getElementById('pesanBadge').style.display = totalUnread ? 'flex' : 'none';
-  });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  startListeners();
-  W._setStatus('Terhubung ke Firebase', true);
+// Presence
+onSnapshot(W._coll(...P('presence')), snap => {
+  const now = Date.now();
+  W._presence = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(p => p.lastSeen?.toMillis ? (now - p.lastSeen.toMillis() < 120000) : true)
+    .filter(p => p.online !== false);
+  const el = document.getElementById('onlineCount');
+  if (el) el.textContent = W._presence.length;
+  if (W._activeTab === 'online' && typeof W.renderOnline === 'function') W.renderOnline();
 });
+
+// Feedback / Pesan
+onSnapshot(W._coll(...P('feedback')), snap => {
+  W._feedback = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => ((b.lastTime || '') > (a.lastTime || '') ? -1 : 1));
+  if (W._activeTab === 'pesan' && typeof W.renderPesan === 'function') W.renderPesan();
+  const totalUnread = W._feedback.reduce((s, f) =>
+    s + (f.messages || []).filter(m => m.role === 'user' && !m.readByAdmin).length, 0);
+  const badge = document.getElementById('pesanBadge');
+  if (badge) { badge.textContent = totalUnread || ''; badge.style.display = totalUnread ? 'flex' : 'none'; }
+});
+
+// ── Update status indicator ──
+const statusDot = document.getElementById('statusDot');
+const statusTxt = document.getElementById('statusText');
+const loadBar   = document.getElementById('loadingBar');
+if (statusDot) statusDot.className = 'tb-dot dot-on';
+if (statusTxt) statusTxt.textContent = 'Terhubung ke Firebase';
+if (loadBar)   loadBar.classList.add('hidden');
+
+// Also expose setStatus for use from non-module code
+W._setStatus = function(txt, ok) {
+  const d = document.getElementById('statusDot');
+  const t = document.getElementById('statusText');
+  const l = document.getElementById('loadingBar');
+  if (d) d.className = 'tb-dot ' + (ok ? 'dot-on' : 'dot-off');
+  if (t) t.textContent = txt;
+  if (l) l.classList.toggle('hidden', ok);
+};
 </script>
 
 <style>
