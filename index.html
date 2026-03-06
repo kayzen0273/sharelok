@@ -5,437 +5,456 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Notifikasi – Sistem Kasir Husna</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDocs, serverTimestamp, query, orderBy }
+  from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAKhe3ILdMTN7Dn9Ao3MqlzW3s5hHUDB_c",
+  authDomain:        "toko-husna-c6415.firebaseapp.com",
+  projectId:         "toko-husna-c6415",
+  storageBucket:     "toko-husna-c6415.firebasestorage.app",
+  messagingSenderId: "171239564619",
+  appId:             "1:171239564619:web:29972d886bd39f1559f4ce"
+};
+const APP_ID = 'default-app-id';
+const COLL   = ['artifacts', APP_ID, 'public', 'data', 'changelog'];
+
+const app  = initializeApp(FIREBASE_CONFIG);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+await signInAnonymously(auth).catch(()=>{});
+
+const collRef = () => collection(db, ...COLL);
+const docRef  = (id) => doc(db, ...COLL, id);
+
+const DEFAULT_DATA = [
+  { id:'v47_10', position:0, version:'v47.10', date:'06 Mar 2025', title:'Sidebar Dipadatkan & Scrollable',  tag:'Perbaikan UI', icon:'sidebar',       items:['Sidebar lebih padat, menu item lebih ringkas','Nav menu bisa di-scroll jika penuh','Tombol Logout selalu terlihat di bawah sidebar'] },
+  { id:'v47_9',  position:1, version:'v47.9',  date:'01 Mar 2025', title:'Lonceng Notifikasi Update',        tag:'Fitur Baru',   icon:'bell',          items:['Tambah ikon lonceng di header mobile','Panel notifikasi berisi riwayat update sistem','Badge angka menunjukkan jumlah update belum dibaca'] },
+  { id:'v47_8',  position:2, version:'v47.8',  date:'20 Feb 2025', title:'Faktur Pembelian Per Toko',         tag:'Fitur Baru',   icon:'file-invoice',  items:['Faktur pembelian dipisahkan per toko','Filter toko pada halaman pembelian','Export faktur per toko ke Excel'] },
+  { id:'v47_7',  position:3, version:'v47.7',  date:'10 Feb 2025', title:'Perbaikan Sinkronisasi Firebase',   tag:'Bug Fix',      icon:'rotate',        items:['Fix data tidak tersinkron saat banyak pengguna aktif','Optimasi query Firestore','Perbaikan error snapshot listener pada kondisi offline'] },
+  { id:'v47_6',  position:4, version:'v47.6',  date:'01 Feb 2025', title:'Rekam Medis & Catatan',             tag:'Fitur Baru',   icon:'notes-medical', items:['Tambah modul Rekam Medis pelanggan','Papan Catatan digital untuk memo internal','Akses menu bisa dikontrol per pengguna'] },
+];
+
+// Seed jika kosong
+async function init() {
+  setStatus('Menghubungkan…', false);
+  try {
+    const snap = await getDocs(collRef());
+    if (snap.empty) {
+      const batch = writeBatch(db);
+      DEFAULT_DATA.forEach(n => batch.set(docRef(n.id), { ...n, createdAt: serverTimestamp() }));
+      await batch.commit();
+    }
+    setStatus('Terhubung ke Firebase', true);
+    startListener();
+  } catch(e) {
+    setStatus('Gagal terhubung', false);
+    console.error(e);
+  }
+}
+
+function startListener() {
+  // Coba dengan orderBy, fallback tanpa index
+  const q = query(collRef(), orderBy('position', 'asc'));
+  const unsub = onSnapshot(q, snap => {
+    window.__changelogData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    window.renderCards();
+  }, () => {
+    // Fallback tanpa orderBy (belum ada index)
+    onSnapshot(collRef(), snap => {
+      window.__changelogData = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.position ?? 99) - (b.position ?? 99));
+      window.renderCards();
+    });
+  });
+}
+
+// Exposed ke window
+window.__changelogData = [];
+window.__db            = db;
+window.__docRef        = docRef;
+window.__collRef       = collRef;
+window.__serverTs      = serverTimestamp;
+window.__writeBatch    = () => writeBatch(db);
+window.__getDocs       = getDocs;
+
+init();
+</script>
+
 <style>
-  :root {
-    --sky: #0ea5e9; --sky-dark: #0284c7; --sky-light: #e0f2fe;
-    --slate: #334155; --slate-light: #f8fafc; --slate-border: #e2e8f0;
-    --red: #ef4444; --green: #22c55e; --amber: #f59e0b; --indigo: #6366f1;
-    --white: #fff; --radius: 14px; --shadow: 0 4px 24px rgba(14,165,233,.10);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Nunito', sans-serif; background: #f0f9ff; color: var(--slate); min-height: 100vh; }
+:root{
+  --sky:#0ea5e9;--sky-dk:#0284c7;--sky-lt:#e0f2fe;
+  --slate:#334155;--sl-lt:#f8fafc;--sl-bd:#e2e8f0;
+  --red:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:#f0f9ff;color:var(--slate);min-height:100vh}
 
-  /* ── TOP BAR ── */
-  .topbar {
-    background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 60%, #38bdf8 100%);
-    padding: 0 28px; height: 64px;
-    display: flex; align-items: center; justify-content: space-between;
-    box-shadow: 0 2px 12px rgba(2,132,199,.25);
-    position: sticky; top: 0; z-index: 100;
-  }
-  .topbar-brand { display: flex; align-items: center; gap: 12px; }
-  .topbar-icon { width: 38px; height: 38px; background: rgba(255,255,255,.2); border-radius: 10px;
-    display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
-  .topbar-title { color: #fff; font-size: 16px; font-weight: 900; letter-spacing: -.3px; line-height: 1.1; }
-  .topbar-sub { color: rgba(255,255,255,.7); font-size: 11px; font-weight: 600; }
-  .topbar-badge { background: rgba(255,255,255,.2); color: #fff; font-size: 11px; font-weight: 800;
-    padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,.3); }
+.topbar{background:linear-gradient(135deg,#0284c7,#0ea5e9 60%,#38bdf8);padding:0 24px;height:62px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(2,132,199,.25);position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:11px}
+.tb-icon{width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
+.tb-title{color:#fff;font-size:15px;font-weight:900;line-height:1.1}
+.tb-sub{color:rgba(255,255,255,.7);font-size:11px;font-weight:600}
+.tb-status{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:800;padding:5px 13px;border-radius:20px;border:1px solid rgba(255,255,255,.3)}
+.tb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-on{background:#4ade80;animation:pulse 1.5s infinite}
+.dot-off{background:#f87171}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
 
-  /* ── LAYOUT ── */
-  .container { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
-  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-  .toolbar-left { display: flex; align-items: center; gap: 8px; }
-  .label-h { font-size: 13px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: .5px; }
+.wrap{max-width:820px;margin:0 auto;padding:24px 18px 60px}
+.loading-bar{height:3px;background:linear-gradient(90deg,var(--sky),#38bdf8,var(--sky));background-size:200%;animation:lb 1.2s linear infinite;border-radius:3px;margin-bottom:16px}
+.loading-bar.hidden{display:none}
+@keyframes lb{from{background-position:200% 0}to{background-position:-200% 0}}
 
-  /* ── BUTTONS ── */
-  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 10px;
-    font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer; border: none; transition: all .18s; }
-  .btn:active { transform: scale(.96); }
-  .btn-primary { background: var(--sky); color: #fff; box-shadow: 0 2px 8px rgba(14,165,233,.3); }
-  .btn-primary:hover { background: var(--sky-dark); }
-  .btn-danger { background: #fee2e2; color: var(--red); }
-  .btn-danger:hover { background: #fecaca; }
-  .btn-ghost { background: transparent; color: #64748b; border: 1.5px solid var(--slate-border); }
-  .btn-ghost:hover { background: #f1f5f9; }
-  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+.infobox{background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:12px 15px;display:flex;gap:10px;align-items:flex-start;margin-bottom:20px}
+.infobox i{color:#d97706;margin-top:2px;flex-shrink:0}
+.infobox p{font-size:12px;font-weight:600;color:#92400e;line-height:1.6}
+.infobox strong{font-weight:900}
 
-  /* ── NOTIF CARDS ── */
-  .cards { display: flex; flex-direction: column; gap: 10px; }
-  .card {
-    background: var(--white); border-radius: var(--radius); border: 1.5px solid var(--slate-border);
-    box-shadow: var(--shadow); overflow: hidden; transition: border-color .2s, box-shadow .2s;
-    cursor: default;
-  }
-  .card.dragging { opacity: .5; border-style: dashed; border-color: var(--sky); }
-  .card.drag-over { border-color: var(--sky); box-shadow: 0 0 0 3px rgba(14,165,233,.2); }
-  .card-header {
-    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-    background: var(--slate-light); border-bottom: 1px solid var(--slate-border);
-  }
-  .drag-handle { color: #cbd5e1; font-size: 14px; cursor: grab; padding: 2px 4px; border-radius: 6px; }
-  .drag-handle:hover { color: var(--sky); background: var(--sky-light); }
-  .drag-handle:active { cursor: grabbing; }
-  .card-pos { width: 24px; height: 24px; background: var(--sky-light); color: var(--sky-dark);
-    border-radius: 8px; display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 900; flex-shrink: 0; }
-  .tag-pill { font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 20px; }
-  .tag-new { background: #dcfce7; color: #15803d; }
-  .tag-fix { background: #fef9c3; color: #a16207; }
-  .tag-ui { background: #e0f2fe; color: #0369a1; }
-  .tag-info { background: #ede9fe; color: #7c3aed; }
-  .card-version { font-size: 11px; font-weight: 700; color: #94a3b8; margin-left: auto; }
-  .card-date { font-size: 11px; color: #94a3b8; }
-  .card-actions { display: flex; gap: 6px; }
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.lbl{font-size:12px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:8px}
+.count-badge{background:#e0f2fe;color:#0369a1;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:800}
 
-  .card-body { padding: 14px 16px; }
-  .card-title-text { font-size: 14px; font-weight: 900; color: #0f172a; margin-bottom: 8px; }
-  .card-items { list-style: none; display: flex; flex-direction: column; gap: 5px; }
-  .card-items li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #475569; }
-  .card-items li::before { content: '•'; color: var(--sky); font-weight: 900; flex-shrink: 0; margin-top: 1px; }
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;border:none;transition:all .15s}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:var(--sky);color:#fff;box-shadow:0 2px 8px rgba(14,165,233,.3)}
+.btn-primary:hover{background:var(--sky-dk)}
+.btn-danger{background:#fee2e2;color:var(--red)}
+.btn-danger:hover{background:#fecaca}
+.btn-ghost{background:transparent;color:#64748b;border:1.5px solid var(--sl-bd)}
+.btn-ghost:hover{background:#f1f5f9}
+.btn-sm{padding:6px 11px;font-size:12px;border-radius:8px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
 
-  /* ── MODAL ── */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.45); backdrop-filter: blur(4px);
-    z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn .18s; }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  .modal { background: var(--white); border-radius: 20px; width: 100%; max-width: 520px;
-    box-shadow: 0 24px 64px rgba(0,0,0,.18); animation: slideUp .2s cubic-bezier(.34,1.4,.64,1); overflow: hidden; }
-  @keyframes slideUp { from { opacity: 0; transform: translateY(24px) scale(.97); } to { opacity: 1; transform: none; } }
-  .modal-header { background: linear-gradient(135deg, #0284c7, #38bdf8); padding: 18px 22px;
-    display: flex; align-items: center; justify-content: space-between; }
-  .modal-title { color: #fff; font-size: 15px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
-  .modal-close { width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,.2); border: none;
-    color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px;
-    transition: background .15s; }
-  .modal-close:hover { background: rgba(255,255,255,.3); }
-  .modal-body { padding: 22px; max-height: 70vh; overflow-y: auto; }
-  .modal-footer { padding: 14px 22px; background: #f8fafc; border-top: 1px solid var(--slate-border);
-    display: flex; justify-content: flex-end; gap: 10px; }
+.cards{display:flex;flex-direction:column;gap:9px}
+.card{background:#fff;border-radius:14px;border:1.5px solid var(--sl-bd);box-shadow:0 4px 24px rgba(14,165,233,.08);overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.card.dragging{opacity:.4;border:1.5px dashed var(--sky)}
+.card.drag-over{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,.2)}
+.card-head{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--sl-lt);border-bottom:1px solid var(--sl-bd)}
+.grip{color:#cbd5e1;font-size:13px;cursor:grab;padding:2px 5px;border-radius:6px;transition:all .15s;line-height:1}
+.grip:hover{color:var(--sky);background:var(--sky-lt)}
+.grip:active{cursor:grabbing}
+.pos{width:22px;height:22px;background:var(--sky-lt);color:var(--sky-dk);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0}
+.tag{font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px}
+.t-new{background:#dcfce7;color:#15803d}
+.t-fix{background:#fef9c3;color:#a16207}
+.t-ui{background:#e0f2fe;color:#0369a1}
+.t-info{background:#ede9fe;color:#7c3aed}
+.card-ver{font-size:11px;font-weight:700;color:#94a3b8;margin-left:auto}
+.card-date{font-size:11px;color:#94a3b8}
+.card-acts{display:flex;gap:5px}
+.card-body{padding:12px 14px}
+.card-ttl{font-size:14px;font-weight:900;color:#0f172a;margin-bottom:6px}
+.card-items{list-style:none;display:flex;flex-direction:column;gap:4px}
+.card-items li{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#475569}
+.card-items li::before{content:'•';color:var(--sky);font-weight:900;flex-shrink:0;margin-top:1px}
 
-  /* ── FORM ── */
-  .form-group { margin-bottom: 16px; }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
-    color: #64748b; margin-bottom: 6px; }
-  input, select, textarea {
-    width: 100%; padding: 10px 13px; border: 1.5px solid var(--slate-border); border-radius: 10px;
-    font-family: inherit; font-size: 13px; font-weight: 600; color: var(--slate);
-    background: var(--white); outline: none; transition: border-color .15s, box-shadow .15s;
-  }
-  input:focus, select:focus, textarea:focus {
-    border-color: var(--sky); box-shadow: 0 0 0 3px rgba(14,165,233,.15);
-  }
-  textarea { resize: vertical; min-height: 90px; }
-  .items-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #64748b; margin-bottom: 8px; display: block; }
-  .item-row { display: flex; gap: 8px; margin-bottom: 8px; }
-  .item-row input { flex: 1; }
-  .item-del { width: 34px; height: 38px; border-radius: 8px; background: #fee2e2; color: var(--red);
-    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; transition: background .15s; }
-  .item-del:hover { background: #fecaca; }
-  .add-item-btn { display: flex; align-items: center; gap: 6px; padding: 7px 13px; background: #f0f9ff;
-    color: var(--sky-dark); font-family: inherit; font-size: 12px; font-weight: 800; border: 1.5px dashed #7dd3fc;
-    border-radius: 8px; cursor: pointer; transition: background .15s; }
-  .add-item-btn:hover { background: #e0f2fe; }
+.empty{text-align:center;padding:56px 20px;color:#94a3b8}
+.empty i{font-size:44px;margin-bottom:14px;display:block;opacity:.35}
+.empty p{font-size:14px;font-weight:700;line-height:1.7}
 
-  /* ── EMPTY ── */
-  .empty { text-align: center; padding: 60px 20px; color: #94a3b8; }
-  .empty i { font-size: 48px; margin-bottom: 16px; display: block; opacity: .4; }
-  .empty p { font-size: 14px; font-weight: 700; }
+/* Modal */
+.ov{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:18px;animation:fi .18s}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.modal{background:#fff;border-radius:20px;width:100%;max-width:510px;box-shadow:0 24px 64px rgba(0,0,0,.18);animation:su .2s cubic-bezier(.34,1.4,.64,1);overflow:hidden}
+@keyframes su{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:none}}
+.modal-hd{background:linear-gradient(135deg,#0284c7,#38bdf8);padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.modal-ttl{color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;gap:8px}
+.modal-x{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.modal-x:hover{background:rgba(255,255,255,.3)}
+.modal-bd{padding:20px;max-height:66vh;overflow-y:auto}
+.modal-ft{padding:12px 20px;background:#f8fafc;border-top:1px solid var(--sl-bd);display:flex;justify-content:flex-end;gap:9px}
 
-  /* ── TOAST ── */
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    background: #0f172a; color: #fff; padding: 11px 22px; border-radius: 50px;
-    font-size: 13px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.2);
-    z-index: 999; display: flex; align-items: center; gap: 8px; transition: opacity .3s; }
-  .toast.hide { opacity: 0; pointer-events: none; }
+.fg{margin-bottom:13px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:5px}
+input,select{width:100%;padding:9px 12px;border:1.5px solid var(--sl-bd);border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:var(--slate);outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,.15)}
+.item-row{display:flex;gap:7px;margin-bottom:7px}
+.item-row input{flex:1}
+.item-del{width:32px;height:36px;border-radius:8px;background:#fee2e2;color:var(--red);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;transition:background .15s}
+.item-del:hover{background:#fecaca}
+.add-item-btn{display:flex;align-items:center;gap:6px;padding:7px 12px;background:#f0f9ff;color:var(--sky-dk);font-family:inherit;font-size:12px;font-weight:800;border:1.5px dashed #7dd3fc;border-radius:8px;cursor:pointer;transition:background .15s;width:100%}
+.add-item-btn:hover{background:#e0f2fe}
 
-  /* ── INFO BOX ── */
-  .info-box { background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; padding: 13px 16px;
-    display: flex; gap: 10px; align-items: flex-start; margin-bottom: 24px; }
-  .info-box i { color: #d97706; margin-top: 1px; flex-shrink: 0; font-size: 14px; }
-  .info-box p { font-size: 12px; font-weight: 600; color: #92400e; line-height: 1.5; }
-  .info-box strong { font-weight: 900; }
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 20px;border-radius:50px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:999;display:flex;align-items:center;gap:8px;transition:opacity .3s;white-space:nowrap}
+.toast.hide{opacity:0;pointer-events:none}
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
 <div class="topbar">
-  <div class="topbar-brand">
-    <div class="topbar-icon"><i class="fa-solid fa-bell"></i></div>
+  <div class="tb-brand">
+    <div class="tb-icon"><i class="fa-solid fa-bell"></i></div>
     <div>
-      <div class="topbar-title">Admin Notifikasi</div>
-      <div class="topbar-sub">Sistem Kasir Toko Husna</div>
+      <div class="tb-title">Admin Notifikasi</div>
+      <div class="tb-sub">Sistem Kasir Toko Husna</div>
     </div>
   </div>
-  <div class="topbar-badge" id="totalBadge">0 notifikasi</div>
+  <div class="tb-status">
+    <div class="tb-dot dot-off" id="statusDot"></div>
+    <span id="statusText">Menghubungkan…</span>
+  </div>
 </div>
 
-<!-- CONTAINER -->
-<div class="container">
+<div class="wrap">
+  <div class="loading-bar" id="loadingBar"></div>
 
-  <div class="info-box">
-    <i class="fa-solid fa-circle-info"></i>
-    <p>Notifikasi yang dibuat di sini akan langsung muncul di <strong>ikon lonceng</strong> sistem kasir. Buka di browser yang sama. Gunakan <strong>drag & drop</strong> untuk mengatur urutan tampilan.</p>
+  <div class="infobox">
+    <i class="fa-solid fa-bolt"></i>
+    <p>Data tersimpan di <strong>Firebase Firestore</strong> — perubahan langsung tampil di lonceng kasir <strong>dari browser &amp; perangkat manapun</strong>, real-time tanpa reload. Drag &amp; drop untuk atur urutan.</p>
   </div>
 
   <div class="toolbar">
-    <div class="toolbar-left">
-      <span class="label-h"><i class="fa-solid fa-list-ul" style="margin-right:6px"></i>Daftar Notifikasi</span>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-ghost btn-sm" onclick="resetToDefault()"><i class="fa-solid fa-rotate-left"></i> Reset Default</button>
-      <button class="btn btn-primary" onclick="openModal()"><i class="fa-solid fa-plus"></i> Tambah Notifikasi</button>
+    <span class="lbl">
+      <i class="fa-solid fa-list-ul"></i> Daftar Notifikasi
+      <span class="count-badge" id="countBadge">0</span>
+    </span>
+    <div style="display:flex;gap:7px">
+      <button class="btn btn-ghost btn-sm" onclick="doReset()"><i class="fa-solid fa-rotate-left"></i> Reset Default</button>
+      <button class="btn btn-primary" onclick="openModal()"><i class="fa-solid fa-plus"></i> Tambah</button>
     </div>
   </div>
 
   <div class="cards" id="cardList"></div>
   <div class="empty" id="emptyState" style="display:none">
     <i class="fa-regular fa-bell-slash"></i>
-    <p>Belum ada notifikasi.<br>Klik "Tambah Notifikasi" untuk membuat.</p>
+    <p>Belum ada notifikasi.<br>Klik "Tambah" untuk membuat yang pertama.</p>
   </div>
 </div>
 
-<!-- MODAL ADD/EDIT -->
-<div class="modal-overlay" id="modalOverlay" style="display:none" onclick="handleOverlayClick(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-header">
-      <div class="modal-title"><i class="fa-solid fa-pen-to-square"></i> <span id="modalTitleText">Tambah Notifikasi</span></div>
-      <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+<!-- Modal Tambah/Edit -->
+<div class="ov" id="modalOv" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-ttl"><i class="fa-solid fa-pen-to-square"></i><span id="modalTitleText">Tambah Notifikasi</span></div>
+      <button class="modal-x" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Versi</label>
-          <input type="text" id="fVersion" placeholder="cth: v47.11">
-        </div>
-        <div class="form-group">
-          <label>Tanggal</label>
-          <input type="text" id="fDate" placeholder="cth: 06 Mar 2025">
-        </div>
+    <div class="modal-bd">
+      <div class="fr">
+        <div class="fg"><label>Versi</label><input id="fVer" placeholder="cth: v47.11"></div>
+        <div class="fg"><label>Tanggal</label><input id="fDate" placeholder="cth: 06 Mar 2025"></div>
       </div>
-      <div class="form-group">
-        <label>Judul Update</label>
-        <input type="text" id="fTitle" placeholder="cth: Fitur Export Excel Baru">
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Kategori / Tag</label>
+      <div class="fg"><label>Judul Update</label><input id="fTitle" placeholder="Judul singkat update ini"></div>
+      <div class="fr">
+        <div class="fg">
+          <label>Kategori</label>
           <select id="fTag">
-            <option value="Fitur Baru">Fitur Baru</option>
-            <option value="Bug Fix">Bug Fix</option>
-            <option value="Perbaikan UI">Perbaikan UI</option>
-            <option value="Info">Info</option>
+            <option>Fitur Baru</option><option>Bug Fix</option><option>Perbaikan UI</option><option>Info</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Ikon (Font Awesome)</label>
-          <input type="text" id="fIcon" placeholder="cth: star, bell, rotate">
-        </div>
+        <div class="fg"><label>Ikon (Font Awesome)</label><input id="fIcon" placeholder="cth: star, bell, rotate"></div>
       </div>
-      <div class="form-group">
-        <span class="items-label">Poin-poin Update</span>
+      <div class="fg">
+        <label>Poin-poin Update</label>
         <div id="itemsList"></div>
         <button class="add-item-btn" onclick="addItemField()"><i class="fa-solid fa-plus"></i> Tambah Poin</button>
       </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-ft">
       <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
-      <button class="btn btn-primary" onclick="saveNotif()"><i class="fa-solid fa-floppy-disk"></i> Simpan</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveNotif()"><i class="fa-solid fa-floppy-disk"></i> Simpan</button>
     </div>
   </div>
 </div>
 
-<!-- CONFIRM DELETE -->
-<div class="modal-overlay" id="confirmOverlay" style="display:none" onclick="closeConfirm()">
-  <div class="modal" style="max-width:380px" onclick="event.stopPropagation()">
-    <div class="modal-header" style="background:linear-gradient(135deg,#dc2626,#ef4444)">
-      <div class="modal-title"><i class="fa-solid fa-trash"></i> Hapus Notifikasi?</div>
-      <button class="modal-close" onclick="closeConfirm()"><i class="fa-solid fa-xmark"></i></button>
+<!-- Modal Hapus -->
+<div class="ov" id="delOv" style="display:none" onclick="if(event.target===this)closeDel()">
+  <div class="modal" style="max-width:370px">
+    <div class="modal-hd" style="background:linear-gradient(135deg,#dc2626,#ef4444)">
+      <div class="modal-ttl"><i class="fa-solid fa-trash"></i> Hapus Notifikasi?</div>
+      <button class="modal-x" onclick="closeDel()"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <div class="modal-body" style="padding:22px">
-      <p style="font-size:14px;font-weight:700;color:#334155;line-height:1.6">
-        Notifikasi "<strong id="confirmTitle"></strong>" akan dihapus permanen dan tidak akan muncul di sistem kasir.
-      </p>
+    <div class="modal-bd" style="padding:20px">
+      <p style="font-size:13px;font-weight:700;color:#334155;line-height:1.7">Hapus "<strong id="delTitle"></strong>"?<br>Notifikasi ini tidak akan tampil lagi di sistem kasir.</p>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeConfirm()">Batal</button>
-      <button class="btn btn-danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i> Ya, Hapus</button>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeDel()">Batal</button>
+      <button class="btn btn-danger" onclick="confirmDel()"><i class="fa-solid fa-trash"></i> Hapus</button>
     </div>
   </div>
 </div>
 
-<!-- TOAST -->
-<div class="toast hide" id="toast"><i class="fa-solid fa-check-circle" style="color:#4ade80"></i> <span id="toastMsg"></span></div>
+<div class="toast hide" id="toastEl">
+  <i id="toastIcon" class="fa-solid fa-check-circle" style="color:#4ade80"></i>
+  <span id="toastMsg"></span>
+</div>
 
 <script>
-const STORAGE_KEY = 'husna_changelog_data';
-const READ_KEY    = 'husna_read_changelogs';
+const TAG_CLASS = {'Fitur Baru':'t-new','Bug Fix':'t-fix','Perbaikan UI':'t-ui','Info':'t-info'};
+let _editId=null, _delId=null, _dragIdx=null;
 
-const TAG_COLORS = {
-  'Fitur Baru':    'tag-new',
-  'Bug Fix':       'tag-fix',
-  'Perbaikan UI':  'tag-ui',
-  'Info':          'tag-info',
-};
-
-const DEFAULT_DATA = [
-  { id:'v47_10', version:'v47.10', date:'06 Mar 2025', title:'Sidebar Dipadatkan & Scrollable', tag:'Perbaikan UI', icon:'sidebar', items:['Sidebar lebih padat, menu item lebih ringkas','Nav menu bisa di-scroll jika penuh','Tombol Logout selalu terlihat di bawah sidebar'] },
-  { id:'v47_9',  version:'v47.9',  date:'01 Mar 2025', title:'Lonceng Notifikasi Update',        tag:'Fitur Baru',   icon:'bell',    items:['Tambah ikon lonceng di header mobile','Panel notifikasi berisi riwayat update sistem','Badge angka menunjukkan jumlah update belum dibaca'] },
-  { id:'v47_8',  version:'v47.8',  date:'20 Feb 2025', title:'Faktur Pembelian Per Toko',         tag:'Fitur Baru',   icon:'file-invoice', items:['Faktur pembelian kini dipisahkan per toko','Filter toko pada halaman pembelian','Export faktur per toko ke Excel'] },
-  { id:'v47_7',  version:'v47.7',  date:'10 Feb 2025', title:'Perbaikan Sinkronisasi Firebase',   tag:'Bug Fix',      icon:'rotate',  items:['Fix data tidak tersinkron saat banyak pengguna aktif','Optimasi query Firestore','Perbaikan error snapshot listener pada kondisi offline'] },
-  { id:'v47_6',  version:'v47.6',  date:'01 Feb 2025', title:'Rekam Medis & Catatan',             tag:'Fitur Baru',   icon:'notes-medical', items:['Tambah modul Rekam Medis pelanggan','Papan Catatan digital untuk memo internal','Akses menu bisa dikontrol per pengguna'] },
-];
-
-let data = [];
-let editingId = null;
-let deletingId = null;
-let dragSrcIdx = null;
-
-// ── LOAD ──
-function load() {
-  try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_DATA; }
-  catch { data = DEFAULT_DATA; }
-  render();
+// ── Status ──
+function setStatus(txt, ok){
+  document.getElementById('statusText').textContent = txt;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'tb-dot ' + (ok ? 'dot-on' : 'dot-off');
+  document.getElementById('loadingBar').classList.toggle('hidden', ok);
 }
+window.setStatus = setStatus;
 
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  // Reset read list so kasir shows badge for all again when new item added
-}
-
-// ── RENDER ──
-function render() {
-  const list = document.getElementById('cardList');
+// ── Render ──
+window.renderCards = function(){
+  const data = window.__changelogData || [];
+  document.getElementById('countBadge').textContent = data.length;
+  const list  = document.getElementById('cardList');
   const empty = document.getElementById('emptyState');
-  document.getElementById('totalBadge').textContent = data.length + ' notifikasi';
-
-  if (!data.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
-  empty.style.display = 'none';
-
-  list.innerHTML = data.map((n, i) => `
-    <div class="card" draggable="true" data-idx="${i}"
-      ondragstart="onDragStart(event,${i})"
-      ondragover="onDragOver(event,${i})"
-      ondragleave="onDragLeave(event)"
-      ondrop="onDrop(event,${i})"
-      ondragend="onDragEnd(event)">
-      <div class="card-header">
-        <div class="drag-handle" title="Geser untuk atur urutan"><i class="fa-solid fa-grip-vertical"></i></div>
-        <div class="card-pos">${i+1}</div>
-        <span class="tag-pill ${TAG_COLORS[n.tag]||'tag-info'}">${n.tag}</span>
-        <span class="card-version">${n.version}</span>
-        <span class="card-date">${n.date}</span>
-        <div class="card-actions">
+  if(!data.length){ list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  list.innerHTML = data.map((n,i) => `
+    <div class="card" draggable="true" data-id="${n.id}"
+      ondragstart="dstart(event,${i})" ondragover="dover(event,${i})"
+      ondragleave="dleave(event)"      ondrop="ddrop(event,${i})"
+      ondragend="dend()">
+      <div class="card-head">
+        <span class="grip"><i class="fa-solid fa-grip-vertical"></i></span>
+        <span class="pos">${i+1}</span>
+        <span class="tag ${TAG_CLASS[n.tag]||'t-info'}">${n.tag||'Info'}</span>
+        <span class="card-ver">${n.version||''}</span>
+        <span class="card-date">${n.date||''}</span>
+        <div class="card-acts">
           <button class="btn btn-ghost btn-sm" onclick="openModal('${n.id}')"><i class="fa-solid fa-pen"></i></button>
-          <button class="btn btn-danger btn-sm" onclick="openConfirm('${n.id}')"><i class="fa-solid fa-trash"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="openDel('${n.id}')"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
       <div class="card-body">
-        <div class="card-title-text"><i class="fa-solid fa-${n.icon||'bell'}" style="color:#0ea5e9;margin-right:6px;font-size:12px"></i>${n.title}</div>
+        <div class="card-ttl"><i class="fa-solid fa-${n.icon||'bell'}" style="color:#0ea5e9;font-size:12px;margin-right:6px"></i>${n.title||''}</div>
         <ul class="card-items">${(n.items||[]).map(it=>`<li>${it}</li>`).join('')}</ul>
       </div>
-    </div>
-  `).join('');
-}
+    </div>`).join('');
+};
 
-// ── DRAG & DROP ──
-function onDragStart(e, idx) { dragSrcIdx = idx; e.target.closest('.card').classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
-function onDragOver(e, idx)  { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('drag-over'); }
-function onDragLeave(e)      { e.currentTarget.classList.remove('drag-over'); }
-function onDrop(e, idx)      {
+// ── Drag & Drop ──
+function dstart(e,i){ _dragIdx=i; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function dover(e,i) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function dleave(e)  { e.currentTarget.classList.remove('drag-over'); }
+async function ddrop(e,i){
   e.preventDefault(); e.currentTarget.classList.remove('drag-over');
-  if (dragSrcIdx === null || dragSrcIdx === idx) return;
-  const moved = data.splice(dragSrcIdx, 1)[0];
-  data.splice(idx, 0, moved);
-  save(); render(); showToast('Urutan diperbarui');
+  if(_dragIdx===null || _dragIdx===i) return;
+  const d=[...window.__changelogData];
+  const [m]=d.splice(_dragIdx,1); d.splice(i,0,m);
+  window.__changelogData=d; window.renderCards();
+  try {
+    const batch = window.__writeBatch();
+    d.forEach((x,idx) => batch.set(window.__docRef(x.id), {position:idx},{merge:true}));
+    await batch.commit();
+    showToast('Urutan disimpan');
+  } catch(e){ showToast('Gagal simpan urutan','err'); }
 }
-function onDragEnd(e) { dragSrcIdx = null; document.querySelectorAll('.card').forEach(c => c.classList.remove('dragging','drag-over')); }
+function dend(){ _dragIdx=null; document.querySelectorAll('.card').forEach(c=>c.classList.remove('dragging','drag-over')); }
 
-// ── MODAL ──
-function openModal(id = null) {
-  editingId = id;
-  document.getElementById('modalTitleText').textContent = id ? 'Edit Notifikasi' : 'Tambah Notifikasi';
-  const n = id ? data.find(d => d.id === id) : null;
-  document.getElementById('fVersion').value = n?.version || '';
-  document.getElementById('fDate').value    = n?.date    || '';
-  document.getElementById('fTitle').value   = n?.title   || '';
-  document.getElementById('fIcon').value    = n?.icon    || 'bell';
-  document.getElementById('fTag').value     = n?.tag     || 'Fitur Baru';
-  renderItemFields(n?.items || ['']);
-  document.getElementById('modalOverlay').style.display = 'flex';
+// ── Modal ──
+function openModal(id=null){
+  _editId=id;
+  document.getElementById('modalTitleText').textContent = id?'Edit Notifikasi':'Tambah Notifikasi';
+  const n = id ? (window.__changelogData||[]).find(d=>d.id===id) : null;
+  document.getElementById('fVer').value   = n?.version||'';
+  document.getElementById('fDate').value  = n?.date||'';
+  document.getElementById('fTitle').value = n?.title||'';
+  document.getElementById('fIcon').value  = n?.icon||'bell';
+  document.getElementById('fTag').value   = n?.tag||'Fitur Baru';
+  renderItemFields(n?.items||['']);
+  document.getElementById('modalOv').style.display='flex';
 }
-function closeModal()  { document.getElementById('modalOverlay').style.display = 'none'; editingId = null; }
-function handleOverlayClick(e) { if (e.target === e.currentTarget) closeModal(); }
+function closeModal(){ document.getElementById('modalOv').style.display='none'; _editId=null; }
 
-function renderItemFields(items) {
-  const c = document.getElementById('itemsList');
-  c.innerHTML = items.map((v, i) => `
-    <div class="item-row" id="itemRow${i}">
-      <input type="text" value="${v.replace(/"/g,'&quot;')}" placeholder="Poin update ke-${i+1}">
-      <button class="item-del" onclick="removeItem(${i})" title="Hapus poin"><i class="fa-solid fa-xmark"></i></button>
+function renderItemFields(items){
+  document.getElementById('itemsList').innerHTML = items.map((v,i)=>`
+    <div class="item-row">
+      <input type="text" value="${(v||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" placeholder="Poin ke-${i+1}">
+      <button class="item-del" onclick="remItem(${i})"><i class="fa-solid fa-xmark"></i></button>
     </div>`).join('');
 }
-function addItemField() {
-  const items = getItemValues(); items.push(''); renderItemFields(items);
-  // focus last
-  const inputs = document.querySelectorAll('#itemsList .item-row input');
-  if (inputs.length) inputs[inputs.length-1].focus();
-}
-function removeItem(i) { const items = getItemValues(); items.splice(i,1); if(!items.length) items.push(''); renderItemFields(items); }
-function getItemValues() { return [...document.querySelectorAll('#itemsList .item-row input')].map(el=>el.value.trim()); }
+function getItems(){ return [...document.querySelectorAll('#itemsList .item-row input')].map(el=>el.value.trim()); }
+function addItemField(){ const v=getItems(); v.push(''); renderItemFields(v); const ins=document.querySelectorAll('#itemsList .item-row input'); ins[ins.length-1]?.focus(); }
+function remItem(i){ const v=getItems(); v.splice(i,1); if(!v.length)v.push(''); renderItemFields(v); }
 
-function saveNotif() {
-  const version = document.getElementById('fVersion').value.trim();
-  const date    = document.getElementById('fDate').value.trim();
+async function saveNotif(){
+  const version = document.getElementById('fVer').value.trim();
   const title   = document.getElementById('fTitle').value.trim();
-  const icon    = document.getElementById('fIcon').value.trim() || 'bell';
+  const date    = document.getElementById('fDate').value.trim();
+  const icon    = document.getElementById('fIcon').value.trim()||'bell';
   const tag     = document.getElementById('fTag').value;
-  const items   = getItemValues().filter(Boolean);
+  const items   = getItems().filter(Boolean);
+  if(!version||!title){ alert('Versi dan Judul wajib diisi!'); return; }
 
-  if (!version || !title) { alert('Versi dan Judul wajib diisi!'); return; }
-
-  if (editingId) {
-    const idx = data.findIndex(d => d.id === editingId);
-    if (idx >= 0) data[idx] = { ...data[idx], version, date, title, icon, tag, items };
-  } else {
-    const id = 'notif_' + Date.now();
-    data.unshift({ id, version, date, title, icon, tag, items });
-    // Mark as unread for kasir
-    try {
-      const read = JSON.parse(localStorage.getItem(READ_KEY) || '[]');
-      const filtered = read.filter(r => r !== id);
-      localStorage.setItem(READ_KEY, JSON.stringify(filtered));
-    } catch {}
-  }
-
-  save(); render(); closeModal();
-  showToast(editingId ? 'Notifikasi diperbarui ✓' : 'Notifikasi baru ditambahkan ✓');
+  const btn = document.getElementById('saveBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan…';
+  try {
+    const data = window.__changelogData||[];
+    if(_editId){
+      await window.__docRef(_editId) && setDocHelper(_editId, { version, date, title, icon, tag, items });
+      showToast('Notifikasi diperbarui ✓');
+    } else {
+      const id  = 'notif_'+Date.now();
+      // Geser posisi semua yang ada +1, lalu masukkan di atas (position 0)
+      const batch = window.__writeBatch();
+      data.forEach((x,i)=> batch.set(window.__docRef(x.id),{position:i+1},{merge:true}));
+      batch.set(window.__docRef(id), { id, position:0, version, date, title, icon, tag, items, createdAt: window.__serverTs() });
+      await batch.commit();
+      showToast('Notifikasi ditambahkan ✓');
+    }
+    closeModal();
+  } catch(e){ showToast('Gagal: '+e.message,'err'); console.error(e); }
+  btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-floppy-disk"></i> Simpan';
 }
 
-// ── CONFIRM DELETE ──
-function openConfirm(id) {
-  deletingId = id;
-  const n = data.find(d => d.id === id);
-  document.getElementById('confirmTitle').textContent = n?.title || '';
-  document.getElementById('confirmOverlay').style.display = 'flex';
-}
-function closeConfirm() { document.getElementById('confirmOverlay').style.display = 'none'; deletingId = null; }
-function confirmDelete() {
-  data = data.filter(d => d.id !== deletingId);
-  save(); render(); closeConfirm();
-  showToast('Notifikasi dihapus');
+async function setDocHelper(id, payload){
+  const { setDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+  await setDoc(window.__docRef(id), payload, {merge:true});
 }
 
-// ── RESET ──
-function resetToDefault() {
-  if (!confirm('Reset semua notifikasi ke data awal? Data yang sudah diedit akan hilang.')) return;
-  data = JSON.parse(JSON.stringify(DEFAULT_DATA));
-  save(); render(); showToast('Data direset ke default');
+// ── Delete ──
+function openDel(id){ _delId=id; document.getElementById('delTitle').textContent=(window.__changelogData||[]).find(d=>d.id===id)?.title||''; document.getElementById('delOv').style.display='flex'; }
+function closeDel(){ document.getElementById('delOv').style.display='none'; _delId=null; }
+async function confirmDel(){
+  try {
+    const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+    await deleteDoc(window.__docRef(_delId));
+    showToast('Notifikasi dihapus'); closeDel();
+  } catch(e){ showToast('Gagal hapus: '+e.message,'err'); }
 }
 
-// ── TOAST ──
-let toastTimer;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  document.getElementById('toastMsg').textContent = msg;
-  t.classList.remove('hide');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.add('hide'), 2800);
+// ── Reset ──
+async function doReset(){
+  if(!confirm('Reset semua ke data bawaan? Semua perubahan akan hilang.')) return;
+  document.getElementById('loadingBar').classList.remove('hidden');
+  try {
+    const { deleteDoc, setDoc, getDocs, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+    const snap  = await window.__getDocs(window.__collRef());
+    const batch = window.__writeBatch();
+    snap.docs.forEach(d => batch.delete(window.__docRef(d.id)));
+    const DEF = [
+      { id:'v47_10', position:0, version:'v47.10', date:'06 Mar 2025', title:'Sidebar Dipadatkan & Scrollable',  tag:'Perbaikan UI', icon:'sidebar',       items:['Sidebar lebih padat','Nav menu bisa di-scroll','Tombol Logout selalu terlihat'] },
+      { id:'v47_9',  position:1, version:'v47.9',  date:'01 Mar 2025', title:'Lonceng Notifikasi Update',        tag:'Fitur Baru',   icon:'bell',          items:['Tambah ikon lonceng di header mobile','Panel berisi riwayat update','Badge angka update belum dibaca'] },
+      { id:'v47_8',  position:2, version:'v47.8',  date:'20 Feb 2025', title:'Faktur Pembelian Per Toko',         tag:'Fitur Baru',   icon:'file-invoice',  items:['Faktur dipisahkan per toko','Filter toko','Export ke Excel'] },
+      { id:'v47_7',  position:3, version:'v47.7',  date:'10 Feb 2025', title:'Perbaikan Sinkronisasi Firebase',   tag:'Bug Fix',      icon:'rotate',        items:['Fix sinkronisasi banyak pengguna','Optimasi Firestore','Fix error offline'] },
+      { id:'v47_6',  position:4, version:'v47.6',  date:'01 Feb 2025', title:'Rekam Medis & Catatan',             tag:'Fitur Baru',   icon:'notes-medical', items:['Modul Rekam Medis','Papan Catatan digital','Kontrol akses per pengguna'] },
+    ];
+    DEF.forEach(n => batch.set(window.__docRef(n.id), n));
+    await batch.commit();
+    showToast('Data direset ke default');
+  } catch(e){ showToast('Gagal reset: '+e.message,'err'); }
+  document.getElementById('loadingBar').classList.add('hidden');
 }
 
-// ── INIT ──
-load();
+// ── Toast ──
+let _tt;
+function showToast(msg, type='ok'){
+  const el=document.getElementById('toastEl');
+  document.getElementById('toastMsg').textContent=msg;
+  const ico=document.getElementById('toastIcon');
+  ico.className = type==='err'?'fa-solid fa-triangle-exclamation':'fa-solid fa-check-circle';
+  ico.style.color = type==='err'?'#f87171':'#4ade80';
+  el.classList.remove('hide'); clearTimeout(_tt); _tt=setTimeout(()=>el.classList.add('hide'),2800);
+}
 </script>
 </body>
 </html>
