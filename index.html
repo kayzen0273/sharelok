@@ -589,7 +589,7 @@ async function chatFromOnline(accountId, namaLengkap, username, role) {
   let f = (window._feedback||[]).find(x => x.id === accountId);
 
   if (!f) {
-    // Buat dokumen baru di Firestore, lalu langsung buka secara lokal tanpa tunggu onSnapshot
+    // Buat dokumen baru, tapi JANGAN sisipkan ke _feedback manual (akan masuk lewat onSnapshot)
     try {
       const ref = window._doc(...window._P('feedback', accountId));
       await window._set(ref, {
@@ -598,14 +598,13 @@ async function chatFromOnline(accountId, namaLengkap, username, role) {
         adminUnread: 0, userUnread: 0, initiatedByAdmin: true,
       }, { merge: true });
     } catch(e) { showToast('Gagal: '+e.message,'err'); return; }
-    // Sisipkan ke _feedback secara lokal agar openChat langsung bisa temukan datanya
+    // Buat objek lokal untuk langsung dibuka — TANPA masuk ke _feedback
     f = { id: accountId, accountId, namaLengkap, username, role, messages: [] };
-    window._feedback = [f, ...(window._feedback||[])];
   }
 
-  // Pindah tab & buka chat langsung (tidak perlu setTimeout karena data sudah ada)
+  // Pindah tab Pesan, lalu buka chat langsung dari objek lokal (tanpa lookup ulang)
   switchTab('pesan');
-  openChat(accountId);
+  openChatDirect(f);
 }
 
 // ─────────────────────────────────────────
@@ -657,21 +656,9 @@ window.renderPesan = function() {
 // ── CHAT DETAIL ──
 // ─────────────────────────────────────────
 function openChat(uid) {
-  const f = (window._feedback||[]).find(x=>x.id===uid);
-  if(!f) return;
-  _activeThread = f;
-  const name  = f.namaLengkap||f.username||'Tamu';
-  const color = avatarColor(name);
-  document.getElementById('chatAv').textContent  = name.charAt(0).toUpperCase();
-  document.getElementById('chatAv').style.background = color;
-  document.getElementById('chatName').textContent = name;
-  document.getElementById('chatSub').textContent  = '@'+(f.username||'-')+' · '+((f.role)||'User');
-  document.getElementById('clearName').textContent = name;
-  document.getElementById('thread-list-view').style.display='none';
-  document.getElementById('chat-detail-view').style.display='block';
-  renderChatMessages(f.messages||[]);
-  // Mark user messages as read by admin
-  markAdminRead(uid, f.messages||[]);
+  const f = (window._feedback||[]).find(x => x.id === uid);
+  if (!f) return;
+  openChatDirect(f);
 }
 
 function renderChatMessages(msgs) {
@@ -696,20 +683,35 @@ function renderChatMessages(msgs) {
   setTimeout(()=>{ box.scrollTop = box.scrollHeight; }, 50);
 }
 
-// Live update: jika feedback berubah saat chat sedang terbuka, sync otomatis
-// Jika thread yang aktif DIHAPUS (misal setelah dibersihkan dari device lain), balik ke list
-const _origRenderPesan = window.renderPesan;
+// ── openChatDirect: buka chat dari objek langsung tanpa lookup _feedback ──
+function openChatDirect(f) {
+  _activeThread = f;
+  const name  = f.namaLengkap||f.username||'Tamu';
+  const color = avatarColor(name);
+  document.getElementById('chatAv').textContent       = name.charAt(0).toUpperCase();
+  document.getElementById('chatAv').style.background  = color;
+  document.getElementById('chatName').textContent     = name;
+  document.getElementById('chatSub').textContent      = '@'+(f.username||'-')+' · '+(f.role||'User');
+  document.getElementById('clearName').textContent    = name;
+  document.getElementById('thread-list-view').style.display = 'none';
+  document.getElementById('chat-detail-view').style.display = 'block';
+  renderChatMessages(f.messages||[]);
+  markAdminRead(f.id, f.messages||[]);
+}
+
+// ── renderPesan juga handles live-sync saat chat terbuka (tidak pakai wrapper) ──
+// Logika: render list thread, dan jika ada chat aktif → sync pesannya
+const _renderPesanBase = window.renderPesan;
 window.renderPesan = function() {
-  _origRenderPesan();
-  if (_activeThread) {
-    const updated = (window._feedback||[]).find(f => f.id === _activeThread.id);
-    if (updated) {
-      _activeThread = updated;
-      renderChatMessages(updated.messages||[]);
-    } else {
-      // Thread sudah dihapus → otomatis kembali ke list
-      backToList();
-    }
+  _renderPesanBase();
+  if (!_activeThread) return;
+  const updated = (window._feedback||[]).find(f => f.id === _activeThread.id);
+  if (updated) {
+    _activeThread = updated;
+    renderChatMessages(updated.messages||[]);
+  } else {
+    // Thread dihapus (dibersihkan) → balik ke list
+    backToList();
   }
 };
 
