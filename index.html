@@ -295,6 +295,12 @@ body{font-family:'Nunito',sans-serif;background:#f0f9ff;color:var(--sl);min-heig
 .msg-type.admin-lbl{color:var(--sky);font-size:9px;font-weight:900;margin-bottom:2px}
 .msg-text{font-size:12px;font-weight:600}
 .msg-time{font-size:9px;margin-top:3px;opacity:.65;text-align:right}
+.msg-photo{max-width:100%;max-height:180px;width:100%;object-fit:cover;border-radius:10px;margin-bottom:5px;cursor:zoom-in;transition:opacity .15s}
+.msg-photo:hover{opacity:.88}
+.lightbox-ov{position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+.lightbox-inner{position:relative;max-width:95vw;max-height:90vh}
+.lightbox-inner img{max-width:92vw;max-height:85vh;border-radius:14px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+.lightbox-close{position:absolute;top:-12px;right:-12px;width:30px;height:30px;background:#ef4444;border:none;border-radius:50%;color:#fff;font-weight:900;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .msg-av{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0}
 .chat-input{border-top:1px solid var(--sl-bd);padding:12px 14px;background:#fff;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
 .chat-input textarea{flex:1;border:1.5px solid var(--sl-bd);border-radius:12px;padding:9px 12px;font-family:inherit;font-size:12px;font-weight:600;resize:none;outline:none;color:var(--sl);transition:border-color .15s;min-height:38px;max-height:90px}
@@ -737,11 +743,11 @@ function renderChatMessages(msgs) {
       <div class="msg-bubble ${m.role}">
         ${m.role==='user'&&m.type?`<div class="msg-type ${m.type}">${typeLabel[m.type]||m.type}</div>`:''}
         ${m.role==='admin'?`<div class="msg-type admin-lbl">👨‍💻 Admin</div>`:''}
-        <div class="msg-text">${m.text||''}</div>
+        ${m.photo?`<img src="${m.photo}" alt="foto" onclick="openLightbox(this.src)" class="msg-photo" />` : ''}
+        ${m.text?`<div class="msg-text">${m.text}</div>`:''}
         <div class="msg-time">${m.time?new Date(m.time).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}</div>
       </div>
     </div>`).join('');
-  // Scroll to bottom
   setTimeout(()=>{ box.scrollTop = box.scrollHeight; }, 50);
 }
 
@@ -952,5 +958,27 @@ function showToast(msg,type='ok'){
   el.classList.remove('hide'); clearTimeout(_tt); _tt=setTimeout(()=>el.classList.add('hide'),2600);
 }
 </script>
+<!-- Lightbox Foto -->
+<div class="lightbox-ov" id="lightboxOv" style="display:none" onclick="closeLightbox()">
+  <div class="lightbox-inner" onclick="event.stopPropagation()">
+    <img id="lightboxImg" src="" alt="foto besar" />
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  </div>
+</div>
+
+<script>
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightboxOv').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightboxOv').style.display = 'none';
+  document.getElementById('lightboxImg').src = '';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeLightbox(); });
+</script>
+
 </body>
 </html>
