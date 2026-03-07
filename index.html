@@ -342,28 +342,32 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
 .add-item-btn:hover{background:#e0f2fe}
 
 /* ICON PICKER */
-.icon-picker-wrap{border:1.5px solid var(--sl-bd);border-radius:11px;overflow:hidden;background:#fff}
-.icon-selected-row{display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid var(--sl-bd);background:#f8fafc}
-.icon-preview-box{width:44px;height:44px;background:linear-gradient(135deg,#0284c7,#38bdf8);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;flex-shrink:0;box-shadow:0 3px 10px rgba(14,165,233,.3)}
-.icon-selected-row input{margin-bottom:0!important;background:transparent;border-color:var(--sl-bd)}
-.icon-search-row{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--sl-bd);background:#fff}
-.icon-cats{display:flex;gap:5px;padding:7px 10px;border-bottom:1px solid var(--sl-bd);background:#f8fafc;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+.icon-picker-wrap{border:1.5px solid var(--sl-bd);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.icon-top-bar{display:flex;align-items:stretch;gap:10px;padding:10px 12px;background:#f8fafc;border-bottom:1px solid var(--sl-bd)}
+.icon-preview-box{width:52px;height:52px;background:linear-gradient(135deg,#0284c7,#38bdf8);border-radius:11px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;flex-shrink:0;box-shadow:0 3px 12px rgba(14,165,233,.35);transition:all .2s}
+.icon-top-fields{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.icon-name-row{display:flex;align-items:center;gap:8px}
+.icon-name-row input{flex:1;margin:0;padding:6px 10px;font-size:12px}
+.icon-search-row{display:flex;align-items:center;gap:7px;background:#fff;border:1.5px solid var(--sl-bd);border-radius:8px;padding:5px 10px;transition:border-color .15s,box-shadow .15s}
+.icon-search-row:focus-within{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,.12)}
+.icon-search-row input{border:none;outline:none;font-size:11px;font-weight:600;font-family:inherit;color:#334155;flex:1;padding:0;width:100%;background:transparent}
+.icon-cats{display:flex;gap:5px;padding:8px 10px;border-bottom:1px solid var(--sl-bd);background:#f8fafc;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
 .icon-cats::-webkit-scrollbar{display:none}
-.icon-cat-btn{flex-shrink:0;padding:4px 10px;background:#e0f2fe;color:#0369a1;border:none;border-radius:20px;font-family:inherit;font-size:10px;font-weight:800;cursor:pointer;transition:all .15s;white-space:nowrap}
+.icon-cat-btn{flex-shrink:0;padding:4px 11px;background:#e0f2fe;color:#0369a1;border:none;border-radius:20px;font-family:inherit;font-size:10px;font-weight:800;cursor:pointer;transition:all .15s;white-space:nowrap}
 .icon-cat-btn.active{background:var(--sky);color:#fff;box-shadow:0 2px 8px rgba(14,165,233,.3)}
 .icon-cat-btn:hover:not(.active){background:#bae6fd}
-.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px;padding:10px;max-height:210px;overflow-y:auto;background:#fff}
-.icon-grid::-webkit-scrollbar{width:5px}
+.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:5px;padding:10px;max-height:220px;overflow-y:auto;background:#fff}
+.icon-grid::-webkit-scrollbar{width:4px}
 .icon-grid::-webkit-scrollbar-track{background:transparent}
-.icon-grid::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:3px}
-.icon-btn{width:42px;height:42px;border:1.5px solid transparent;border-radius:9px;background:#f8fafc;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;gap:1px;position:relative}
-.icon-btn:hover{background:#e0f2fe;border-color:#7dd3fc;transform:scale(1.1)}
-.icon-btn.selected{background:linear-gradient(135deg,#0284c7,#38bdf8);border-color:transparent;box-shadow:0 3px 10px rgba(14,165,233,.4)}
+.icon-grid::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+.icon-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:54px;border:1.5px solid transparent;border-radius:10px;background:#f8fafc;cursor:pointer;transition:all .15s;padding:4px 2px}
+.icon-btn:hover{background:#e0f2fe;border-color:#7dd3fc;transform:translateY(-1px);box-shadow:0 3px 8px rgba(14,165,233,.15)}
+.icon-btn.selected{background:linear-gradient(135deg,#0284c7,#38bdf8);border-color:transparent;box-shadow:0 4px 12px rgba(14,165,233,.4);transform:translateY(-1px)}
+.icon-btn i{font-size:17px;color:#475569;pointer-events:none;line-height:1}
 .icon-btn.selected i{color:#fff!important}
-.icon-btn i{font-size:16px;color:#475569;pointer-events:none}
-.icon-btn span{font-size:7px;color:#94a3b8;font-weight:700;pointer-events:none;max-width:38px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none}
-.icon-btn:hover span{display:block}
-.icon-btn.selected span{display:none}
+.icon-btn span{font-size:7.5px;color:#94a3b8;font-weight:700;pointer-events:none;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1}
+.icon-btn.selected span{color:rgba(255,255,255,.75)}
+.icon-empty-msg{grid-column:1/-1;text-align:center;padding:22px 10px;font-size:12px;color:#94a3b8;font-weight:700}
 .empty{text-align:center;padding:50px 20px;color:#94a3b8}
 .empty i{font-size:40px;margin-bottom:12px;display:block;opacity:.3}
 .empty p{font-size:13px;font-weight:700;line-height:1.7}
@@ -498,29 +502,36 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
         <div class="fg"><label>Kategori</label>
           <select id="fTag"><option>Fitur Baru</option><option>Bug Fix</option><option>Perbaikan UI</option><option>Info</option></select>
         </div>
-        <div class="fg">
-          <label>Ikon Font Awesome</label>
-          <div class="icon-picker-wrap">
-            <div class="icon-selected-row">
-              <div class="icon-preview-box" id="iconPreviewBox">
-                <i class="fa-solid fa-bell" id="iconPreviewEl"></i>
+        <div class="fg"><label>Versi tampilkan</label>
+          <div style="height:34px;display:flex;align-items:center;padding:0 11px;background:#f8fafc;border:1.5px solid var(--sl-bd);border-radius:9px;font-size:11px;font-weight:700;color:#94a3b8;gap:6px">
+            <i class="fa-solid fa-circle-info" style="color:#7dd3fc"></i> Ikon terpilih di bawah
+          </div>
+        </div>
+      </div>
+      <!-- ICON PICKER - full width -->
+      <div class="fg">
+        <label>Pilih Ikon Font Awesome</label>
+        <div class="icon-picker-wrap">
+          <!-- Top bar: preview + input + search -->
+          <div class="icon-top-bar">
+            <div class="icon-preview-box" id="iconPreviewBox">
+              <i class="fa-solid fa-bell" id="iconPreviewEl"></i>
+            </div>
+            <div class="icon-top-fields">
+              <div class="icon-name-row">
+                <span style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">Nama Ikon</span>
+                <input id="fIcon" placeholder="bell, star, fire…" oninput="onIconInput(this.value)" autocomplete="off">
               </div>
-              <div style="flex:1">
-                <input id="fIcon" placeholder="cth: bell, star, rotate" oninput="onIconInput(this.value)" autocomplete="off" style="margin-bottom:5px">
-                <div style="font-size:10px;color:#94a3b8;font-weight:600">Atau klik ikon di bawah untuk pilih langsung 👇</div>
+              <div class="icon-search-row">
+                <i class="fa-solid fa-magnifying-glass" style="color:#94a3b8;font-size:11px;flex-shrink:0"></i>
+                <input id="iconSearch" placeholder="Cari dari 180+ ikon…" oninput="filterIcons(this.value)" autocomplete="off">
               </div>
-            </div>
-            <div class="icon-search-row">
-              <i class="fa-solid fa-magnifying-glass" style="color:#94a3b8;font-size:12px;flex-shrink:0"></i>
-              <input id="iconSearch" placeholder="Cari ikon…" oninput="filterIcons(this.value)" autocomplete="off" style="border:none;outline:none;font-size:12px;font-weight:600;font-family:inherit;color:#334155;flex:1;padding:0;width:100%">
-            </div>
-            <div class="icon-cats" id="iconCats">
-              <!-- populated by JS -->
-            </div>
-            <div class="icon-grid" id="iconGrid">
-              <!-- populated by JS -->
             </div>
           </div>
+          <!-- Category tabs -->
+          <div class="icon-cats" id="iconCats"></div>
+          <!-- Icon grid -->
+          <div class="icon-grid" id="iconGrid"></div>
         </div>
       </div>
       <div class="fg">
@@ -1091,7 +1102,7 @@ function renderIconGrid() {
   }
   const cur = (document.getElementById('fIcon')||{}).value?.trim() || 'bell';
   if (!icons.length) {
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:20px;font-size:12px;color:#94a3b8;font-weight:700">Ikon tidak ditemukan 🔍</div>`;
+    grid.innerHTML = `<div class="icon-empty-msg">Ikon tidak ditemukan 🔍</div>`;
     return;
   }
   grid.innerHTML = icons.map(ic => `
