@@ -308,6 +308,12 @@ body{font-family:'Nunito',sans-serif;background:#f0f9ff;color:var(--sl);min-heig
 .send-btn{width:38px;height:38px;background:var(--sky);color:#fff;border:none;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
 .send-btn:hover{background:var(--sky-dk)}
 .send-btn:disabled{opacity:.4;cursor:not-allowed}
+.cam-btn{width:38px;height:38px;background:#f8fafc;border:1.5px solid var(--sl-bd);color:#94a3b8;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
+.cam-btn:hover{border-color:var(--sky);color:var(--sky);background:#f0f9ff}
+.reply-photo-preview{padding:8px 14px 0;background:#fff;flex-shrink:0}
+.reply-photo-preview .preview-wrap{position:relative;display:inline-block}
+.reply-photo-preview img{height:80px;max-width:160px;object-fit:cover;border-radius:10px;border:1.5px solid var(--sl-bd);cursor:zoom-in}
+.reply-photo-preview .remove-photo{position:absolute;top:-7px;right:-7px;width:20px;height:20px;background:#ef4444;border:none;border-radius:50%;color:#fff;font-size:10px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .empty-chat{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:#94a3b8;padding:30px}
 .empty-chat i{font-size:40px;margin-bottom:12px;opacity:.3}
 .empty-chat p{font-size:13px;font-weight:700;text-align:center;line-height:1.6}
@@ -434,7 +440,16 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
           </div>
         </div>
         <div class="chat-messages" id="chatMessages"></div>
+        <!-- Preview foto sebelum kirim -->
+        <div class="reply-photo-preview" id="replyPhotoPreview" style="display:none">
+          <div class="preview-wrap">
+            <img id="replyPhotoImg" src="" alt="preview" onclick="openLightbox(this.src)" />
+            <button class="remove-photo" onclick="clearReplyPhoto()" title="Hapus foto">✕</button>
+          </div>
+        </div>
         <div class="chat-input">
+          <input type="file" id="replyPhotoInput" accept="image/*" style="display:none" onchange="handleReplyPhoto(this)" />
+          <button class="cam-btn" onclick="document.getElementById('replyPhotoInput').click()" title="Lampirkan foto"><i class="fa-solid fa-camera" style="font-size:13px"></i></button>
           <textarea id="replyInput" rows="1" placeholder="Ketik balasan…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"></textarea>
           <button class="send-btn" onclick="sendReply()" id="replyBtn"><i class="fa-solid fa-paper-plane" style="font-size:13px"></i></button>
         </div>
@@ -765,6 +780,7 @@ function openChatDirect(f) {
   document.getElementById('chat-detail-view').style.display = 'block';
   renderChatMessages(f.messages||[]);
   markAdminRead(f.id, f.messages||[]);
+  clearReplyPhoto();
 }
 
 // ── renderPesan juga handles live-sync saat chat terbuka (tidak pakai wrapper) ──
@@ -791,23 +807,52 @@ async function markAdminRead(uid, msgs) {
   await window._set(ref, {messages:updated, adminUnread:0}, {merge:true}).catch(()=>{});
 }
 
+let _replyPhoto = null;
+
+function handleReplyPhoto(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    _replyPhoto = ev.target.result;
+    document.getElementById('replyPhotoImg').src = _replyPhoto;
+    document.getElementById('replyPhotoPreview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function clearReplyPhoto() {
+  _replyPhoto = null;
+  document.getElementById('replyPhotoImg').src = '';
+  document.getElementById('replyPhotoPreview').style.display = 'none';
+}
+
 async function sendReply() {
   const txt = document.getElementById('replyInput').value.trim();
-  if(!txt || !_activeThread || !window._db) return;
+  if((!txt && !_replyPhoto) || !_activeThread || !window._db) return;
   const btn = document.getElementById('replyBtn');
   btn.disabled=true;
-  const newMsg = { id:'msg_'+Date.now(), role:'admin', text:txt, time:new Date().toISOString(), readByUser:false };
+  const newMsg = {
+    id:'msg_'+Date.now(),
+    role:'admin',
+    text: txt,
+    ...(_replyPhoto ? { photo: _replyPhoto } : {}),
+    time:new Date().toISOString(),
+    readByUser:false
+  };
   const updMsgs = [...(_activeThread.messages||[]), newMsg];
   try {
     const ref = window._doc(...window._P('feedback',_activeThread.id));
     await window._set(ref, {
       messages: updMsgs,
-      lastMessage: '[Admin] '+txt,
+      lastMessage: _replyPhoto ? ('[Admin] ' + (txt || '📷 Foto')) : '[Admin] '+txt,
       lastTime: new Date().toISOString(),
       userUnread: ((_activeThread.messages||[]).filter(m=>m.role==='admin'&&!m.readByUser).length)+1,
     }, {merge:true});
     document.getElementById('replyInput').value='';
     document.getElementById('replyInput').style.height='auto';
+    clearReplyPhoto();
   } catch(e){ showToast('Gagal kirim: '+e.message,'err'); }
   btn.disabled=false;
 }
