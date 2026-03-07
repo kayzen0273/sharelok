@@ -126,10 +126,12 @@ onSnapshot(W._coll(...P('feedback')), snap => {
   W._feedback = snap.docs.map(d => ({ id: d.id, ...d.data() }))
     .sort((a, b) => ((b.lastTime || '') > (a.lastTime || '') ? -1 : 1));
   if (W._activeTab === 'pesan' && typeof W.renderPesan === 'function') W.renderPesan();
+  else if (typeof window.processNewMessages === 'function') window.processNewMessages(W._feedback);
   const totalUnread = W._feedback.reduce((s, f) =>
     s + (f.messages || []).filter(m => m.role === 'user' && !m.readByAdmin).length, 0);
   const badge = document.getElementById('pesanBadge');
   if (badge) { badge.textContent = totalUnread || ''; badge.style.display = totalUnread ? 'flex' : 'none'; }
+  if (typeof window.updatePageTitle === 'function') window.updatePageTitle();
 });
 
 // ── Update status indicator ──
@@ -172,6 +174,10 @@ body{font-family:'Nunito',sans-serif;background:#f0f9ff;color:var(--sl);min-heig
 .dot-on{background:#4ade80;animation:pulse 1.5s infinite}
 .dot-off{background:#f87171}
 .tb-online{background:rgba(74,222,128,.25);border:1px solid rgba(74,222,128,.4);color:#fff;font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px;display:flex;align-items:center;gap:5px}
+.notif-btn{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);color:#fff;font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px;cursor:pointer;transition:all .15s}
+.notif-btn:hover{background:rgba(255,255,255,.25)}
+.notif-btn.granted{background:rgba(74,222,128,.25);border-color:rgba(74,222,128,.5)}
+.notif-btn.denied{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);cursor:not-allowed;opacity:.7}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
 
 /* TABS NAV */
@@ -193,6 +199,17 @@ body{font-family:'Nunito',sans-serif;background:#f0f9ff;color:var(--sl);min-heig
 .infobox i{color:#d97706;margin-top:2px;flex-shrink:0;font-size:13px}
 .infobox p{font-size:12px;font-weight:600;color:#92400e;line-height:1.5}
 .infobox strong{font-weight:900}
+.notif-banner{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #fcd34d;border-radius:14px;padding:11px 14px;margin:0 16px 12px;box-shadow:0 2px 8px rgba(251,191,36,.2)}
+.notif-banner i{color:#d97706;font-size:16px;flex-shrink:0}
+.notif-banner-body{flex:1;min-width:0}
+.notif-banner-body strong{display:block;font-size:12px;font-weight:900;color:#92400e;margin-bottom:1px}
+.notif-banner-body span{font-size:11px;font-weight:600;color:#b45309}
+.notif-banner-btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:10px;padding:7px 14px;font-size:11px;font-weight:900;cursor:pointer;flex-shrink:0;transition:all .15s;white-space:nowrap}
+.notif-banner-btn:hover{background:linear-gradient(135deg,#d97706,#b45309);transform:translateY(-1px)}
+.notif-banner-close{width:24px;height:24px;background:rgba(0,0,0,.06);border:none;border-radius:50%;cursor:pointer;color:#92400e;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.notif-banner-close:hover{background:rgba(0,0,0,.12)}
+@keyframes notif-slide-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.notif-banner{animation:notif-slide-in .3s ease}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:10px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;border:none;transition:all .15s}
@@ -358,6 +375,10 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
     <div><div class="tb-t">Admin Panel</div><div class="tb-s">Sistem Kasir Toko Husna</div></div>
   </div>
   <div class="tb-r">
+    <button class="notif-btn" id="notifPermBtn" onclick="requestNotifPermission()" title="Izinkan notifikasi browser saat pesan masuk">
+      <i class="fa-solid fa-bell" id="notifPermIcon" style="font-size:11px"></i>
+      <span id="notifPermLabel">Izinkan Notifikasi</span>
+    </button>
     <div class="tb-online"><i class="fa-solid fa-circle" style="color:#4ade80;font-size:8px;animation:pulse 1.5s infinite"></i> <span id="onlineCount">0</span> Online</div>
     <div class="tb-pill"><div class="tb-dot dot-off" id="statusDot"></div><span id="statusText">Menghubungkan…</span></div>
   </div>
@@ -375,6 +396,21 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
     <i class="fa-solid fa-comments"></i> Pesan Masuk
     <span class="tab-badge" id="pesanBadge" style="display:none"></span>
   </button>
+</div>
+
+<!-- NOTIF PERMISSION BANNER -->
+<div id="notifBanner" style="display:none;margin-top:8px">
+  <div class="notif-banner">
+    <i class="fa-solid fa-bell-exclamation"></i>
+    <div class="notif-banner-body">
+      <strong>Aktifkan notifikasi HP 🔔</strong>
+      <span>Dapatkan pemberitahuan langsung saat ada pesan masuk dari pengguna</span>
+    </div>
+    <button class="notif-banner-btn" onclick="requestNotifPermission()">
+      <i class="fa-solid fa-bell"></i> Izinkan
+    </button>
+    <button class="notif-banner-close" onclick="dismissNotifBanner()" title="Tutup">✕</button>
+  </div>
 </div>
 
 <!-- CONTENT -->
@@ -1023,6 +1059,193 @@ function closeLightbox() {
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeLightbox(); });
+
+// ════════════════════════════════════════════════
+// 🔔 SISTEM NOTIFIKASI ADMIN
+// ════════════════════════════════════════════════
+
+// Track ID pesan yang sudah pernah kita lihat agar tidak double-notify
+let _seenMsgIds = new Set(JSON.parse(localStorage.getItem('admin_seen_msg_ids') || '[]'));
+let _notifInitDone = false; // flag: snapshot pertama = seed awal, jangan notif
+let _bannerDismissed = localStorage.getItem('admin_notif_banner_dismissed') === '1';
+
+// ── Buat suara ping sintetis via Web Audio API ──
+function playPing() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {}
+}
+
+// ── Update tampilan tombol di topbar sesuai status izin ──
+function updateNotifPermBtn() {
+  const btn   = document.getElementById('notifPermBtn');
+  const icon  = document.getElementById('notifPermIcon');
+  const label = document.getElementById('notifPermLabel');
+  const banner = document.getElementById('notifBanner');
+  if (!btn) return;
+  const perm = Notification.permission;
+  if (perm === 'granted') {
+    btn.className = 'notif-btn granted';
+    icon.className = 'fa-solid fa-bell';
+    label.textContent = 'Notifikasi Aktif';
+    if (banner) banner.style.display = 'none';
+  } else if (perm === 'denied') {
+    btn.className = 'notif-btn denied';
+    icon.className = 'fa-solid fa-bell-slash';
+    label.textContent = 'Notifikasi Diblokir';
+    if (banner) banner.style.display = 'none';
+  } else {
+    btn.className = 'notif-btn';
+    icon.className = 'fa-regular fa-bell';
+    label.textContent = 'Izinkan Notifikasi';
+    if (banner && !_bannerDismissed) banner.style.display = 'block';
+  }
+}
+
+// ── Minta izin notifikasi dari pengguna ──
+async function requestNotifPermission() {
+  if (!('Notification' in window)) {
+    alert('Browser ini tidak mendukung notifikasi.');
+    return;
+  }
+  const result = await Notification.requestPermission();
+  updateNotifPermBtn();
+  if (result === 'granted') {
+    showToast('Notifikasi diaktifkan! 🔔');
+    // Test notif
+    new Notification('Admin Panel Husna', {
+      body: 'Notifikasi berhasil diaktifkan. Kamu akan diberitahu saat ada pesan masuk.',
+      icon: 'https://cdn-icons-png.flaticon.com/512/1077/1077114.png',
+      tag: 'test-notif',
+    });
+  } else if (result === 'denied') {
+    showToast('Notifikasi diblokir di browser', 'err');
+  }
+}
+
+function dismissNotifBanner() {
+  _bannerDismissed = true;
+  localStorage.setItem('admin_notif_banner_dismissed', '1');
+  const b = document.getElementById('notifBanner');
+  if (b) b.style.display = 'none';
+}
+
+// ── Kirim notifikasi browser ──
+function sendBrowserNotif(title, body, photoUrl) {
+  if (Notification.permission !== 'granted') return;
+  try {
+    const opts = {
+      body,
+      icon: photoUrl || 'https://cdn-icons-png.flaticon.com/512/1077/1077114.png',
+      badge: 'https://cdn-icons-png.flaticon.com/512/1077/1077114.png',
+      tag: 'admin-msg-' + Date.now(),
+      vibrate: [200, 100, 200],
+      requireInteraction: false,
+    };
+    if (photoUrl) opts.image = photoUrl;
+    const n = new Notification(title, opts);
+    n.onclick = () => { window.focus(); switchTab('pesan'); n.close(); };
+  } catch(e) { console.warn('Notif error:', e); }
+}
+
+// ── Proses snapshot feedback → deteksi pesan baru ──
+function processNewMessages(feedbackList) {
+  if (!_notifInitDone) {
+    // Snapshot pertama: seed _seenMsgIds dengan semua pesan yang sudah ada
+    feedbackList.forEach(f => {
+      (f.messages || []).forEach(m => _seenMsgIds.add(m.id));
+    });
+    try { localStorage.setItem('admin_seen_msg_ids', JSON.stringify([..._seenMsgIds])); } catch(e){}
+    _notifInitDone = true;
+    return;
+  }
+
+  let newCount = 0;
+  let firstNew = null;
+
+  feedbackList.forEach(f => {
+    (f.messages || []).forEach(m => {
+      if (m.role !== 'user') return;       // hanya pesan dari user
+      if (_seenMsgIds.has(m.id)) return;   // sudah pernah diproses
+      _seenMsgIds.add(m.id);
+      newCount++;
+      if (!firstNew) firstNew = { msg: m, thread: f };
+    });
+  });
+
+  if (newCount === 0) return;
+
+  // Simpan seen IDs (batasi 500 entri agar tidak membengkak)
+  const arr = [..._seenMsgIds];
+  if (arr.length > 500) arr.splice(0, arr.length - 500);
+  _seenMsgIds = new Set(arr);
+  try { localStorage.setItem('admin_seen_msg_ids', JSON.stringify(arr)); } catch(e){}
+
+  // Suara ping
+  playPing();
+
+  // Browser notification
+  const sender = firstNew.thread.namaLengkap || firstNew.thread.username || 'Pengguna';
+  const typeMap = { bug: '🐛 Laporan Bug', masukkan: '💡 Masukkan', request: '✨ Request Fitur' };
+  const typeLabel = typeMap[firstNew.msg.type] || '💬 Pesan';
+  const bodyText = firstNew.msg.photo
+    ? (firstNew.msg.text ? `📷 Foto: ${firstNew.msg.text}` : '📷 Mengirim foto')
+    : (firstNew.msg.text || '...');
+
+  const title = newCount === 1
+    ? `${typeLabel} dari ${sender}`
+    : `${newCount} pesan baru dari pengguna`;
+
+  sendBrowserNotif(title, bodyText, firstNew.msg.photo || null);
+
+  // Update judul tab browser
+  updatePageTitle();
+}
+
+// ── Update judul tab dengan jumlah unread ──
+function updatePageTitle() {
+  const total = (window._feedback||[]).reduce((s, f) =>
+    s + (f.messages||[]).filter(m => m.role==='user' && !m.readByAdmin).length, 0);
+  document.title = total > 0 ? `(${total}) Admin Panel – Kasir Husna` : 'Admin Panel – Sistem Kasir Husna';
+}
+
+// ── Hook ke onSnapshot feedback yang sudah ada ──
+// Wrap window.renderPesan supaya processNewMessages dipanggil tiap update
+(function() {
+  const _origRenderPesan = window.renderPesan;
+  window.renderPesan = function() {
+    if (typeof _origRenderPesan === 'function') _origRenderPesan();
+    processNewMessages(window._feedback || []);
+    updatePageTitle();
+  };
+})();
+
+// ── Inisialisasi saat halaman dimuat ──
+document.addEventListener('DOMContentLoaded', () => {
+  if (!('Notification' in window)) return;
+  updateNotifPermBtn();
+  // Jika sudah granted sebelumnya, sembunyikan banner
+  if (Notification.permission === 'granted') {
+    const b = document.getElementById('notifBanner');
+    if (b) b.style.display = 'none';
+  }
+});
+
+// Expose ke window untuk modul
+window.processNewMessages = processNewMessages;
+window.updatePageTitle = updatePageTitle;
+window.requestNotifPermission = requestNotifPermission;
 </script>
 
 </body>
