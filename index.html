@@ -113,11 +113,32 @@ onSnapshot(clQ, snap => {
 // Presence
 onSnapshot(W._coll(...P('presence')), snap => {
   const now = Date.now();
-  W._presence = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .filter(p => p.lastSeen?.toMillis ? (now - p.lastSeen.toMillis() < 120000) : true)
-    .filter(p => p.online !== false);
+  const WINDOW_MS = 8 * 60 * 60 * 1000; // tampilkan sampai 8 jam terakhir
+
+  // Semua entri dalam window waktu (online maupun offline)
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(p => p.lastSeen?.toMillis ? (now - p.lastSeen.toMillis() < WINDOW_MS) : true);
+
+  // Group by accountId: ambil sesi yang paling baru per akun
+  const byAccount = {};
+  all.forEach(p => {
+    const aid = p.accountId || p.id;
+    const ts  = p.lastSeen?.toMillis ? p.lastSeen.toMillis() : 0;
+    if (!byAccount[aid] || ts > (byAccount[aid].lastSeen?.toMillis?.() || 0)) {
+      byAccount[aid] = p;
+    }
+  });
+
+  W._presence = Object.values(byAccount)
+    .sort((a, b) => (b.lastSeen?.toMillis?.() || 0) - (a.lastSeen?.toMillis?.() || 0));
+
+  // Hitung hanya yang benar-benar online (lastSeen < 60 detik & online !== false)
+  const onlineCount = W._presence.filter(p =>
+    p.online !== false && p.lastSeen?.toMillis && (now - p.lastSeen.toMillis() < 60000)
+  ).length;
+
   const el = document.getElementById('onlineCount');
-  if (el) el.textContent = W._presence.length;
+  if (el) el.textContent = onlineCount || '0';
   if (W._activeTab === 'online' && typeof W.renderOnline === 'function') W.renderOnline();
 });
 
@@ -430,13 +451,20 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
   <!-- ── TAB: ONLINE ── -->
   <div id="view-online" class="wrap" style="display:none">
     <div class="toolbar">
-      <span class="lbl"><i class="fa-solid fa-wifi"></i> Sedang Online <span class="count-pill" id="onlineCountBig">0</span></span>
-      <span style="font-size:11px;color:#94a3b8;font-weight:600"><i class="fa-solid fa-circle" style="color:#22c55e;font-size:8px;animation:pulse 1.5s infinite;margin-right:4px"></i>Label waktu diperbarui tiap 30 dtk</span>
+      <span class="lbl">
+        <i class="fa-solid fa-users"></i> Riwayat Aktivitas
+        <span class="count-pill" id="onlineCountBig">0</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800;margin-left:2px">
+          <i class="fa-solid fa-circle" style="font-size:7px;animation:pulse 1.5s infinite"></i>
+          <span id="liveOnlineCount">0</span> online
+        </span>
+      </span>
+      <span style="font-size:11px;color:#94a3b8;font-weight:600">Tampil s/d 8 jam terakhir</span>
     </div>
     <div class="online-grid" id="onlineGrid"></div>
     <div class="empty-online" id="emptyOnline" style="display:none">
       <i class="fa-solid fa-users-slash"></i>
-      <p>Belum ada yang online<br><span style="font-size:12px;font-weight:600;color:#cbd5e1">Pengguna yang membuka sistem kasir akan muncul di sini</span></p>
+      <p>Belum ada aktivitas<br><span style="font-size:12px;font-weight:600;color:#cbd5e1">Pengguna yang membuka sistem kasir akan muncul di sini</span></p>
     </div>
   </div>
 
@@ -675,8 +703,14 @@ window.renderNotif = function() {
 // ── RENDER ONLINE ──
 // ─────────────────────────────────────────
 window.renderOnline = function() {
+  const now  = Date.now();
   const data = window._presence||[];
+  const onlineCount = data.filter(p =>
+    p.online !== false && p.lastSeen?.toMillis && (now - p.lastSeen.toMillis() < 60000)
+  ).length;
   document.getElementById('onlineCountBig').textContent = data.length;
+  const liveEl = document.getElementById('liveOnlineCount');
+  if (liveEl) liveEl.textContent = onlineCount;
   const grid  = document.getElementById('onlineGrid');
   const empty = document.getElementById('emptyOnline');
   if(!data.length){grid.innerHTML='';empty.style.display='block';return;}
@@ -688,7 +722,7 @@ window.renderOnline = function() {
     const init      = name.charAt(0).toUpperCase();
     const color     = avatarColor(name);
     const ts        = p.lastSeen?.toMillis ? new Date(p.lastSeen.toMillis()) : null;
-    const secAgo    = ts ? Math.floor((Date.now() - ts.getTime()) / 1000) : 999;
+    const secAgo    = ts ? Math.floor((now - ts.getTime()) / 1000) : 999;
     const isOnline  = p.online !== false && secAgo < 60;
     const timeAgo   = ts ? formatAgo(ts) : 'baru saja';
     const accountId = p.accountId || null;
@@ -701,10 +735,11 @@ window.renderOnline = function() {
          </span>`;
     const dotHtml = isOnline
       ? `<div class="online-dot"></div>`
-      : `<div style="width:9px;height:9px;background:#fbbf24;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px #fef9c3"></div>`;
+      : `<div style="width:9px;height:9px;background:#cbd5e1;border-radius:50%;flex-shrink:0"></div>`;
+    const cardStyle = isOnline ? '' : 'opacity:0.75';
     return `
-    <div class="online-card">
-      <div class="avatar" style="background:${color}">${init}</div>
+    <div class="online-card" style="${cardStyle}">
+      <div class="avatar" style="background:${color};${isOnline?'':'filter:grayscale(30%)'}">${init}</div>
       <div class="oc-info">
         <div class="oc-name">${name}</div>
         <div class="oc-user">@${p.username||'-'}</div>
@@ -716,7 +751,7 @@ window.renderOnline = function() {
           <div class="oc-role ${roleClass[p.role]||'r-viewer'}">${roleLabel[p.role]||p.role||'User'}</div>
         </div>
         ${accountId ? `
-        <button onclick="chatFromOnline('${accountId}','${name.replace(/'/g,"\\'")}','${p.username||''}','${p.role||''}')"
+        <button onclick="chatFromOnline('${accountId}','${name.replace(/'/g,"\'")}','${p.username||''}','${p.role||''}')"
           class="btn btn-primary btn-sm" style="font-size:10px;padding:4px 9px;border-radius:8px">
           <i class="fa-solid fa-comment"></i> Chat
         </button>` : `<span style="font-size:9px;color:#cbd5e1">Tamu</span>`}
