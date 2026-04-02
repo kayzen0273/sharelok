@@ -431,7 +431,7 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
   <div id="view-online" class="wrap" style="display:none">
     <div class="toolbar">
       <span class="lbl"><i class="fa-solid fa-wifi"></i> Sedang Online <span class="count-pill" id="onlineCountBig">0</span></span>
-      <span style="font-size:11px;color:#94a3b8;font-weight:600"><i class="fa-solid fa-clock" style="margin-right:4px"></i>Auto-refresh tiap 30 detik</span>
+      <span style="font-size:11px;color:#94a3b8;font-weight:600"><i class="fa-solid fa-circle" style="color:#22c55e;font-size:8px;animation:pulse 1.5s infinite;margin-right:4px"></i>Label waktu diperbarui tiap 30 dtk</span>
     </div>
     <div class="online-grid" id="onlineGrid"></div>
     <div class="empty-online" id="emptyOnline" style="display:none">
@@ -684,23 +684,35 @@ window.renderOnline = function() {
   const roleLabel = {'owner':'Owner','kasir':'Kasir','staff':'Staff','viewer':'Viewer','admin':'Admin'};
   const roleClass = {'owner':'r-owner','kasir':'r-kasir','staff':'r-staff','viewer':'r-viewer','admin':'r-owner'};
   grid.innerHTML = data.map(p => {
-    const name    = p.namaLengkap||p.username||'Tamu';
-    const init    = name.charAt(0).toUpperCase();
-    const color   = avatarColor(name);
-    const ts      = p.lastSeen?.toMillis ? new Date(p.lastSeen.toMillis()) : null;
-    const timeAgo = ts ? formatAgo(ts) : 'baru saja';
+    const name      = p.namaLengkap||p.username||'Tamu';
+    const init      = name.charAt(0).toUpperCase();
+    const color     = avatarColor(name);
+    const ts        = p.lastSeen?.toMillis ? new Date(p.lastSeen.toMillis()) : null;
+    const secAgo    = ts ? Math.floor((Date.now() - ts.getTime()) / 1000) : 999;
+    const isOnline  = p.online !== false && secAgo < 60;
+    const timeAgo   = ts ? formatAgo(ts) : 'baru saja';
     const accountId = p.accountId || null;
+    const statusHtml = isOnline
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;color:#16a34a;font-weight:800;font-size:10px">
+           <i class="fa-solid fa-circle" style="font-size:7px;animation:pulse 1.5s infinite"></i>Online
+         </span>`
+      : `<span style="display:inline-flex;align-items:center;gap:3px;color:#94a3b8;font-size:10px;font-weight:600">
+           <i class="fa-solid fa-clock" style="font-size:8px"></i>${timeAgo}
+         </span>`;
+    const dotHtml = isOnline
+      ? `<div class="online-dot"></div>`
+      : `<div style="width:9px;height:9px;background:#fbbf24;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px #fef9c3"></div>`;
     return `
     <div class="online-card">
       <div class="avatar" style="background:${color}">${init}</div>
       <div class="oc-info">
         <div class="oc-name">${name}</div>
         <div class="oc-user">@${p.username||'-'}</div>
-        <div class="online-time"><i class="fa-solid fa-clock" style="font-size:8px;margin-right:3px"></i>${timeAgo}</div>
+        <div class="online-time">${statusHtml}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         <div style="display:flex;align-items:center;gap:5px">
-          <div class="online-dot"></div>
+          ${dotHtml}
           <div class="oc-role ${roleClass[p.role]||'r-viewer'}">${roleLabel[p.role]||p.role||'User'}</div>
         </div>
         ${accountId ? `
@@ -715,11 +727,18 @@ window.renderOnline = function() {
 
 function formatAgo(d) {
   const sec = Math.floor((Date.now()-d)/1000);
-  if(sec<10) return 'baru saja';
-  if(sec<60) return sec+'d lalu';
+  if(sec<5)  return 'online';
+  if(sec<60) return sec+' detik lalu';
   const min = Math.floor(sec/60);
   return min+' mnt lalu';
 }
+
+// Auto-refresh label waktu di tab Online setiap 30 detik
+setInterval(() => {
+  if (window._activeTab === 'online' && typeof window.renderOnline === 'function') {
+    window.renderOnline();
+  }
+}, 30000);
 
 // Buka chat langsung dari kartu Online
 async function chatFromOnline(accountId, namaLengkap, username, role) {
