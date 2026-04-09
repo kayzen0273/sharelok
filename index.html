@@ -170,6 +170,33 @@ W._setStatus = function(txt, ok) {
   if (t) t.textContent = txt;
   if (l) l.classList.toggle('hidden', ok);
 };
+
+// ── Zenbot KB Firebase listener ──
+W._zb = [];
+W._syncZenbotKb = function(data) {
+  try {
+    localStorage.setItem('husna_zenbot_kb', JSON.stringify(data));
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'husna_zenbot_kb',
+      newValue: JSON.stringify(data),
+    }));
+    const badge = document.getElementById('zbSyncBadge');
+    if (badge) {
+      const now = new Date().toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      badge.style.color = '#15803d';
+      badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Tersinkron — ${data.length} entri (${now})`;
+    }
+  } catch(e) { console.warn('Zenbot KB sync error:', e); }
+};
+
+const zbRef = W._coll(...P('zenbot_kb'));
+onSnapshot(zbRef, snap => {
+  W._zb = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+  W._syncZenbotKb(W._zb);
+  if (W._activeTab === 'zenbot' && typeof W.renderZenbot === 'function') W.renderZenbot();
+});
+
 </script>
 
 <style>
@@ -424,7 +451,7 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
     <span class="tab-badge" id="pesanBadge" style="display:none"></span>
   </button>
   <button class="tab-btn" id="tab-zenbot" onclick="switchTab('zenbot')">
-    <i class="fa-solid fa-robot" style="color:#6366f1"></i> Zenbot Brain
+    <i class="fa-solid fa-robot" style="color:#8b5cf6"></i> Zenbot KB
   </button>
 </div>
 
@@ -471,6 +498,30 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
     </div>
   </div>
 
+  <!-- ── TAB: ZENBOT KB ── -->
+  <div id="view-zenbot" class="wrap" style="display:none">
+    <div style="background:linear-gradient(135deg,#ede9fe,#f5f3ff);border:1.5px solid #c4b5fd;border-radius:14px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start;margin-bottom:18px">
+      <i class="fa-solid fa-robot" style="color:#7c3aed;margin-top:2px;flex-shrink:0;font-size:16px"></i>
+      <div>
+        <p style="font-size:13px;font-weight:900;color:#4c1d95;margin:0 0 3px">Zenbot Knowledge Base</p>
+        <p style="font-size:12px;font-weight:600;color:#6d28d9;line-height:1.5;margin:0">Data di sini menjadi <strong>"otak"</strong> Zenbot. Tambahkan teks bebas, FAQ, prosedur, info produk — semakin banyak data, semakin pintar Zenbot menjawab pertanyaan pengguna. Semua data disimpan offline di browser pengguna (localStorage).</p>
+        <span id="zbSyncBadge" style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:11px;font-weight:800;color:#15803d"><i class="fa-solid fa-circle-check"></i> Tersinkron ke Sistem Kasir</span>
+      </div>
+    </div>
+    <div class="toolbar">
+      <span class="lbl"><i class="fa-solid fa-database"></i> Entri KB <span class="count-pill" id="zbCount">0</span></span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input id="zbSearch" placeholder="Cari entri…" oninput="renderZenbot()" style="padding:6px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:12px;font-weight:600;outline:none;color:#334155;background:#f8fafc;width:160px" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'">
+        <select id="zbFilter" onchange="renderZenbot()" style="padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:12px;font-weight:700;outline:none;color:#334155;background:#f8fafc">
+          <option value="">Semua Kategori</option>
+        </select>
+        <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="openZbModal()"><i class="fa-solid fa-plus"></i> Tambah Entri</button>
+      </div>
+    </div>
+    <div id="zbList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div id="zbEmpty" style="display:none;text-align:center;padding:50px 20px;color:#94a3b8"><i class="fa-solid fa-brain" style="font-size:40px;margin-bottom:12px;display:block;opacity:.2"></i><p style="font-size:13px;font-weight:700">Belum ada entri Knowledge Base</p><p style="font-size:12px;margin-top:4px">Klik "Tambah Entri" untuk mengisi otak Zenbot</p></div>
+  </div>
+
   <!-- ── TAB: PESAN MASUK ── -->
   <div id="view-pesan" class="wrap" style="display:none">
     <!-- Thread list view -->
@@ -512,72 +563,6 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
           <button class="send-btn" onclick="sendReply()" id="replyBtn"><i class="fa-solid fa-paper-plane" style="font-size:13px"></i></button>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- ── TAB: ZENBOT BRAIN ── -->
-  <div id="view-zenbot" class="wrap" style="display:none">
-    <div class="infobox" style="background:#eef2ff;border-color:#c7d2fe">
-      <i class="fa-solid fa-robot" style="color:#6366f1"></i>
-      <p style="color:#4338ca">Isi <strong>Otak Zenbot</strong> di sini. Data ini yang akan dipakai AI Zenbot di sistem kasir untuk menjawab pertanyaan pengguna. Tidak perlu API Key — semua berjalan dari data yang kamu masukkan.</p>
-    </div>
-    <div class="toolbar">
-      <span class="lbl"><i class="fa-solid fa-brain" style="color:#6366f1"></i> Pengetahuan <span class="count-pill" id="brainCount" style="background:#6366f1">0</span></span>
-      <button class="btn btn-primary btn-sm" onclick="openBrainModal()" style="background:#6366f1;border-color:#6366f1"><i class="fa-solid fa-plus"></i> Tambah</button>
-    </div>
-
-    <!-- Filter by category -->
-    <div style="padding:0 0 12px 0;display:flex;gap:8px;flex-wrap:wrap" id="brainCatFilter"></div>
-
-    <!-- Brain cards -->
-    <div id="brainCards" style="display:flex;flex-direction:column;gap:10px"></div>
-    <div class="empty" id="emptyBrain" style="display:none"><i class="fa-solid fa-brain" style="opacity:.3"></i><p>Otak Zenbot masih kosong.<br><span style="font-size:12px;color:#cbd5e1">Tambah pengetahuan agar Zenbot bisa menjawab pertanyaan.</span></p></div>
-  </div>
-</div>
-
-<!-- Modal Tambah/Edit Brain Zenbot -->
-<div class="ov" id="brainModalOv" style="display:none" onclick="if(event.target===this)closeBrainModal()">
-  <div class="modal" style="max-width:500px">
-    <div class="modal-hd" style="background:linear-gradient(135deg,#6366f1,#818cf8)">
-      <div class="modal-ttl"><i class="fa-solid fa-brain"></i><span id="brainModalTitle">Tambah Pengetahuan</span></div>
-      <button class="modal-x" onclick="closeBrainModal()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-bd">
-      <div class="fg">
-        <label>Pertanyaan / Topik <span style="color:#ef4444">*</span></label>
-        <input id="bQuestion" placeholder="cth: Apa jam buka toko? / Harga paracetamol?">
-        <p style="font-size:10px;color:#94a3b8;margin-top:4px">Tulis pertanyaan atau kata kunci yang biasa ditanyakan pelanggan/karyawan.</p>
-      </div>
-      <div class="fg">
-        <label>Kata Kunci Tambahan</label>
-        <input id="bKeywords" placeholder="cth: jam, buka, operasional (pisah koma)">
-        <p style="font-size:10px;color:#94a3b8;margin-top:4px">Bantu Zenbot mengenali variasi pertanyaan. Pisahkan dengan koma.</p>
-      </div>
-      <div class="fg">
-        <label>Jawaban / Penjelasan <span style="color:#ef4444">*</span></label>
-        <textarea id="bAnswer" rows="5" placeholder="Tulis jawaban lengkap di sini. Bisa berisi harga, prosedur, info toko, dll." style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:13px;resize:vertical;outline:none;transition:border-color .15s;color:#334155;line-height:1.6" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
-      </div>
-      <div class="fg">
-        <label>Kategori</label>
-        <div style="display:flex;gap:8px">
-          <select id="bCategory" style="flex:1;padding:8px 11px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:12px;font-weight:600;color:#334155;outline:none">
-            <option value="Umum">Umum</option>
-            <option value="Produk">Produk</option>
-            <option value="Harga">Harga</option>
-            <option value="Stok">Stok</option>
-            <option value="Layanan">Layanan</option>
-            <option value="Promosi">Promosi</option>
-            <option value="Prosedur">Prosedur</option>
-            <option value="Info Toko">Info Toko</option>
-          </select>
-          <input id="bCategoryCustom" placeholder="Atau tulis kategori baru..." style="flex:1;padding:8px 11px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:12px;font-weight:600;color:#334155;outline:none">
-        </div>
-        <p style="font-size:10px;color:#94a3b8;margin-top:4px">Pilih dari daftar atau tulis kategori baru di sebelah kanan.</p>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-ghost btn-sm" onclick="closeBrainModal()">Batal</button>
-      <button class="btn btn-primary btn-sm" onclick="saveBrain()" id="saveBrainBtn" style="background:#6366f1;border-color:#6366f1"><i class="fa-solid fa-save"></i> Simpan</button>
     </div>
   </div>
 </div>
@@ -685,6 +670,63 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
   </div>
 </div>
 
+<!-- ── ZENBOT KB MODAL ── -->
+<div class="ov" id="zbModalOv" style="display:none" onclick="if(event.target===this)closeZbModal()">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-hd" style="background:linear-gradient(135deg,#6d28d9,#8b5cf6)">
+      <div class="modal-ttl"><i class="fa-solid fa-brain"></i><span id="zbModalTitle">Tambah Entri KB</span></div>
+      <button class="modal-x" onclick="closeZbModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-bd" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg">
+          <label>Judul / Pertanyaan <span style="color:#ef4444">*</span></label>
+          <input id="zbTitle" placeholder="cth: Jam operasional toko" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;outline:none;color:#334155" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'">
+        </div>
+        <div class="fg">
+          <label>Kategori</label>
+          <input id="zbCategory" placeholder="cth: FAQ, Produk, Prosedur…" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;outline:none;color:#334155" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'">
+        </div>
+      </div>
+      <div class="fg">
+        <label>Isi / Jawaban <span style="color:#ef4444">*</span></label>
+        <textarea id="zbContent" rows="6" placeholder="Tulis informasi, jawaban FAQ, prosedur, atau teks bebas apapun di sini. Semakin lengkap isinya, semakin akurat Zenbot menjawab." style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;outline:none;color:#334155;resize:vertical;line-height:1.6" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+        <div id="zbCharCount" style="font-size:10px;color:#94a3b8;font-weight:600;text-align:right;margin-top:3px">0 karakter</div>
+      </div>
+      <div class="fg">
+        <label>Tag Kata Kunci <span style="font-size:10px;color:#94a3b8;font-weight:600">(pisahkan dengan koma)</span></label>
+        <input id="zbTags" placeholder="cth: jam, buka, tutup, operasional" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;outline:none;color:#334155" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'">
+        <p style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:4px">Tag membantu Zenbot menemukan entri ini lebih akurat saat pengguna bertanya</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:10px;padding:10px 14px">
+        <input type="checkbox" id="zbActive" checked style="width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;flex-shrink:0">
+        <label for="zbActive" style="font-size:12px;font-weight:700;color:#5b21b6;cursor:pointer;line-height:1.4">Aktifkan entri ini — Zenbot akan menggunakan data ini untuk menjawab pertanyaan</label>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeZbModal()">Batal</button>
+      <button class="btn btn-sm" style="background:#7c3aed;color:#fff" id="zbSaveBtn" onclick="saveZbEntry()"><i class="fa-solid fa-floppy-disk"></i> Simpan Entri</button>
+    </div>
+  </div>
+</div>
+
+<!-- Konfirmasi Hapus KB Entry -->
+<div class="ov" id="zbDelOv" style="display:none" onclick="if(event.target===this)closeZbDel()">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-hd" style="background:linear-gradient(135deg,#dc2626,#f87171)">
+      <div class="modal-ttl"><i class="fa-solid fa-trash"></i> Hapus Entri KB?</div>
+      <button class="modal-x" onclick="closeZbDel()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-bd" style="padding:18px">
+      <p style="font-size:13px;font-weight:700;color:#334155;line-height:1.7">Hapus entri "<strong id="zbDelTitle"></strong>"? Zenbot tidak akan bisa menjawab pertanyaan terkait topik ini.</p>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeZbDel()">Batal</button>
+      <button class="btn btn-red" onclick="confirmZbDel()"><i class="fa-solid fa-trash"></i> Hapus</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast hide" id="toastEl"><i id="toastIco" class="fa-solid fa-check-circle" style="color:#4ade80"></i><span id="toastMsg"></span></div>
 
 <script>
@@ -724,7 +766,7 @@ function switchTab(tab) {
   if(tab==='notif')  window.renderNotif();
   if(tab==='online') window.renderOnline();
   if(tab==='pesan')  window.renderPesan();
-  if(tab==='zenbot') window.renderBrain();
+  if(tab==='zenbot') window.renderZenbot();
 }
 
 // ── Status ──
@@ -1273,6 +1315,165 @@ openModal = function(id=null) {
   }, 30);
 };
 
+// ═══════════════════════════════════════════════════════
+// ── ZENBOT KB ──
+// ═══════════════════════════════════════════════════════
+let _zbEditId = null, _zbDelId = null;
+
+window.renderZenbot = function() {
+  const data    = window._zb || [];
+  const search  = (document.getElementById('zbSearch')?.value || '').toLowerCase();
+  const cat     = document.getElementById('zbFilter')?.value || '';
+
+  // Update category filter options
+  const cats    = [...new Set(data.map(e => e.category).filter(Boolean))].sort();
+  const sel     = document.getElementById('zbFilter');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Semua Kategori</option>' +
+      cats.map(c => `<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('');
+  }
+
+  let filtered = data;
+  if (search) filtered = filtered.filter(e =>
+    (e.title||'').toLowerCase().includes(search) ||
+    (e.content||'').toLowerCase().includes(search) ||
+    (e.category||'').toLowerCase().includes(search) ||
+    (e.tags||[]).some(t => t.toLowerCase().includes(search))
+  );
+  if (cat) filtered = filtered.filter(e => e.category === cat);
+
+  document.getElementById('zbCount').textContent = data.length;
+  const list  = document.getElementById('zbList');
+  const empty = document.getElementById('zbEmpty');
+
+  if (!filtered.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  const truncate = (s, n) => s && s.length > n ? s.slice(0, n) + '…' : (s || '');
+  const CAT_COLORS = ['#6366f1','#0ea5e9','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+  const catColor   = s => CAT_COLORS[(s||'').charCodeAt(0) % CAT_COLORS.length];
+
+  list.innerHTML = filtered.map(e => `
+    <div style="background:#fff;border-radius:13px;border:1.5px solid ${e.active===false?'#fecaca':'#e2e8f0'};box-shadow:0 2px 12px rgba(0,0,0,.04);overflow:hidden;opacity:${e.active===false?'.6':'1'}">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${e.active===false?'#fff5f5':'#fafafa'};border-bottom:1px solid #f1f5f9">
+        <div style="width:32px;height:32px;border-radius:9px;background:${catColor(e.category)};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fa-solid fa-book" style="color:#fff;font-size:12px"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:900;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.title||'-'}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
+            ${e.category ? `<span style="font-size:10px;font-weight:800;background:${catColor(e.category)}18;color:${catColor(e.category)};padding:2px 8px;border-radius:20px">${e.category}</span>` : ''}
+            ${e.active===false ? `<span style="font-size:10px;font-weight:800;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px"><i class="fa-solid fa-eye-slash" style="font-size:8px"></i> Nonaktif</span>` : '<span style="font-size:10px;font-weight:800;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px"><i class="fa-solid fa-check" style="font-size:8px"></i> Aktif</span>'}
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="openZbModal('${e.id}')"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="openZbDel('${e.id}')"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+      <div style="padding:10px 14px">
+        <p style="font-size:12px;color:#475569;line-height:1.6;margin:0 0 6px">${truncate(e.content, 200)}</p>
+        ${(e.tags||[]).length ? `<div style="display:flex;gap:4px;flex-wrap:wrap">${(e.tags||[]).map(t=>`<span style="font-size:10px;font-weight:700;background:#ede9fe;color:#7c3aed;padding:1px 7px;border-radius:20px">#${t}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>`).join('');
+};
+
+function openZbModal(id = null) {
+  _zbEditId = id;
+  const ov = document.getElementById('zbModalOv');
+  document.getElementById('zbModalTitle').textContent = id ? 'Edit Entri KB' : 'Tambah Entri KB';
+  if (id) {
+    const e = (window._zb||[]).find(x => x.id === id);
+    if (e) {
+      document.getElementById('zbTitle').value    = e.title    || '';
+      document.getElementById('zbContent').value  = e.content  || '';
+      document.getElementById('zbCategory').value = e.category || '';
+      document.getElementById('zbTags').value     = (e.tags||[]).join(', ');
+      document.getElementById('zbActive').checked = e.active !== false;
+      document.getElementById('zbCharCount').textContent = (e.content||'').length + ' karakter';
+    }
+  } else {
+    document.getElementById('zbTitle').value    = '';
+    document.getElementById('zbContent').value  = '';
+    document.getElementById('zbCategory').value = '';
+    document.getElementById('zbTags').value     = '';
+    document.getElementById('zbActive').checked = true;
+    document.getElementById('zbCharCount').textContent = '0 karakter';
+  }
+  ov.style.display = 'flex';
+  document.getElementById('zbContent').oninput = function() {
+    document.getElementById('zbCharCount').textContent = this.value.length + ' karakter';
+  };
+  setTimeout(() => document.getElementById('zbTitle').focus(), 100);
+}
+
+function closeZbModal() {
+  document.getElementById('zbModalOv').style.display = 'none';
+  _zbEditId = null;
+}
+
+async function saveZbEntry() {
+  const title   = document.getElementById('zbTitle').value.trim();
+  const content = document.getElementById('zbContent').value.trim();
+  if (!title || !content) { showToast('Judul dan Isi wajib diisi!','err'); return; }
+
+  const btn = document.getElementById('zbSaveBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan…';
+
+  const tags = document.getElementById('zbTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const data = {
+    title,
+    content,
+    category : document.getElementById('zbCategory').value.trim() || 'Umum',
+    tags,
+    active   : document.getElementById('zbActive').checked,
+    updatedAt: window._ts(),
+  };
+
+  try {
+    if (_zbEditId) {
+      await window._set(window._doc(...window._P('zenbot_kb', _zbEditId)), data, { merge: true });
+      showToast('Entri berhasil diperbarui ✓');
+    } else {
+      data.createdAt = window._ts();
+      const newRef = window._doc(...window._P('zenbot_kb', 'zb_' + Date.now()));
+      await window._set(newRef, data);
+      showToast('Entri baru berhasil ditambahkan ✓');
+    }
+    closeZbModal();
+  } catch(e) {
+    showToast('Gagal menyimpan: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Entri';
+  }
+}
+
+function openZbDel(id) {
+  _zbDelId = id;
+  const e = (window._zb||[]).find(x => x.id === id);
+  document.getElementById('zbDelTitle').textContent = e?.title || id;
+  document.getElementById('zbDelOv').style.display = 'flex';
+}
+function closeZbDel() {
+  document.getElementById('zbDelOv').style.display = 'none';
+  _zbDelId = null;
+}
+async function confirmZbDel() {
+  if (!_zbDelId) return;
+  try {
+    await window._del(window._doc(...window._P('zenbot_kb', _zbDelId)));
+    showToast('Entri berhasil dihapus');
+    closeZbDel();
+  } catch(e) {
+    showToast('Gagal menghapus: ' + e.message, 'err');
+  }
+}
+
 let _tt;
 function showToast(msg,type='ok'){
   const el=document.getElementById('toastEl');
@@ -1303,181 +1504,8 @@ function closeLightbox() {
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeLightbox(); });
-
-
-// ─────────────────────────────────────────
-// ── ZENBOT BRAIN ──
-// ─────────────────────────────────────────
-let _brainData = [];
-let _brainEditingId = null;
-let _brainCatFilter = null;
-
-// Tunggu Firebase module selesai load, lalu pasang listener
-// (W._snap & W._P didefinisikan di <script type="module"> yang async)
-function _initBrainListener() {
-  if (typeof W._snap !== 'function' || typeof W._P !== 'function') {
-    setTimeout(_initBrainListener, 150);
-    return;
-  }
-  W._snap(
-    W._query(W._coll(...W._P('zenbot_brain')), W._order('createdAt','desc')),
-    snap => {
-      _brainData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const el = document.getElementById('brainCount');
-      if (el) el.textContent = _brainData.length;
-      if (window._activeTab === 'zenbot') window.renderBrain();
-    },
-    () => {}
-  );
-}
-_initBrainListener();
-
-window.renderBrain = function() {
-  const container = document.getElementById('brainCards');
-  const empty = document.getElementById('emptyBrain');
-  const catFilter = document.getElementById('brainCatFilter');
-  if (!container) return;
-
-  const cats = ['Semua', ...new Set(_brainData.map(b => b.category).filter(Boolean))];
-  catFilter.innerHTML = cats.map(c => `
-    <button onclick="window.setBrainCat('${c.replace(/'/g,"\\'")}')" style="
-      font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;border:1.5px solid;cursor:pointer;transition:all .15s;
-      ${(c === 'Semua' && !_brainCatFilter) || c === _brainCatFilter
-        ? 'background:#6366f1;color:#fff;border-color:#6366f1'
-        : 'background:#f1f5f9;color:#64748b;border-color:#e2e8f0'}
-    ">${c}</button>
-  `).join('');
-
-  const filtered = _brainCatFilter && _brainCatFilter !== 'Semua'
-    ? _brainData.filter(b => b.category === _brainCatFilter)
-    : _brainData;
-
-  if (filtered.length === 0) { container.innerHTML = ''; empty.style.display = ''; return; }
-  empty.style.display = 'none';
-
-  const catColorMap = {
-    'Produk':'#10b981','Harga':'#f59e0b','Stok':'#3b82f6','Layanan':'#8b5cf6',
-    'Umum':'#64748b','Info':'#0ea5e9','Promosi':'#f97316','Prosedur':'#06b6d4','Info Toko':'#22c55e'
-  };
-  const getCC = (c) => catColorMap[c] || '#6366f1';
-
-  container.innerHTML = filtered.map(b => `
-    <div style="border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid #f1f5f9">
-        <div style="width:36px;height:36px;border-radius:10px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">
-          <i class="fa-solid fa-circle-question" style="color:#6366f1;font-size:16px"></i>
-        </div>
-        <div style="flex:1;min-width:0">
-          <p style="font-size:13px;font-weight:800;color:#1e293b;margin:0 0 4px 0">${b.question}</p>
-          ${b.keywords ? `<p style="font-size:10px;color:#94a3b8;font-weight:600;margin:0 0 4px 0">🔑 ${b.keywords}</p>` : ''}
-          <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:${getCC(b.category||'Umum')}22;color:${getCC(b.category||'Umum')};border:1px solid ${getCC(b.category||'Umum')}44">${b.category||'Umum'}</span>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button onclick="window.editBrain('${b.id}')" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6366f1;transition:all .15s" title="Edit">
-            <i class="fa-solid fa-pen" style="font-size:11px"></i>
-          </button>
-          <button onclick="window.deleteBrain('${b.id}')" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #fecaca;background:#fff5f5;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#ef4444;transition:all .15s" title="Hapus">
-            <i class="fa-solid fa-trash" style="font-size:11px"></i>
-          </button>
-        </div>
-      </div>
-      <div style="padding:12px 16px 14px 16px;background:#fafbff">
-        <div style="display:flex;align-items:flex-start;gap:10px">
-          <div style="width:28px;height:28px;border-radius:8px;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <i class="fa-solid fa-robot" style="color:#16a34a;font-size:12px"></i>
-          </div>
-          <p style="font-size:12px;color:#374151;line-height:1.6;margin:0;flex:1;white-space:pre-wrap;font-weight:500">${b.answer}</p>
-        </div>
-      </div>
-    </div>
-  `).join('');
-};
-
-window.setBrainCat = function(cat) {
-  _brainCatFilter = cat === 'Semua' ? null : cat;
-  window.renderBrain();
-};
-
-window.openBrainModal = function(id) {
-  _brainEditingId = id || null;
-  document.getElementById('brainModalTitle').textContent = id ? 'Edit Pengetahuan' : 'Tambah Pengetahuan';
-  if (id) {
-    const b = _brainData.find(x => x.id === id);
-    if (!b) return;
-    document.getElementById('bQuestion').value = b.question || '';
-    document.getElementById('bKeywords').value = b.keywords || '';
-    document.getElementById('bAnswer').value = b.answer || '';
-    document.getElementById('bCategoryCustom').value = '';
-    const sel = document.getElementById('bCategory');
-    const opts = Array.from(sel.options).map(o => o.value);
-    if (opts.includes(b.category)) sel.value = b.category;
-    else { sel.value = 'Umum'; document.getElementById('bCategoryCustom').value = b.category || ''; }
-  } else {
-    document.getElementById('bQuestion').value = '';
-    document.getElementById('bKeywords').value = '';
-    document.getElementById('bAnswer').value = '';
-    document.getElementById('bCategory').value = 'Umum';
-    document.getElementById('bCategoryCustom').value = '';
-  }
-  document.getElementById('brainModalOv').style.display = 'flex';
-  setTimeout(() => document.getElementById('bQuestion').focus(), 100);
-};
-
-window.closeBrainModal = function() {
-  document.getElementById('brainModalOv').style.display = 'none';
-  _brainEditingId = null;
-};
-
-window.editBrain = function(id) { window.openBrainModal(id); };
-
-window.deleteBrain = async function(id) {
-  if (!confirm('Hapus pengetahuan ini dari otak Zenbot?')) return;
-  try {
-    await W._del(W._doc(...W._P('zenbot_brain', id)));
-    showToast('Pengetahuan dihapus');
-  } catch(e) { showToast('Gagal hapus: ' + e.message, 'err'); }
-};
-
-window.saveBrain = async function() {
-  const question = document.getElementById('bQuestion').value.trim();
-  const keywords = document.getElementById('bKeywords').value.trim();
-  const answer   = document.getElementById('bAnswer').value.trim();
-  const catCustom = document.getElementById('bCategoryCustom').value.trim();
-  const category  = catCustom || document.getElementById('bCategory').value;
-
-  if (!question || !answer) {
-    showToast('Pertanyaan & Jawaban wajib diisi!', 'err');
-    return;
-  }
-  if (typeof W._set !== 'function') {
-    showToast('Firebase belum siap, coba lagi', 'err');
-    return;
-  }
-
-  const btn = document.getElementById('saveBrainBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
-
-  try {
-    const data = { question, keywords, answer, category, updatedAt: W._ts() };
-    if (_brainEditingId) {
-      await W._set(W._doc(...W._P('zenbot_brain', _brainEditingId)), data, {merge:true});
-      showToast('Pengetahuan diperbarui ✓');
-    } else {
-      // Buat doc baru dengan ID unik
-      const newId = 'brain_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-      await W._set(W._doc(...W._P('zenbot_brain', newId)), { ...data, createdAt: W._ts() });
-      showToast('Pengetahuan ditambahkan ke otak Zenbot ✓');
-    }
-    window.closeBrainModal();
-  } catch(e) {
-    showToast('Gagal simpan: ' + e.message, 'err');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-save"></i> Simpan';
-  }
-};
 </script>
 
 </body>
 </html>
+l
