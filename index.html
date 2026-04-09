@@ -1312,22 +1312,35 @@ let _brainData = [];
 let _brainEditingId = null;
 let _brainCatFilter = null;
 
-// Firestore listener for brain data
-W._snap(W._query(W._coll(...P('zenbot_brain')), W._order('createdAt','desc')), snap => {
-  _brainData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  document.getElementById('brainCount').textContent = _brainData.length;
-  if(window._activeTab === 'zenbot') window.renderBrain();
-}, () => {});
+// Tunggu Firebase module selesai load, lalu pasang listener
+// (W._snap & W._P didefinisikan di <script type="module"> yang async)
+function _initBrainListener() {
+  if (typeof W._snap !== 'function' || typeof W._P !== 'function') {
+    setTimeout(_initBrainListener, 150);
+    return;
+  }
+  W._snap(
+    W._query(W._coll(...W._P('zenbot_brain')), W._order('createdAt','desc')),
+    snap => {
+      _brainData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const el = document.getElementById('brainCount');
+      if (el) el.textContent = _brainData.length;
+      if (window._activeTab === 'zenbot') window.renderBrain();
+    },
+    () => {}
+  );
+}
+_initBrainListener();
 
 window.renderBrain = function() {
   const container = document.getElementById('brainCards');
   const empty = document.getElementById('emptyBrain');
   const catFilter = document.getElementById('brainCatFilter');
+  if (!container) return;
 
-  // Categories
   const cats = ['Semua', ...new Set(_brainData.map(b => b.category).filter(Boolean))];
   catFilter.innerHTML = cats.map(c => `
-    <button onclick="setBrainCat('${c}')" style="
+    <button onclick="window.setBrainCat('${c.replace(/'/g,"\\'")}')" style="
       font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;border:1.5px solid;cursor:pointer;transition:all .15s;
       ${(c === 'Semua' && !_brainCatFilter) || c === _brainCatFilter
         ? 'background:#6366f1;color:#fff;border-color:#6366f1'
@@ -1360,10 +1373,10 @@ window.renderBrain = function() {
           <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:${getCC(b.category||'Umum')}22;color:${getCC(b.category||'Umum')};border:1px solid ${getCC(b.category||'Umum')}44">${b.category||'Umum'}</span>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
-          <button onclick="editBrain('${b.id}')" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6366f1;transition:all .15s" title="Edit">
+          <button onclick="window.editBrain('${b.id}')" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6366f1;transition:all .15s" title="Edit">
             <i class="fa-solid fa-pen" style="font-size:11px"></i>
           </button>
-          <button onclick="deleteBrain('${b.id}')" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #fecaca;background:#fff5f5;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#ef4444;transition:all .15s" title="Hapus">
+          <button onclick="window.deleteBrain('${b.id}')" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #fecaca;background:#fff5f5;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#ef4444;transition:all .15s" title="Hapus">
             <i class="fa-solid fa-trash" style="font-size:11px"></i>
           </button>
         </div>
@@ -1420,20 +1433,24 @@ window.editBrain = function(id) { window.openBrainModal(id); };
 window.deleteBrain = async function(id) {
   if (!confirm('Hapus pengetahuan ini dari otak Zenbot?')) return;
   try {
-    await W._del(W._doc(...P('zenbot_brain', id)));
-    showToast('Pengetahuan dihapus', true);
-  } catch(e) { showToast('Gagal hapus: ' + e.message, false); }
+    await W._del(W._doc(...W._P('zenbot_brain', id)));
+    showToast('Pengetahuan dihapus');
+  } catch(e) { showToast('Gagal hapus: ' + e.message, 'err'); }
 };
 
 window.saveBrain = async function() {
   const question = document.getElementById('bQuestion').value.trim();
   const keywords = document.getElementById('bKeywords').value.trim();
-  const answer = document.getElementById('bAnswer').value.trim();
+  const answer   = document.getElementById('bAnswer').value.trim();
   const catCustom = document.getElementById('bCategoryCustom').value.trim();
-  const category = catCustom || document.getElementById('bCategory').value;
+  const category  = catCustom || document.getElementById('bCategory').value;
 
   if (!question || !answer) {
-    showToast('Pertanyaan & Jawaban wajib diisi!', false);
+    showToast('Pertanyaan & Jawaban wajib diisi!', 'err');
+    return;
+  }
+  if (typeof W._set !== 'function') {
+    showToast('Firebase belum siap, coba lagi', 'err');
     return;
   }
 
@@ -1444,15 +1461,17 @@ window.saveBrain = async function() {
   try {
     const data = { question, keywords, answer, category, updatedAt: W._ts() };
     if (_brainEditingId) {
-      await W._set(W._doc(...P('zenbot_brain', _brainEditingId)), data, {merge:true});
-      showToast('✅ Pengetahuan diperbarui!', true);
+      await W._set(W._doc(...W._P('zenbot_brain', _brainEditingId)), data, {merge:true});
+      showToast('Pengetahuan diperbarui ✓');
     } else {
-      await W._addDoc(W._coll(...P('zenbot_brain')), { ...data, createdAt: W._ts() });
-      showToast('✅ Pengetahuan ditambahkan ke otak Zenbot!', true);
+      // Buat doc baru dengan ID unik
+      const newId = 'brain_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+      await W._set(W._doc(...W._P('zenbot_brain', newId)), { ...data, createdAt: W._ts() });
+      showToast('Pengetahuan ditambahkan ke otak Zenbot ✓');
     }
-    closeBrainModal();
+    window.closeBrainModal();
   } catch(e) {
-    showToast('Gagal simpan: ' + e.message, false);
+    showToast('Gagal simpan: ' + e.message, 'err');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-save"></i> Simpan';
