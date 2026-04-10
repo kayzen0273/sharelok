@@ -170,33 +170,6 @@ W._setStatus = function(txt, ok) {
   if (t) t.textContent = txt;
   if (l) l.classList.toggle('hidden', ok);
 };
-
-// ── Zenbot KB Firebase listener ──
-W._zb = [];
-W._syncZenbotKb = function(data) {
-  try {
-    localStorage.setItem('husna_zenbot_kb', JSON.stringify(data));
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'husna_zenbot_kb',
-      newValue: JSON.stringify(data),
-    }));
-    const badge = document.getElementById('zbSyncBadge');
-    if (badge) {
-      const now = new Date().toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      badge.style.color = '#15803d';
-      badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Tersinkron — ${data.length} entri (${now})`;
-    }
-  } catch(e) { console.warn('Zenbot KB sync error:', e); }
-};
-
-const zbRef = W._coll(...P('zenbot_kb'));
-onSnapshot(zbRef, snap => {
-  W._zb = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-  W._syncZenbotKb(W._zb);
-  if (W._activeTab === 'zenbot' && typeof W.renderZenbot === 'function') W.renderZenbot();
-});
-
 </script>
 
 <style>
@@ -420,6 +393,12 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
 .empty i{font-size:40px;margin-bottom:12px;display:block;opacity:.3}
 .empty p{font-size:13px;font-weight:700;line-height:1.7}
 
+.btn-zenbot{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;box-shadow:0 2px 8px rgba(124,58,237,0.3)}
+.btn-zenbot:hover:not(:disabled){background:linear-gradient(135deg,#6d28d9,#5b21b6)}
+.zenbot-bar{background:linear-gradient(135deg,#f3f0ff,#ede9fe);border:1.5px solid #ddd6fe;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.zenbot-bar i{color:#7c3aed;font-size:15px}
+.zenbot-bar p{font-size:12px;font-weight:700;color:#5b21b6;flex:1;line-height:1.4}
+.zenbot-count{background:#7c3aed;color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:900}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:9px 18px;border-radius:50px;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:999;display:flex;align-items:center;gap:7px;transition:opacity .3s;white-space:nowrap}
 .toast.hide{opacity:0;pointer-events:none}
 </style>
@@ -450,9 +429,6 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
     <i class="fa-solid fa-comments"></i> Pesan Masuk
     <span class="tab-badge" id="pesanBadge" style="display:none"></span>
   </button>
-  <button class="tab-btn" id="tab-zenbot" onclick="switchTab('zenbot')">
-    <i class="fa-solid fa-robot" style="color:#8b5cf6"></i> Zenbot KB
-  </button>
 </div>
 
 <!-- CONTENT -->
@@ -466,6 +442,12 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
       <span id="syncBadge" style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:11px;font-weight:800;color:#15803d">
         <i class="fa-solid fa-circle-check"></i> Tersinkron ke Sistem Kasir
       </span></p>
+    </div>
+    <div class="zenbot-bar">
+      <i class="fa-solid fa-robot"></i>
+      <p>Feed notifikasi langsung ke <strong>Zenbot AI</strong> agar bisa dijawab oleh asisten!</p>
+      <span class="zenbot-count" id="zenbotCount">0 entri</span>
+      <button class="btn btn-zenbot btn-sm" onclick="feedAllToZenbot()"><i class="fa-solid fa-brain"></i> Feed Semua</button>
     </div>
     <div class="toolbar">
       <span class="lbl"><i class="fa-solid fa-list-ul"></i> Notifikasi <span class="count-pill" id="clCount">0</span></span>
@@ -496,30 +478,6 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
       <i class="fa-solid fa-users-slash"></i>
       <p>Belum ada aktivitas<br><span style="font-size:12px;font-weight:600;color:#cbd5e1">Pengguna yang membuka sistem kasir akan muncul di sini</span></p>
     </div>
-  </div>
-
-  <!-- ── TAB: ZENBOT KB ── -->
-  <div id="view-zenbot" class="wrap" style="display:none">
-    <div style="background:linear-gradient(135deg,#ede9fe,#f5f3ff);border:1.5px solid #c4b5fd;border-radius:14px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start;margin-bottom:18px">
-      <i class="fa-solid fa-robot" style="color:#7c3aed;margin-top:2px;flex-shrink:0;font-size:16px"></i>
-      <div>
-        <p style="font-size:13px;font-weight:900;color:#4c1d95;margin:0 0 3px">Zenbot Knowledge Base</p>
-        <p style="font-size:12px;font-weight:600;color:#6d28d9;line-height:1.5;margin:0">Data di sini menjadi <strong>"otak"</strong> Zenbot. Tambahkan teks bebas, FAQ, prosedur, info produk — semakin banyak data, semakin pintar Zenbot menjawab pertanyaan pengguna. Semua data disimpan offline di browser pengguna (localStorage).</p>
-        <span id="zbSyncBadge" style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:11px;font-weight:800;color:#15803d"><i class="fa-solid fa-circle-check"></i> Tersinkron ke Sistem Kasir</span>
-      </div>
-    </div>
-    <div class="toolbar">
-      <span class="lbl"><i class="fa-solid fa-database"></i> Entri KB <span class="count-pill" id="zbCount">0</span></span>
-      <div style="display:flex;gap:6px;align-items:center">
-        <input id="zbSearch" placeholder="Cari entri…" oninput="renderZenbot()" style="padding:6px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:12px;font-weight:600;outline:none;color:#334155;background:#f8fafc;width:160px" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'">
-        <select id="zbFilter" onchange="renderZenbot()" style="padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:12px;font-weight:700;outline:none;color:#334155;background:#f8fafc">
-          <option value="">Semua Kategori</option>
-        </select>
-        <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="openZbModal()"><i class="fa-solid fa-plus"></i> Tambah Entri</button>
-      </div>
-    </div>
-    <div id="zbList" style="display:flex;flex-direction:column;gap:8px"></div>
-    <div id="zbEmpty" style="display:none;text-align:center;padding:50px 20px;color:#94a3b8"><i class="fa-solid fa-brain" style="font-size:40px;margin-bottom:12px;display:block;opacity:.2"></i><p style="font-size:13px;font-weight:700">Belum ada entri Knowledge Base</p><p style="font-size:12px;margin-top:4px">Klik "Tambah Entri" untuk mengisi otak Zenbot</p></div>
   </div>
 
   <!-- ── TAB: PESAN MASUK ── -->
@@ -670,63 +628,6 @@ input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,16
   </div>
 </div>
 
-<!-- ── ZENBOT KB MODAL ── -->
-<div class="ov" id="zbModalOv" style="display:none" onclick="if(event.target===this)closeZbModal()">
-  <div class="modal" style="max-width:600px">
-    <div class="modal-hd" style="background:linear-gradient(135deg,#6d28d9,#8b5cf6)">
-      <div class="modal-ttl"><i class="fa-solid fa-brain"></i><span id="zbModalTitle">Tambah Entri KB</span></div>
-      <button class="modal-x" onclick="closeZbModal()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-bd" style="display:flex;flex-direction:column;gap:14px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="fg">
-          <label>Judul / Pertanyaan <span style="color:#ef4444">*</span></label>
-          <input id="zbTitle" placeholder="cth: Jam operasional toko" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;outline:none;color:#334155" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'">
-        </div>
-        <div class="fg">
-          <label>Kategori</label>
-          <input id="zbCategory" placeholder="cth: FAQ, Produk, Prosedur…" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;outline:none;color:#334155" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'">
-        </div>
-      </div>
-      <div class="fg">
-        <label>Isi / Jawaban <span style="color:#ef4444">*</span></label>
-        <textarea id="zbContent" rows="6" placeholder="Tulis informasi, jawaban FAQ, prosedur, atau teks bebas apapun di sini. Semakin lengkap isinya, semakin akurat Zenbot menjawab." style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;outline:none;color:#334155;resize:vertical;line-height:1.6" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
-        <div id="zbCharCount" style="font-size:10px;color:#94a3b8;font-weight:600;text-align:right;margin-top:3px">0 karakter</div>
-      </div>
-      <div class="fg">
-        <label>Tag Kata Kunci <span style="font-size:10px;color:#94a3b8;font-weight:600">(pisahkan dengan koma)</span></label>
-        <input id="zbTags" placeholder="cth: jam, buka, tutup, operasional" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:inherit;font-size:13px;font-weight:600;outline:none;color:#334155" onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#e2e8f0'">
-        <p style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:4px">Tag membantu Zenbot menemukan entri ini lebih akurat saat pengguna bertanya</p>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:10px;padding:10px 14px">
-        <input type="checkbox" id="zbActive" checked style="width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;flex-shrink:0">
-        <label for="zbActive" style="font-size:12px;font-weight:700;color:#5b21b6;cursor:pointer;line-height:1.4">Aktifkan entri ini — Zenbot akan menggunakan data ini untuk menjawab pertanyaan</label>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-ghost" onclick="closeZbModal()">Batal</button>
-      <button class="btn btn-sm" style="background:#7c3aed;color:#fff" id="zbSaveBtn" onclick="saveZbEntry()"><i class="fa-solid fa-floppy-disk"></i> Simpan Entri</button>
-    </div>
-  </div>
-</div>
-
-<!-- Konfirmasi Hapus KB Entry -->
-<div class="ov" id="zbDelOv" style="display:none" onclick="if(event.target===this)closeZbDel()">
-  <div class="modal" style="max-width:360px">
-    <div class="modal-hd" style="background:linear-gradient(135deg,#dc2626,#f87171)">
-      <div class="modal-ttl"><i class="fa-solid fa-trash"></i> Hapus Entri KB?</div>
-      <button class="modal-x" onclick="closeZbDel()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-bd" style="padding:18px">
-      <p style="font-size:13px;font-weight:700;color:#334155;line-height:1.7">Hapus entri "<strong id="zbDelTitle"></strong>"? Zenbot tidak akan bisa menjawab pertanyaan terkait topik ini.</p>
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-ghost" onclick="closeZbDel()">Batal</button>
-      <button class="btn btn-red" onclick="confirmZbDel()"><i class="fa-solid fa-trash"></i> Hapus</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast hide" id="toastEl"><i id="toastIco" class="fa-solid fa-check-circle" style="color:#4ade80"></i><span id="toastMsg"></span></div>
 
 <script>
@@ -759,14 +660,13 @@ window._feedback = [];
 
 function switchTab(tab) {
   window._activeTab = tab;
-  ['notif','online','pesan','zenbot'].forEach(t => {
+  ['notif','online','pesan'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('active', t===tab);
     document.getElementById('view-'+t).style.display = t===tab ? 'block' : 'none';
   });
   if(tab==='notif')  window.renderNotif();
   if(tab==='online') window.renderOnline();
   if(tab==='pesan')  window.renderPesan();
-  if(tab==='zenbot') window.renderZenbot();
 }
 
 // ── Status ──
@@ -800,6 +700,7 @@ window.renderNotif = function() {
         <span class="v">${n.version||''}</span>
         <span class="d">${n.date||''}</span>
         <div class="acts">
+          <button class="btn btn-sm" style="background:#f3f0ff;color:#7c3aed;border:1.5px solid #ddd6fe" onclick="feedOneToZenbot('${n.id}')" title="Feed ke Zenbot"><i class="fa-solid fa-robot"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="openModal('${n.id}')"><i class="fa-solid fa-pen"></i></button>
           <button class="btn btn-danger btn-sm" onclick="openDel('${n.id}')"><i class="fa-solid fa-trash"></i></button>
         </div>
@@ -814,6 +715,80 @@ window.renderNotif = function() {
 // ─────────────────────────────────────────
 // ── RENDER ONLINE ──
 // ─────────────────────────────────────────
+// ── ZENBOT FEED FUNCTIONS ──
+const ZENBOT_KEY = 'zenbot_knowledge_husna';
+
+function _getZenbotKb() {
+  try { return JSON.parse(localStorage.getItem(ZENBOT_KEY) || '[]'); } catch(e) { return []; }
+}
+function _saveZenbotKb(kb) {
+  localStorage.setItem(ZENBOT_KEY, JSON.stringify(kb));
+  // Trigger update di tab kasir yang terbuka di browser yang sama
+  window.dispatchEvent(new StorageEvent('storage', { key: ZENBOT_KEY, newValue: JSON.stringify(kb) }));
+  updateZenbotCount();
+}
+function updateZenbotCount() {
+  const el = document.getElementById('zenbotCount');
+  if (!el) return;
+  const kb = _getZenbotKb();
+  el.textContent = kb.length + ' entri tersimpan';
+}
+function _notifToText(n) {
+  const parts = [];
+  if (n.title) parts.push('Judul: ' + n.title);
+  if (n.version) parts.push('Versi: ' + n.version);
+  if (n.date) parts.push('Tanggal: ' + n.date);
+  if (n.tag) parts.push('Kategori: ' + n.tag);
+  if (n.items && n.items.length) parts.push('Detail:\n' + n.items.map(i => '- ' + i).join('\n'));
+  return parts.join('\n');
+}
+function feedOneToZenbot(id) {
+  const n = (window._cl||[]).find(x => x.id === id);
+  if (!n) return showToast('Notifikasi tidak ditemukan');
+  const kb = _getZenbotKb();
+  // Cek duplikat
+  const src = 'Changelog ' + (n.version || id);
+  if (kb.some(k => k.source === src)) {
+    showToast('⚠️ Sudah pernah di-feed ke Zenbot');
+    return;
+  }
+  const entry = {
+    id: Date.now().toString(),
+    text: _notifToText(n),
+    source: src,
+    timestamp: new Date().toISOString(),
+    wordCount: _notifToText(n).trim().split(/\s+/).filter(Boolean).length,
+  };
+  _saveZenbotKb([entry, ...kb]);
+  showToast('🤖 Berhasil di-feed ke Zenbot! (' + entry.wordCount + ' kata)');
+}
+function feedAllToZenbot() {
+  const data = window._cl||[];
+  if (!data.length) { showToast('Tidak ada notifikasi untuk di-feed'); return; }
+  const kb = _getZenbotKb();
+  let added = 0;
+  const newEntries = [];
+  data.forEach(n => {
+    const src = 'Changelog ' + (n.version || n.id);
+    if (!kb.some(k => k.source === src)) {
+      const txt = _notifToText(n);
+      newEntries.push({
+        id: Date.now().toString() + Math.random(),
+        text: txt,
+        source: src,
+        timestamp: new Date().toISOString(),
+        wordCount: txt.trim().split(/\s+/).filter(Boolean).length,
+      });
+      added++;
+    }
+  });
+  if (!added) { showToast('⚠️ Semua notifikasi sudah di-feed sebelumnya'); return; }
+  _saveZenbotKb([...newEntries, ...kb]);
+  showToast('🤖 ' + added + ' notifikasi berhasil di-feed ke Zenbot!');
+}
+// Init counter on load
+setTimeout(updateZenbotCount, 500);
+
 window.renderOnline = function() {
   const now  = Date.now();
   const data = window._presence||[];
@@ -1315,165 +1290,6 @@ openModal = function(id=null) {
   }, 30);
 };
 
-// ═══════════════════════════════════════════════════════
-// ── ZENBOT KB ──
-// ═══════════════════════════════════════════════════════
-let _zbEditId = null, _zbDelId = null;
-
-window.renderZenbot = function() {
-  const data    = window._zb || [];
-  const search  = (document.getElementById('zbSearch')?.value || '').toLowerCase();
-  const cat     = document.getElementById('zbFilter')?.value || '';
-
-  // Update category filter options
-  const cats    = [...new Set(data.map(e => e.category).filter(Boolean))].sort();
-  const sel     = document.getElementById('zbFilter');
-  if (sel) {
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">Semua Kategori</option>' +
-      cats.map(c => `<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('');
-  }
-
-  let filtered = data;
-  if (search) filtered = filtered.filter(e =>
-    (e.title||'').toLowerCase().includes(search) ||
-    (e.content||'').toLowerCase().includes(search) ||
-    (e.category||'').toLowerCase().includes(search) ||
-    (e.tags||[]).some(t => t.toLowerCase().includes(search))
-  );
-  if (cat) filtered = filtered.filter(e => e.category === cat);
-
-  document.getElementById('zbCount').textContent = data.length;
-  const list  = document.getElementById('zbList');
-  const empty = document.getElementById('zbEmpty');
-
-  if (!filtered.length) {
-    list.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-  const truncate = (s, n) => s && s.length > n ? s.slice(0, n) + '…' : (s || '');
-  const CAT_COLORS = ['#6366f1','#0ea5e9','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
-  const catColor   = s => CAT_COLORS[(s||'').charCodeAt(0) % CAT_COLORS.length];
-
-  list.innerHTML = filtered.map(e => `
-    <div style="background:#fff;border-radius:13px;border:1.5px solid ${e.active===false?'#fecaca':'#e2e8f0'};box-shadow:0 2px 12px rgba(0,0,0,.04);overflow:hidden;opacity:${e.active===false?'.6':'1'}">
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${e.active===false?'#fff5f5':'#fafafa'};border-bottom:1px solid #f1f5f9">
-        <div style="width:32px;height:32px;border-radius:9px;background:${catColor(e.category)};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <i class="fa-solid fa-book" style="color:#fff;font-size:12px"></i>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:900;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.title||'-'}</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
-            ${e.category ? `<span style="font-size:10px;font-weight:800;background:${catColor(e.category)}18;color:${catColor(e.category)};padding:2px 8px;border-radius:20px">${e.category}</span>` : ''}
-            ${e.active===false ? `<span style="font-size:10px;font-weight:800;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px"><i class="fa-solid fa-eye-slash" style="font-size:8px"></i> Nonaktif</span>` : '<span style="font-size:10px;font-weight:800;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px"><i class="fa-solid fa-check" style="font-size:8px"></i> Aktif</span>'}
-          </div>
-        </div>
-        <div style="display:flex;gap:5px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" onclick="openZbModal('${e.id}')"><i class="fa-solid fa-pen"></i></button>
-          <button class="btn btn-danger btn-sm" onclick="openZbDel('${e.id}')"><i class="fa-solid fa-trash"></i></button>
-        </div>
-      </div>
-      <div style="padding:10px 14px">
-        <p style="font-size:12px;color:#475569;line-height:1.6;margin:0 0 6px">${truncate(e.content, 200)}</p>
-        ${(e.tags||[]).length ? `<div style="display:flex;gap:4px;flex-wrap:wrap">${(e.tags||[]).map(t=>`<span style="font-size:10px;font-weight:700;background:#ede9fe;color:#7c3aed;padding:1px 7px;border-radius:20px">#${t}</span>`).join('')}</div>` : ''}
-      </div>
-    </div>`).join('');
-};
-
-function openZbModal(id = null) {
-  _zbEditId = id;
-  const ov = document.getElementById('zbModalOv');
-  document.getElementById('zbModalTitle').textContent = id ? 'Edit Entri KB' : 'Tambah Entri KB';
-  if (id) {
-    const e = (window._zb||[]).find(x => x.id === id);
-    if (e) {
-      document.getElementById('zbTitle').value    = e.title    || '';
-      document.getElementById('zbContent').value  = e.content  || '';
-      document.getElementById('zbCategory').value = e.category || '';
-      document.getElementById('zbTags').value     = (e.tags||[]).join(', ');
-      document.getElementById('zbActive').checked = e.active !== false;
-      document.getElementById('zbCharCount').textContent = (e.content||'').length + ' karakter';
-    }
-  } else {
-    document.getElementById('zbTitle').value    = '';
-    document.getElementById('zbContent').value  = '';
-    document.getElementById('zbCategory').value = '';
-    document.getElementById('zbTags').value     = '';
-    document.getElementById('zbActive').checked = true;
-    document.getElementById('zbCharCount').textContent = '0 karakter';
-  }
-  ov.style.display = 'flex';
-  document.getElementById('zbContent').oninput = function() {
-    document.getElementById('zbCharCount').textContent = this.value.length + ' karakter';
-  };
-  setTimeout(() => document.getElementById('zbTitle').focus(), 100);
-}
-
-function closeZbModal() {
-  document.getElementById('zbModalOv').style.display = 'none';
-  _zbEditId = null;
-}
-
-async function saveZbEntry() {
-  const title   = document.getElementById('zbTitle').value.trim();
-  const content = document.getElementById('zbContent').value.trim();
-  if (!title || !content) { showToast('Judul dan Isi wajib diisi!','err'); return; }
-
-  const btn = document.getElementById('zbSaveBtn');
-  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan…';
-
-  const tags = document.getElementById('zbTags').value.split(',').map(t=>t.trim()).filter(Boolean);
-  const data = {
-    title,
-    content,
-    category : document.getElementById('zbCategory').value.trim() || 'Umum',
-    tags,
-    active   : document.getElementById('zbActive').checked,
-    updatedAt: window._ts(),
-  };
-
-  try {
-    if (_zbEditId) {
-      await window._set(window._doc(...window._P('zenbot_kb', _zbEditId)), data, { merge: true });
-      showToast('Entri berhasil diperbarui ✓');
-    } else {
-      data.createdAt = window._ts();
-      const newRef = window._doc(...window._P('zenbot_kb', 'zb_' + Date.now()));
-      await window._set(newRef, data);
-      showToast('Entri baru berhasil ditambahkan ✓');
-    }
-    closeZbModal();
-  } catch(e) {
-    showToast('Gagal menyimpan: ' + e.message, 'err');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Entri';
-  }
-}
-
-function openZbDel(id) {
-  _zbDelId = id;
-  const e = (window._zb||[]).find(x => x.id === id);
-  document.getElementById('zbDelTitle').textContent = e?.title || id;
-  document.getElementById('zbDelOv').style.display = 'flex';
-}
-function closeZbDel() {
-  document.getElementById('zbDelOv').style.display = 'none';
-  _zbDelId = null;
-}
-async function confirmZbDel() {
-  if (!_zbDelId) return;
-  try {
-    await window._del(window._doc(...window._P('zenbot_kb', _zbDelId)));
-    showToast('Entri berhasil dihapus');
-    closeZbDel();
-  } catch(e) {
-    showToast('Gagal menghapus: ' + e.message, 'err');
-  }
-}
-
 let _tt;
 function showToast(msg,type='ok'){
   const el=document.getElementById('toastEl');
@@ -1508,4 +1324,3 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closeLightbox()
 
 </body>
 </html>
-l
