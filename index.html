@@ -272,6 +272,46 @@
         @keyframes expBannerOut { from { transform: translateY(0);     opacity: 1; } to { transform: translateY(-110%); opacity: 0; } }
         .exp-banner-enter { animation: expBannerIn  0.45s cubic-bezier(0.16,1,0.3,1) forwards; }
         .exp-banner-exit  { animation: expBannerOut 0.4s  ease-in            forwards; }
+
+        /* ── FARMACARE KASIR SHELL (Sidebar.html Design) ── */
+        .fcsb-app { position: fixed; inset: 0; background: #fff; display: flex; flex-direction: column; z-index: 50; font-family: 'Nunito', sans-serif; }
+        .fcsb-topbar { background: #fff; display: flex; align-items: center; padding: 5px 14px; gap: 10px; border-bottom: 1px solid #e0e0e0; min-height: 46px; flex-shrink: 0; }
+        .fcsb-hamburger { cursor: pointer; padding: 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: background .15s; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+        .fcsb-hamburger:active { background: rgba(0,0,0,.08); }
+        .fcsb-brand { flex: 1; display: flex; flex-direction: column; gap: 1px; cursor: pointer; user-select: none; }
+        .fcsb-brand-name { display: flex; align-items: center; gap: 4px; color: #118989; font-size: 17px; font-weight: 800; line-height: 1.2; }
+        .fcsb-brand-sub { color: #666; font-size: 12.5px; font-weight: 600; }
+        .fcsb-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .fcsb-topbtn { width: 34px; height: 34px; border-radius: 8px; border: 1.5px solid #c0c0c0; background: #fff; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .fcsb-badge { position: absolute; top: -5px; right: -5px; background: #e8460a; color: #fff; font-size: 10px; font-weight: 800; border-radius: 99px; min-width: 19px; height: 19px; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid #efefef; }
+        .fcsb-page { flex: 1; overflow-y: auto; background: #fff; }
+        .fcsb-page-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 8px 16px; }
+        .fcsb-page-title { font-size: 26px; font-weight: 800; color: #111; line-height: 1.1; font-family: 'Nunito', sans-serif; }
+        .fcsb-page-content { padding: 0 12px 80px 12px; }
+        .fcsb-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.4); transition: opacity .25s ease; }
+        .fcsb-overlay.hidden { opacity: 0; pointer-events: none; }
+        .fcsb-sidebar { position: fixed; top: 0; left: 0; width: 62vw; max-width: 240px; height: 100vh; background: #118989; z-index: 200; display: flex; flex-direction: column; transform: translateX(0); transition: transform .3s cubic-bezier(.4,0,.2,1); }
+        .fcsb-sidebar.closed { transform: translateX(-100%); }
+        .fcsb-sb-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px 14px; flex-shrink: 0; }
+        .fcsb-sb-close { color: #fff; cursor: pointer; font-size: 22px; font-weight: 400; line-height: 1; opacity: .9; display: flex; align-items: center; }
+        .fcsb-sb-version { color: rgba(255,255,255,.75); font-size: 12px; }
+        .fcsb-sb-menu { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 2px 8px 16px; scrollbar-width: none; }
+        .fcsb-sb-menu::-webkit-scrollbar { display: none; }
+        .fcsb-sb-row { display: flex; align-items: center; padding: 9px 10px; border-radius: 8px; cursor: pointer; gap: 10px; color: #fff; font-size: 13.5px; font-weight: 700; user-select: none; transition: background .1s; letter-spacing: .1px; -webkit-tap-highlight-color: transparent; }
+        .fcsb-sb-row:active { filter: brightness(.92); }
+        .fcsb-sb-row.active { background: #fff; color: #118989; }
+        .fcsb-sb-row.active .fcsb-ic { color: #118989; }
+        .fcsb-sb-row.active .fcsb-chev { color: #118989; }
+        .fcsb-ic { flex-shrink: 0; color: #fff; display: flex; align-items: center; width: 18px; height: 18px; }
+        .fcsb-lbl { flex: 1; }
+        .fcsb-chev { flex-shrink: 0; color: #fff; display: flex; align-items: center; transition: transform .25s; }
+        .fcsb-chev.open { transform: rotate(180deg); }
+        .fcsb-sb-sub { overflow: hidden; max-height: 0; transition: max-height .28s ease; }
+        .fcsb-sb-sub.open { max-height: 250px; }
+        .fcsb-sb-sub-row { display: flex; align-items: center; padding: 7px 12px 7px 44px; color: rgba(255,255,255,.82); font-size: 13.5px; font-weight: 600; cursor: pointer; border-radius: 8px; -webkit-tap-highlight-color: transparent; }
+        .fcsb-sb-sub-row::before { content: '›'; margin-right: 8px; font-size: 18px; color: rgba(255,255,255,.5); }
+        .fcsb-sb-sub-row:active { background: rgba(0,0,0,.1); }
+        .fcsb-sb-sub-row.active-sub { color: #fff; font-weight: 800; }
     </style>
 </head>
 <body class="islamic-pattern relative">
@@ -7230,204 +7270,177 @@
 
             if (!isSessionActive) {
                 return (
-                    <div className="fade-in h-full overflow-y-auto pb-24 md:pb-0 relative" style={{background: 'linear-gradient(135deg, #0f2027 0%, #203a43 45%, #2c5364 100%)'}}>
-                        {/* Background decorative elements */}
-                        <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none',zIndex:0}}>
-                            {/* Large faded cross / plus icon top-right */}
-                            <div style={{position:'absolute',top:'-60px',right:'-60px',width:'260px',height:'260px',opacity:0.04,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                                <svg viewBox="0 0 100 100" fill="white" xmlns="http://www.w3.org/2000/svg"><rect x="40" y="0" width="20" height="100" rx="6"/><rect x="0" y="40" width="100" height="20" rx="6"/></svg>
-                            </div>
-                            {/* Blobs */}
-                            <div style={{position:'absolute',bottom:'-40px',left:'-40px',width:'200px',height:'200px',borderRadius:'50%',background:'rgba(56,189,248,0.07)'}}></div>
-                            <div style={{position:'absolute',top:'35%',right:'-30px',width:'140px',height:'140px',borderRadius:'50%',background:'rgba(20,184,166,0.08)'}}></div>
-                            {/* Grid lines */}
-                            <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)',backgroundSize:'32px 32px'}}></div>
-                        </div>
+                    <div className="fade-in h-full overflow-y-auto pb-20 md:pb-0 flex flex-col items-center md:justify-start md:pt-8 justify-center relative z-10">
+                        <div className="w-full max-w-sm px-4 flex flex-col items-center">
 
-                        <div className="relative z-10 flex flex-col items-center px-4 pt-6 max-w-sm mx-auto">
+                             {/* BANNER STATUS ONLINE/OFFLINE */}
+                             {!isOnline && (
+                                 <div className="w-full mb-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in">
+                                     <div className="w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center flex-shrink-0">
+                                         <Icon name="wifi" className="text-white text-[10px]" />
+                                     </div>
+                                     <div className="flex-1 min-w-0">
+                                         <p className="text-xs font-black text-amber-700">Tidak ada koneksi internet</p>
+                                         <p className="text-[10px] text-amber-600">Gunakan Mode Offline untuk tetap berjualan</p>
+                                     </div>
+                                 </div>
+                             )}
 
-                            {/* ── SYNC / ALERT BANNERS ─────────────────────────────── */}
-                            {isSyncing && (
-                                <div className="w-full mb-3 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in" style={{background:'rgba(56,189,248,0.15)',border:'1px solid rgba(56,189,248,0.3)'}}>
-                                    <Icon name="spinner" className="animate-spin text-sky-300 text-sm flex-shrink-0" />
-                                    <p className="text-xs font-bold text-sky-200">Menyinkronkan transaksi offline...</p>
+                             {/* BANNER SINKRONISASI */}
+                             {isSyncing && (
+                                 <div className="w-full mb-3 bg-sky-50 border border-sky-200 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in">
+                                     <Icon name="spinner" className="text-sky-500 animate-spin text-sm flex-shrink-0" />
+                                     <p className="text-xs font-bold text-sky-700">Menyinkronkan transaksi offline...</p>
+                                 </div>
+                             )}
+                             {isOnline && offlineQueue.length > 0 && !isSyncing && (
+                                 <div className="w-full mb-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in">
+                                     <Icon name="check-circle" className="text-green-500 text-sm flex-shrink-0" />
+                                     <div className="flex-1">
+                                         <p className="text-xs font-black text-green-700">{offlineQueue.length} transaksi menunggu sinkronisasi</p>
+                                         <p className="text-[10px] text-green-600">Akan otomatis tersinkron saat online</p>
+                                     </div>
+                                 </div>
+                             )}
+
+                             {/* BANNER TOKO AKTIF */}
+                             <div className="mb-4 bg-white/60 backdrop-blur-md p-4 rounded-2xl border border-white shadow-sm w-full text-center">
+                                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">POS Kasir Aktif</p>
+                                <h2 className="text-xl font-black text-slate-800 flex items-center justify-center gap-2">
+                                    <Icon name="store" className="text-sky-600" /> {currentProfile.name}
+                                </h2>
+                                {/* Indikator status koneksi di dalam banner */}
+                                <div className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${isOnline ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+                                    {isOnline ? 'Online' : 'Offline'}
+                                    {offlineQueue.length > 0 && isOnline && <span className="ml-1 bg-orange-400 text-white rounded-full px-1.5 text-[9px]">{offlineQueue.length} pending</span>}
                                 </div>
-                            )}
-                            {isOnline && offlineQueue.length > 0 && !isSyncing && (
-                                <div className="w-full mb-3 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in" style={{background:'rgba(74,222,128,0.12)',border:'1px solid rgba(74,222,128,0.25)'}}>
-                                    <Icon name="check-circle" className="text-emerald-400 text-sm flex-shrink-0" />
-                                    <div className="flex-1">
-                                        <p className="text-xs font-black text-emerald-300">{offlineQueue.length} transaksi menunggu sinkronisasi</p>
-                                        <p className="text-[10px] text-emerald-400/70">Akan otomatis tersinkron saat online</p>
-                                    </div>
-                                </div>
-                            )}
+                             </div>
 
-                            {/* ── HERO CARD ─────────────────────────────────────────── */}
-                            <div className="w-full mb-4 rounded-3xl overflow-hidden" style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',backdropFilter:'blur(20px)'}}>
-                                {/* Header strip */}
-                                <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{background:'rgba(56,189,248,0.2)'}}>
-                                            <Icon name="store" className="text-sky-300 text-xs" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest leading-none">Toko Aktif</p>
-                                            <p className="text-xs font-black text-white/90 leading-tight truncate max-w-[180px]">{currentProfile.name}</p>
-                                        </div>
-                                    </div>
-                                    {/* Connection badge */}
-                                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${isOnline ? '' : ''}`} style={{background: isOnline ? 'rgba(74,222,128,0.15)' : 'rgba(251,191,36,0.15)', border: isOnline ? '1px solid rgba(74,222,128,0.3)' : '1px solid rgba(251,191,36,0.3)'}}>
-                                        <span className="w-1.5 h-1.5 rounded-full" style={{background: isOnline ? '#4ade80' : '#fbbf24', boxShadow: isOnline ? '0 0 6px #4ade80' : '0 0 6px #fbbf24'}}></span>
-                                        <span style={{color: isOnline ? '#4ade80' : '#fbbf24'}}>{isOnline ? 'Online' : 'Offline'}</span>
-                                        {offlineQueue.length > 0 && isOnline && (
-                                            <span className="ml-0.5 rounded-full px-1.5 text-[9px] font-black" style={{background:'rgba(251,146,60,0.8)',color:'#fff'}}>{offlineQueue.length}</span>
-                                        )}
-                                    </div>
-                                </div>
+                             {/* Tombol Penjualan Baru - compact, di bawah banner */}
+                             <button onClick={() => handleStartSession(cashierName)} className="w-full mb-3 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-md transition-all group">
+                                 <div className="flex items-center gap-3">
+                                     <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                                         <Icon name="cart-plus" />
+                                     </div>
+                                     <div className="text-left">
+                                         <p className="font-black text-sm leading-none">+ Penjualan Baru</p>
+                                         <p className="text-[10px] text-sky-100 mt-0.5">👤 {cashierName}</p>
+                                     </div>
+                                 </div>
+                                 <Icon name="chevron-right" className="text-sky-200 text-sm" />
+                             </button>
 
-                                {/* Divider */}
-                                <div style={{height:'1px',background:'rgba(255,255,255,0.07)',margin:'0 20px'}}></div>
+                             {/* ── TOMBOL MODE OFFLINE ────────────────────────────────── */}
+                             <button
+                                 onClick={startOfflineMode}
+                                 className={`w-full mb-4 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm transition-all group active:scale-95 border-2 ${
+                                     !isOnline
+                                         ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-400'
+                                         : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200 hover:border-amber-300'
+                                 }`}
+                                 title="Mode tanpa internet — transaksi disimpan lokal & otomatis tersinkron saat online"
+                             >
+                                 <div className="flex items-center gap-3">
+                                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg group-hover:scale-110 transition-transform ${!isOnline ? 'bg-white/20' : 'bg-amber-100'}`}>
+                                         <Icon name="plug" className={!isOnline ? 'text-white' : 'text-amber-500'} />
+                                     </div>
+                                     <div className="text-left">
+                                         <p className={`font-black text-sm leading-none ${!isOnline ? 'text-white' : 'text-slate-700'}`}>Mode Offline</p>
+                                         <p className={`text-[10px] mt-0.5 ${!isOnline ? 'text-amber-100' : 'text-slate-400'}`}>
+                                             {offlineQueue.length > 0 ? `${offlineQueue.length} transaksi belum tersinkron` : 'Transaksi disimpan lokal, sync otomatis'}
+                                         </p>
+                                     </div>
+                                 </div>
+                                 <div className="flex items-center gap-1.5">
+                                     {offlineQueue.length > 0 && (
+                                         <span className="w-5 h-5 bg-orange-400 text-white rounded-full text-[10px] font-black flex items-center justify-center">{offlineQueue.length}</span>
+                                     )}
+                                     <Icon name="chevron-right" className={`text-sm ${!isOnline ? 'text-amber-200' : 'text-slate-300'}`} />
+                                 </div>
+                             </button>
+                             {/* ───────────────────────────────────────────────────────── */}
 
-                                {/* Kasir greeting */}
-                                <div className="px-5 py-4 flex items-center gap-3">
-                                    {/* Avatar */}
-                                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 text-white font-black text-xl shadow-lg" style={{background:'linear-gradient(135deg,#38bdf8,#0ea5e9)',boxShadow:'0 4px 20px rgba(56,189,248,0.35)'}}>
-                                        {authSession?.profilePhoto
-                                            ? <img src={authSession.profilePhoto} alt="" className="w-full h-full object-cover rounded-2xl" style={{objectPosition: authSession.photoPosition||'50% 50%'}} />
-                                            : cashierName.charAt(0).toUpperCase()
-                                        }
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider leading-none mb-1">Selamat Datang</p>
-                                        <p className="text-lg font-black text-white leading-tight truncate">{cashierName}</p>
-                                        {/* ── TOMBOL MODE OFFLINE — langsung di bawah nama kasir ── */}
-                                        <button
-                                            onClick={startOfflineMode}
-                                            title="Mode tanpa internet — transaksi disimpan lokal & tersinkron otomatis"
-                                            className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black transition-all active:scale-95 hover:opacity-90"
-                                            style={!isOnline
-                                                ? {background:'rgba(251,191,36,0.25)',border:'1px solid rgba(251,191,36,0.5)',color:'#fbbf24'}
-                                                : {background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',color:'rgba(255,255,255,0.55)'}
-                                            }
-                                        >
-                                            <Icon name="plug" />
-                                            <span>Mode Offline</span>
-                                            {offlineQueue.length > 0 && (
-                                                <span className="rounded-full px-1.5 text-[9px] font-black" style={{background:'rgba(251,146,60,0.9)',color:'#fff'}}>{offlineQueue.length}</span>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ── CTA UTAMA: PENJUALAN BARU ────────────────────────── */}
-                            <button
-                                onClick={() => handleStartSession(cashierName)}
-                                className="w-full mb-3 rounded-2xl px-5 py-4 flex items-center justify-between active:scale-95 transition-all group"
-                                style={{background:'linear-gradient(135deg,#0ea5e9,#38bdf8)',boxShadow:'0 8px 32px rgba(14,165,233,0.4)'}}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-11 h-11 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{background:'rgba(255,255,255,0.2)'}}>
-                                        <Icon name="cart-plus" className="text-white text-lg" />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-black text-white text-base leading-none">+ Penjualan Baru</p>
-                                        <p className="text-[11px] mt-0.5" style={{color:'rgba(255,255,255,0.7)'}}>Mulai transaksi sekarang</p>
-                                    </div>
-                                </div>
-                                <div className="w-8 h-8 rounded-xl flex items-center justify-center group-hover:translate-x-1 transition-transform" style={{background:'rgba(255,255,255,0.2)'}}>
-                                    <Icon name="chevron-right" className="text-white text-sm" />
-                                </div>
-                            </button>
-
-                            {/* ── KERANJANG AKTIF / PENDING ────────────────────────── */}
-                            {(activeCarts.length > 0 || pendingCarts.length > 0) && (
+                             {(activeCarts.length > 0 || pendingCarts.length > 0) && (
                                 <div className="w-full mb-4 fade-in">
-                                    <div className="flex items-center justify-between mb-2.5 px-1">
+                                    <div className="flex items-center justify-between mb-2 px-0.5">
                                         <div className="flex items-center gap-1.5">
-                                            <Icon name="clock-rotate-left" className="text-white/40 text-xs" />
-                                            <p className="text-[11px] font-bold text-white/50">Keranjang aktif di {currentProfile.name}</p>
+                                            <Icon name="clock-rotate-left" className="text-sky-500 text-xs" />
+                                            <h3 className="font-bold text-slate-600 text-xs">Keranjang di {currentProfile.name}</h3>
                                         </div>
-                                        <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{background:'rgba(56,189,248,0.15)',color:'rgba(56,189,248,0.9)',border:'1px solid rgba(56,189,248,0.25)'}}>{activeCarts.length + pendingCarts.length} keranjang</span>
+                                        <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-bold">{activeCarts.length + pendingCarts.length} keranjang</span>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-1.5">
+                                        {/* Keranjang aktif (live, milik kasir lain) */}
                                         {activeCarts.map(ac => {
                                             const total = ac.total || (ac.items || []).reduce((s, i) => s + (i.price || 0) * (i.cartQty || 1), 0);
                                             return (
-                                                <div key={ac.id} className="w-full px-4 py-3 rounded-2xl flex items-center gap-3" style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.09)'}}>
-                                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black flex-shrink-0" style={{background:'linear-gradient(135deg,#38bdf8,#0ea5e9)'}}>
+                                                <div key={ac.id} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2 relative overflow-hidden">
+                                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-sky-400 to-sky-600"></div>
+                                                    <div className="w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ml-1">
                                                         {(ac.cashierName || '?').charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="text-left flex-1 min-w-0">
-                                                        <p className="font-bold text-white/70 text-xs truncate">{ac.cashierName || 'Kasir'}</p>
-                                                        <p className="font-black text-white text-sm">{formatRupiah(total)} <span className="text-[10px] text-white/40 font-normal">{(ac.items || []).length} item</span></p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="font-bold text-sky-700 text-[11px] truncate">{ac.cashierName || 'Kasir'}</p>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <p className="font-black text-slate-800 text-sm transition-all">{formatRupiah(total)}</p>
+                                                            <span className="text-[9px] text-slate-400">{(ac.items || []).length} barang</span>
+                                                        </div>
                                                     </div>
-                                                    <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{background:'rgba(74,222,128,0.15)',color:'#4ade80',border:'1px solid rgba(74,222,128,0.2)'}}>Aktif</span>
                                                 </div>
                                             );
                                         })}
+                                        {/* Keranjang tertunda (bisa dilanjutkan) */}
                                         {pendingCarts.map(pending => (
-                                            <button key={pending.id} onClick={() => resumeTransaction(pending)} className="w-full px-4 py-3 rounded-2xl flex items-center gap-3 transition-all active:scale-95 group hover:opacity-90" style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.09)'}}>
-                                                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black flex-shrink-0" style={{background:'linear-gradient(135deg,#38bdf8,#0ea5e9)'}}>
+                                            <button key={pending.id} onClick={() => resumeTransaction(pending)} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-sky-300 transition-all flex items-center gap-2 group relative overflow-hidden">
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-sky-400 to-sky-600"></div>
+                                                <div className="w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ml-1">
                                                     {(pending.cashierName || '?').charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="text-left flex-1 min-w-0">
                                                     <div className="flex items-center gap-1.5">
-                                                        <p className="font-bold text-white/70 text-xs truncate">{pending.cashierName || 'Kasir'}</p>
-                                                        <span className="text-[9px] text-white/30">{new Date(pending.date).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</span>
+                                                        <p className="font-bold text-sky-700 text-[11px] truncate">{pending.cashierName || 'Kasir'}</p>
+                                                        <span className="text-[9px] text-slate-400 font-medium flex-shrink-0">{new Date(pending.date).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}</span>
                                                     </div>
-                                                    <p className="font-black text-white text-sm">{formatRupiah(pending.total)} <span className="text-[10px] text-white/40 font-normal">{pending.items.length} item</span></p>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <p className="font-black text-slate-800 text-sm">{formatRupiah(pending.total)}</p>
+                                                        <span className="text-[9px] text-slate-400">{pending.items.length} barang</span>
+                                                    </div>
                                                 </div>
-                                                <div className="w-7 h-7 rounded-xl flex items-center justify-center group-hover:translate-x-0.5 transition-transform" style={{background:'rgba(56,189,248,0.15)'}}>
-                                                    <Icon name="chevron-right" className="text-sky-400 text-xs" />
-                                                </div>
+                                                <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-sky-50 group-hover:text-sky-500 transition-colors flex-shrink-0"><Icon name="chevron-right" className="text-[10px]" /></div>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
-                            )}
+                             )}
 
-                            {/* ── OFFLINE WARNING BANNER ───────────────────────────── */}
-                            {!isOnline && (
-                                <div className="w-full mb-3 rounded-2xl px-4 py-3 flex items-center gap-3 fade-in" style={{background:'rgba(251,191,36,0.12)',border:'1px solid rgba(251,191,36,0.25)'}}>
-                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:'rgba(251,191,36,0.2)'}}>
-                                        <Icon name="wifi" className="text-amber-400 text-sm" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-black text-amber-300">Tidak ada koneksi internet</p>
-                                        <p className="text-[10px] text-amber-400/70">Gunakan Mode Offline untuk tetap berjualan</p>
-                                    </div>
-                                </div>
-                            )}
 
+
+                            <button onClick={() => handleStartSession(cashierName)} className="group relative w-full aspect-square md:aspect-video rounded-3xl border-4 border-dashed border-sky-300 bg-sky-50/50 hover:bg-sky-100 hover:border-sky-400 transition-all flex flex-col items-center justify-center gap-4 active:scale-95"><div className="w-20 h-20 rounded-full bg-white text-sky-500 shadow-soft flex items-center justify-center text-4xl group-hover:scale-110 transition-transform"><Icon name="cart-plus" /></div><div className="text-center"><h2 className="text-2xl font-black text-slate-700 group-hover:text-sky-700">+ Penjualan Baru</h2><p className="text-sm text-slate-500 font-medium mt-1">Mulai sesi kasir di toko ini</p><p className="text-xs text-sky-600 font-bold mt-1">👤 {cashierName}</p></div></button>
                         </div>
-
-                        {/* Modal Kasir */}
+                        
+                        {/* NEW: Modal Input Nama Kasir - Render sebagai overlay */}
                         {showCashierModal && (
-                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm fade-in">
-                                <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl" style={{background:'linear-gradient(145deg,#1e3a4a,#162d3a)',border:'1px solid rgba(255,255,255,0.1)'}}>
-                                    <div className="p-8 text-center">
-                                        <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-white mx-auto mb-5 shadow-lg" style={{background:'linear-gradient(135deg,#38bdf8,#0ea5e9)',boxShadow:'0 8px 24px rgba(14,165,233,0.4)'}}>
-                                            {authSession?.profilePhoto
-                                                ? <img src={authSession.profilePhoto} alt="" className="w-full h-full object-cover rounded-2xl" style={{objectPosition: authSession.photoPosition||'50% 50%'}} />
-                                                : cashierName.charAt(0).toUpperCase()
-                                            }
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
+                                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 relative">
+                                    <button onClick={() => setShowCashierModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                                        <Icon name="xmark" className="text-xl" />
+                                    </button>
+                                    <div className="text-center mb-6">
+                                        <div className="w-20 h-20 bg-sky-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 text-sky-600">
+                                            <Icon name="user-circle" />
                                         </div>
-                                        <p className="text-[11px] text-white/40 font-bold uppercase tracking-widest mb-1">Halo,</p>
-                                        <h3 className="text-2xl font-black text-white mb-1">{cashierName}</h3>
-                                        <p className="text-sm text-white/50 mb-6">Siap memulai sesi kasir?</p>
-                                        <button
-                                            onClick={startCashierSession}
-                                            className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-95 transition-all"
-                                            style={{background:'linear-gradient(135deg,#0ea5e9,#38bdf8)',boxShadow:'0 6px 24px rgba(14,165,233,0.4)'}}
-                                        >
-                                            <Icon name="rocket" /> Mulai Kasir
-                                        </button>
-                                        <button onClick={() => setShowCashierModal(false)} className="mt-3 w-full py-2.5 rounded-2xl text-sm font-bold text-white/40 hover:text-white/60 transition-colors">
-                                            Batal
-                                        </button>
+                                        <h3 className="text-2xl font-black text-slate-800">{`Halo, ${cashierName}!`}</h3>
+                                        <p className="text-sm text-slate-500 mt-2">Siap mulai sesi kasir?</p>
                                     </div>
+                                    <button 
+                                        onClick={startCashierSession}
+                                        className="w-full py-4 bg-sky-600 text-white rounded-xl font-bold shadow-lg shadow-sky-100 flex items-center justify-center gap-2 hover:bg-sky-700 active:scale-95 transition-all text-lg"
+                                    >
+                                        <Icon name="rocket" /> Mulai Kasir
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -14555,6 +14568,188 @@
                 };
                 // ====== END REKAP BARANG TERJUAL VIEW ======
 
+                // ====== FARMACARE KASIR SHELL (Tampilan Sidebar.html) ======
+                const CashierPageShell = ({
+                    activeTab, setActiveTab, currentProfile, authSession,
+                    inventoryData, user, showToast, settingsData, handleGenerateImage,
+                    isOwner, unreadCount, handleOpenNotif, menuItems,
+                }) => {
+                    const [sbOpen, setSbOpen] = React.useState(false);
+                    const [kasirOpen, setKasirOpen] = React.useState(true);
+                    const [rekamOpen, setRekamOpen] = React.useState(false);
+                    const [barangOpen, setBarangOpen] = React.useState(false);
+
+                    const openSb  = () => setSbOpen(true);
+                    const closeSb = () => setSbOpen(false);
+
+                    const navigateTo = (tab) => { setActiveTab(tab); closeSb(); };
+
+                    const cashierName = authSession?.name || authSession?.username || 'Kasir';
+                    const storeName   = currentProfile?.name || 'Apotek';
+
+                    const SbRow = ({ id, label, icon, hasChev, isOpen, onToggle, onClick, isActive }) => (
+                        <div className={`fcsb-sb-row${isActive ? ' active' : ''}`} onClick={onToggle || onClick}>
+                            <span className="fcsb-ic">{icon}</span>
+                            <span className="fcsb-lbl">{label}</span>
+                            {hasChev && (
+                                <span className={`fcsb-chev${isOpen ? ' open' : ''}`}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                </span>
+                            )}
+                        </div>
+                    );
+
+                    // SVG icon helpers
+                    const IcKasir  = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><line x1="2" y1="11" x2="22" y2="11"/><rect x="5" y="15" width="3" height="2" rx=".4"/><rect x="10.5" y="15" width="4" height="2" rx=".4"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+                    const IcRekam  = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>;
+                    const IcBeli   = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>;
+                    const IcBarang = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/><rect x="2" y="13" width="9" height="9" rx="1"/><rect x="13" y="13" width="9" height="9" rx="1"/></svg>;
+                    const IcBuku   = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>;
+                    const IcLaporan= <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>;
+                    const IcSetting= <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+                    const IcShift  = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4"/><polyline points="17 8 22 12 17 16"/><line x1="22" y1="12" x2="10" y2="12"/></svg>;
+                    const IcHelp   = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>;
+
+                    return (
+                        <div className="fcsb-app">
+                            {/* TOPBAR */}
+                            <div className="fcsb-topbar">
+                                <div className="fcsb-hamburger" onClick={openSb}>
+                                    <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
+                                        <rect width="18" height="2" rx="1" fill="#118989"/>
+                                        <rect y="5.5" width="18" height="2" rx="1" fill="#118989"/>
+                                        <rect y="11" width="18" height="2" rx="1" fill="#118989"/>
+                                    </svg>
+                                </div>
+                                <div className="fcsb-brand">
+                                    <div className="fcsb-brand-name">
+                                        {storeName}
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </div>
+                                    <div className="fcsb-brand-sub">{cashierName} · Kasir</div>
+                                </div>
+                                <div className="fcsb-actions">
+                                    <div className="fcsb-topbtn" onClick={handleOpenNotif}>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#118989" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                                        </svg>
+                                        {unreadCount > 0 && <span className="fcsb-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+                                    </div>
+                                    <div className="fcsb-topbtn" onClick={() => navigateTo('settings')}>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#118989" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="12" cy="12" r="3"/>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* PAGE CONTENT */}
+                            <div className="fcsb-page">
+                                <div className="fcsb-page-header">
+                                    <div className="fcsb-page-title">Kasir</div>
+                                </div>
+                                <div className="fcsb-page-content">
+                                    <CashierView
+                                        items={inventoryData}
+                                        user={user}
+                                        showToast={showToast}
+                                        settings={settingsData}
+                                        onGenerateImage={handleGenerateImage}
+                                        currentProfile={currentProfile}
+                                        readOnly={menuItems?.find(m=>m.id==='cashier')?.readOnly}
+                                        authSession={authSession}
+                                        onNavigateToAdd={() => navigateTo('add')}
+                                        isOwner={isOwner}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* OVERLAY */}
+                            <div className={`fcsb-overlay${sbOpen ? '' : ' hidden'}`} onClick={closeSb} />
+
+                            {/* SIDEBAR */}
+                            <div className={`fcsb-sidebar${sbOpen ? '' : ' closed'}`}>
+                                <div className="fcsb-sb-header">
+                                    <span className="fcsb-sb-close" onClick={closeSb}>&#x2715;</span>
+                                    <span className="fcsb-sb-version">Ver 1.90.0</span>
+                                </div>
+                                <div className="fcsb-sb-menu">
+                                    {/* 1. Kasir */}
+                                    <div className={`fcsb-sb-row${activeTab === 'cashier' || activeTab === 'history' ? ' active' : ''}`} onClick={() => { setKasirOpen(o => !o); }}>
+                                        <span className="fcsb-ic">{IcKasir}</span>
+                                        <span className="fcsb-lbl">Kasir</span>
+                                        <span className={`fcsb-chev${kasirOpen ? ' open' : ''}`}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+                                    </div>
+                                    <div className={`fcsb-sb-sub${kasirOpen ? ' open' : ''}`}>
+                                        <div className={`fcsb-sb-sub-row${activeTab==='cashier' ? ' active-sub' : ''}`} onClick={() => navigateTo('cashier')}>Transaksi Baru</div>
+                                        <div className={`fcsb-sb-sub-row${activeTab==='history' ? ' active-sub' : ''}`} onClick={() => navigateTo('history')}>Riwayat Transaksi</div>
+                                    </div>
+
+                                    {/* 2. Rekam Medis */}
+                                    <div className={`fcsb-sb-row${activeTab === 'rekam_medis' ? ' active' : ''}`} onClick={() => { setRekamOpen(o => !o); }}>
+                                        <span className="fcsb-ic">{IcRekam}</span>
+                                        <span className="fcsb-lbl">Rekam medis</span>
+                                        <span className={`fcsb-chev${rekamOpen ? ' open' : ''}`}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+                                    </div>
+                                    <div className={`fcsb-sb-sub${rekamOpen ? ' open' : ''}`}>
+                                        <div className={`fcsb-sb-sub-row${activeTab==='rekam_medis' ? ' active-sub' : ''}`} onClick={() => navigateTo('rekam_medis')}>Data Pasien</div>
+                                    </div>
+
+                                    {/* 3. Pembelian */}
+                                    <div className={`fcsb-sb-row${activeTab === 'purchases' ? ' active' : ''}`} onClick={() => navigateTo('purchases')}>
+                                        <span className="fcsb-ic">{IcBeli}</span>
+                                        <span className="fcsb-lbl">Pembelian</span>
+                                    </div>
+
+                                    {/* 4. Barang */}
+                                    <div className={`fcsb-sb-row${activeTab === 'list' || activeTab === 'stock_opname' ? ' active' : ''}`} onClick={() => setBarangOpen(o => !o)}>
+                                        <span className="fcsb-ic">{IcBarang}</span>
+                                        <span className="fcsb-lbl">Barang</span>
+                                        <span className={`fcsb-chev${barangOpen ? ' open' : ''}`}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+                                    </div>
+                                    <div className={`fcsb-sb-sub${barangOpen ? ' open' : ''}`}>
+                                        <div className={`fcsb-sb-sub-row${activeTab==='list' ? ' active-sub' : ''}`} onClick={() => navigateTo('list')}>Daftar Barang</div>
+                                        <div className={`fcsb-sb-sub-row${activeTab==='stock_opname' ? ' active-sub' : ''}`} onClick={() => navigateTo('stock_opname')}>Stok Opname</div>
+                                    </div>
+
+                                    {/* 5. Buku Kas */}
+                                    <div className={`fcsb-sb-row${activeTab === 'cashbook' ? ' active' : ''}`} onClick={() => navigateTo('cashbook')}>
+                                        <span className="fcsb-ic">{IcBuku}</span>
+                                        <span className="fcsb-lbl">Buku kas</span>
+                                    </div>
+
+                                    {/* 6. Laporan */}
+                                    <div className={`fcsb-sb-row${activeTab === 'rekap_barang' ? ' active' : ''}`} onClick={() => navigateTo('rekap_barang')}>
+                                        <span className="fcsb-ic">{IcLaporan}</span>
+                                        <span className="fcsb-lbl">Laporan</span>
+                                    </div>
+
+                                    {/* 7. Jadwal Shift */}
+                                    <div className={`fcsb-sb-row${activeTab === 'jadwal_shift' ? ' active' : ''}`} onClick={() => navigateTo('jadwal_shift')}>
+                                        <span className="fcsb-ic">{IcShift}</span>
+                                        <span className="fcsb-lbl">Jadwal Shift</span>
+                                    </div>
+
+                                    {/* 8. Pengaturan */}
+                                    <div className={`fcsb-sb-row${activeTab === 'settings' ? ' active' : ''}`} onClick={() => navigateTo('settings')}>
+                                        <span className="fcsb-ic">{IcSetting}</span>
+                                        <span className="fcsb-lbl">Pengaturan</span>
+                                    </div>
+
+                                    {/* 9. Bantuan */}
+                                    <div className="fcsb-sb-row" onClick={closeSb}>
+                                        <span className="fcsb-ic">{IcHelp}</span>
+                                        <span className="fcsb-lbl">Bantuan</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                };
+                // ====== END FARMACARE KASIR SHELL ======
+
                 const App = () => {
             const [inventoryData, setInventoryData] = useState([]);
             const [rawInventory, setRawInventory] = useState([]); // Store original data from DB
@@ -15136,6 +15331,154 @@
             ];
             const visibleMenuItems = menuItems.filter(m => m.enabled);
 
+            // ── Halaman Kasir: tampilkan CashierPageShell (tampilan Farmacare Sidebar) ──
+            if (activeTab === 'cashier') {
+                return (
+                    <>
+                        <Toast show={toast.show} message={toast.message} type={toast.type} />
+                        {receiptToPrint && ( <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}> 
+                            <div id="receipt-hidden-container" className="bg-white p-6 w-[380px] text-black font-mono shadow-none" style={{ fontFamily: '"Courier New", Courier, monospace' }}> 
+                                <div className="text-center mb-4"> 
+                                    <h2 className="text-xl font-bold uppercase">{receiptToPrint.storeName || settingsData.storeName || APP_NAME}</h2> 
+                                    <p className="text-sm text-gray-600"> 
+                                        {(() => {
+                                            const profile = settingsData.storeProfiles?.find(p => p.id === (receiptToPrint.storeId || 'default'));
+                                            return profile ? profile.address : (receiptToPrint.storeName === currentProfile.name ? currentProfile.address : settingsData.storeAddress);
+                                        })()}
+                                    </p> 
+                                    {(() => {
+                                         const profile = settingsData.storeProfiles?.find(p => p.id === (receiptToPrint.storeId || 'default'));
+                                         const headers = profile?.headers || settingsData.additionalHeaders || [];
+                                         return headers.map((h, i) => <p key={i} className="text-sm text-gray-600">{h}</p>);
+                                    })()}
+                                </div> 
+                                <div className="border-b-2 border-dashed border-gray-300 my-2"></div> <div className="flex justify-between text-xs mb-1"> <span>Tgl: {new Date(receiptToPrint.date.seconds ? receiptToPrint.date.toDate() : receiptToPrint.date).toLocaleString('id-ID')}</span> </div> <div className="flex justify-between text-xs mb-2"> <span>Ref: {receiptToPrint.id ? receiptToPrint.id.slice(-8).toUpperCase() : '-'}</span> <span>Kasir: {receiptToPrint.cashierName || 'Admin'}</span> </div> <div className="border-b-2 border-dashed border-gray-300 my-2"></div> <div className="space-y-2 mb-4"> {(() => { let rcIdx = 0; return receiptToPrint.items.map((item, idx) => { const validQty = item.cartQty - (item.returnedQty || 0); if (validQty <= 0) return null; let displayName = item.name; if (item.isRacikanGroup) { rcIdx++; displayName = `Racikan ${rcIdx}`; } return ( <div key={idx} className="text-sm"> <div className="font-bold">{displayName}</div> <div className="flex justify-between"> <span>{validQty} x {formatRupiah(item.price)}</span> <span>{formatRupiah(validQty * item.price)}</span> </div> </div> ); }); })()} </div> <div className="border-b-2 border-dashed border-gray-300 my-2"></div> {(() => {
+                                  const subtotalR = receiptToPrint.items.reduce((acc, item) => acc + ((item.originalPrice || item.price) * (item.cartQty - (item.returnedQty || 0))), 0);
+                                  const diskonR = subtotalR - receiptToPrint.total;
+                                  const discountedR = receiptToPrint.items.filter(i => i.discount && i.discount.value > 0);
+                                  const uniqTypesR = [...new Set(discountedR.map(i => i.discount.type))];
+                                  const uniqValuesR = [...new Set(discountedR.map(i => i.discount.value))];
+                                  let diskonLabelR = 'Diskon';
+                                  if (discountedR.length > 0 && uniqTypesR.length === 1) {
+                                    if (uniqTypesR[0] === '%') {
+                                      diskonLabelR = uniqValuesR.length === 1 ? ('Diskon ' + uniqValuesR[0] + '%') : 'Diskon (%)';
+                                    } else {
+                                      diskonLabelR = uniqValuesR.length === 1 ? ('Diskon ' + formatRupiah(uniqValuesR[0])) : 'Diskon (Rp)';
+                                    }
+                                  }
+                                  return (<>
+                                    <div className="flex justify-between text-sm mb-1"><span>Subtotal</span><span>{formatRupiah(subtotalR)}</span></div>
+                                    {diskonR > 0 && (<div className="flex justify-between text-sm mb-1"><span>{diskonLabelR}</span><span>- {formatRupiah(diskonR)}</span></div>)}
+                                    <div className="border-t border-dashed border-gray-300 my-1"></div>
+                                  </>);
+                                })()} <div className="flex justify-between font-bold text-lg mb-1"> <span>TOTAL</span> <span>{formatRupiah(receiptToPrint.total)}</span> </div> {receiptToPrint.pay !== undefined && ( <div className="flex justify-between text-sm"> <span>{receiptToPrint.paymentMethod === 'qris' ? 'QRIS' : receiptToPrint.paymentMethod === 'transfer' ? 'Transfer' : 'Tunai'}</span> <span>{formatRupiah(receiptToPrint.pay)}</span> </div> )} {(!receiptToPrint.paymentMethod || receiptToPrint.paymentMethod === 'tunai') && receiptToPrint.change !== undefined && ( <div className="flex justify-between text-sm"> <span>Kembali</span> <span>{formatRupiah(receiptToPrint.change)}</span> </div> )} <div className="border-b-2 border-dashed border-gray-300 my-4"></div> 
+                                <div className="text-center text-xs text-gray-500 whitespace-pre-wrap"> 
+                                    {(() => {
+                                         const profile = settingsData.storeProfiles?.find(p => p.id === (receiptToPrint.storeId || 'default'));
+                                         return profile?.footer || settingsData.receiptFooter || "Terima Kasih\nBarang tidak dapat ditukar";
+                                    })()}
+                                </div> 
+                                {receiptToPrint.status === 'returned' && <div className="mt-4 text-center font-bold text-xl text-red-600 border-2 border-red-600 p-2 transform -rotate-12">TRANSAKSI DIBATALKAN</div>} {receiptToPrint.status === 'partial' && <div className="mt-4 text-center font-bold text-sm text-amber-600">*** ADA RETUR SEBAGIAN ***</div>} 
+                            </div> 
+                        </div> )}
+                        <CashierPageShell
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                            currentProfile={currentProfile}
+                            authSession={authSession}
+                            inventoryData={inventoryData}
+                            user={user}
+                            showToast={showToast}
+                            settingsData={settingsData}
+                            handleGenerateImage={handleGenerateImage}
+                            isOwner={isOwner}
+                            unreadCount={unreadCount}
+                            handleOpenNotif={handleOpenNotif}
+                            menuItems={menuItems}
+                        />
+                        {showNotifPanel && (
+                            <>
+                                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[270]" onClick={() => setShowNotifPanel(false)} />
+                                <div className="fixed top-1/2 left-1/2 z-[280] w-[94vw] max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col" style={{transform:'translate(-50%,-50%)', maxHeight:'82vh'}}>
+                                    <div className="bg-gradient-to-r from-teal-700 to-teal-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
+                                        <div className="flex items-center gap-2"><Icon name="bell" className="text-white text-sm" /><span className="text-white font-black text-sm">Notifikasi & Pesan</span></div>
+                                        <button onClick={() => setShowNotifPanel(false)} className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"><Icon name="xmark" className="text-sm" /></button>
+                                    </div>
+                                    <div className="flex border-b border-slate-100 flex-shrink-0 bg-slate-50">
+                                        <button onClick={() => { setBellTab('update'); const allIds=liveChangelog.map(c=>c.id); setReadChangelogs(allIds); try{localStorage.setItem(CHANGELOG_STORAGE_KEY,JSON.stringify(allIds));}catch{} }} className={`flex-1 py-2.5 text-xs font-black flex items-center justify-center gap-1.5 transition-colors ${bellTab==='update' ? 'text-teal-600 border-b-2 border-teal-500 bg-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                                            <Icon name="bell" className="text-xs" /> Update
+                                            {changelogUnread > 0 && <span className="w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">{changelogUnread}</span>}
+                                        </button>
+                                        <button onClick={handleOpenFeedbackTab} className={`flex-1 py-2.5 text-xs font-black flex items-center justify-center gap-1.5 transition-colors ${bellTab==='feedback' ? 'text-teal-600 border-b-2 border-teal-500 bg-white' : 'text-slate-400 hover:text-slate-600'}`}>
+                                            <Icon name="comments" className="text-xs" /> Pesan & Lapor
+                                            {adminUnread > 0 && <span className="w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">{adminUnread}</span>}
+                                        </button>
+                                    </div>
+                                    {bellTab === 'update' && (
+                                        <div className="overflow-y-auto flex-1">
+                                            {liveChangelog.map((log, idx) => (
+                                                <div key={log.id} className={`p-3.5 ${idx < liveChangelog.length-1 ? 'border-b border-slate-100':''}`}>
+                                                    <div className="flex items-start gap-2.5">
+                                                        <div className="w-7 h-7 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                            <Icon name={log.icon||'bell'} className="text-teal-500 text-[10px]" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${log.tagColor || 'bg-sky-100 text-sky-700'}`}>{log.tag || 'Update'}</span>
+                                                                <span className="text-[9px] text-slate-400 font-semibold">{log.version} · {log.date}</span>
+                                                            </div>
+                                                            <p className="text-xs font-black text-slate-800 mb-1">{log.title}</p>
+                                                            {log.items && log.items.map((item, i) => (
+                                                                <p key={i} className="text-[10px] text-slate-600 font-medium leading-relaxed">{item}</p>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {bellTab === 'feedback' && (
+                                        <div className="flex flex-col flex-1 min-h-0">
+                                            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                                                {feedbackMessages.length === 0 && <p className="text-center text-xs text-slate-400 py-8">Belum ada pesan</p>}
+                                                {feedbackMessages.map((msg, i) => (
+                                                    <div key={i} className={`flex flex-col gap-0.5 ${msg.from === 'user' ? 'items-end' : 'items-start'}`}>
+                                                        {msg.photo && <img src={msg.photo} alt="foto" className="max-w-[160px] rounded-xl border border-slate-200 cursor-pointer" onClick={() => setLightboxSrc(msg.photo)} />}
+                                                        {msg.text && <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-xs font-medium ${msg.from==='user' ? 'bg-teal-500 text-white rounded-br-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'}`}>{msg.text}</div>}
+                                                        <span className="text-[9px] text-slate-400">{msg.from === 'admin' ? '👨‍💼 Admin' : '🙋 Saya'} · {msg.time}</span>
+                                                    </div>
+                                                ))}
+                                                <div ref={feedbackBottomRef} />
+                                            </div>
+                                            <div className="border-t border-slate-100 p-2 flex gap-2 items-end flex-shrink-0">
+                                                {feedbackPhoto && (
+                                                    <div className="relative flex-shrink-0">
+                                                        <img src={feedbackPhoto} alt="preview" className="w-12 h-12 rounded-lg object-cover border border-slate-200" />
+                                                        <button onClick={() => setFeedbackPhoto(null)} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[8px] font-bold flex items-center justify-center">×</button>
+                                                    </div>
+                                                )}
+                                                <input type="file" accept="image/*" id="fbPhotoInput" style={{display:'none'}} onChange={e => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setFeedbackPhoto(ev.target.result); reader.readAsDataURL(file); e.target.value = ''; }} />
+                                                <button onClick={() => document.getElementById('fbPhotoInput').click()} title="Lampirkan foto" className="w-9 h-9 bg-white border border-slate-200 hover:border-teal-400 hover:bg-teal-50 text-slate-400 hover:text-teal-500 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"><Icon name="camera" className="text-sm" /></button>
+                                                <textarea value={feedbackText} onChange={e=>setFeedbackText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendFeedback();}}} placeholder="Tulis pesan..." rows={2} className="flex-1 text-xs border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-teal-400 resize-none font-medium text-slate-700 placeholder:text-slate-300" style={{fontSize:'12px'}} />
+                                                <button onClick={sendFeedback} disabled={(!feedbackText.trim()&&!feedbackPhoto)||feedbackSending} className="w-9 h-9 bg-teal-500 hover:bg-teal-600 disabled:opacity-40 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95">{feedbackSending ? <Icon name="spinner" className="text-xs animate-spin" /> : <Icon name="paper-plane" className="text-xs" />}</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                        {lightboxSrc && (
+                            <div onClick={() => setLightboxSrc(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}}>
+                                <div style={{position:'relative',maxWidth:'95vw',maxHeight:'90vh'}} onClick={e=>e.stopPropagation()}>
+                                    <img src={lightboxSrc} alt="foto besar" style={{maxWidth:'92vw',maxHeight:'85vh',borderRadius:'16px',objectFit:'contain',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}} />
+                                    <button onClick={() => setLightboxSrc(null)} style={{position:'absolute',top:'-12px',right:'-12px',width:'32px',height:'32px',background:'#ef4444',border:'none',borderRadius:'50%',color:'#fff',fontWeight:900,fontSize:'14px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(0,0,0,0.4)'}}>✕</button>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                );
+            }
+
             return (
                 <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
                     <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> <ExpiryBanner items={expiryAlertItems} thresholdDays={(settingsData.expiryNotifMonths || 3) * 30} durationMs={(settingsData.expiryNotifSeconds || 3) * 1000} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
@@ -15603,7 +15946,7 @@
                         )}
                         <NegativeStockBanner items={inventoryData} settings={settingsData} onNavigateToPurchases={() => setActiveTab('purchases')} />
                         {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} currentProfile={currentProfile} isOwner={isOwner} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
-                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} isOwner={isOwner} />)}
+                        {/* activeTab === 'cashier' ditangani oleh CashierPageShell di atas */}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} authSession={authSession} />)}
                         {activeTab === 'rekap_barang' && (<RekapBarangView user={user} currentProfile={currentProfile} settings={settingsData} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
