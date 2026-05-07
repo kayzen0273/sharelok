@@ -288,6 +288,62 @@
         .fcsb-page-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 8px 16px; }
         .fcsb-page-title { font-size: 26px; font-weight: 800; color: #111; line-height: 1.1; font-family: 'Nunito', sans-serif; }
         .fcsb-page-content { padding: 0 12px 80px 12px; }
+
+        /* ── FARMACARE KASIR CONTENT AREA ── */
+        .fc-offline-wrap { padding: 0 0 12px 0; }
+        .fc-offline-btn {
+            width: 100%; border: 1.5px solid #dcdcdc; background: #f9f9f9; border-radius: 10px;
+            padding: 8px 14px; display: flex; align-items: center; justify-content: center;
+            gap: 7px; color: #555; font-size: 14px; font-weight: 700;
+            font-family: 'Nunito', sans-serif; cursor: pointer; transition: all .15s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .fc-offline-btn:active { background: #f0f0f0; }
+        .fc-offline-btn.active { border-color: #ffd0c0; background: #fff0eb; color: #e8460a; }
+        .fc-tx-list { border-top: 1px solid #e8e8e8; margin-bottom: 0; }
+        .fc-tx-section-label { padding: 8px 0 4px 0; font-size: 11px; font-weight: 800; color: #999; letter-spacing: .05em; text-transform: uppercase; }
+        .fc-tx-item {
+            display: flex; align-items: center; padding: 13px 4px; border-bottom: 1px solid #e8e8e8;
+            cursor: pointer; gap: 10px; transition: background .1s; border-radius: 0;
+            background: transparent; width: 100%; text-align: left;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .fc-tx-item:active { background: #f8f8f8; }
+        .fc-tx-avatar {
+            width: 36px; height: 36px; border-radius: 50%; background: #118989;
+            color: #fff; font-size: 14px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .fc-tx-avatar.pending { background: #e8f5f5; color: #118989; }
+        .fc-tx-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .fc-tx-amount { font-size: 15px; font-weight: 800; color: #111; }
+        .fc-tx-meta { font-size: 12px; font-weight: 600; color: #444; }
+        .fc-tx-name { font-size: 12px; font-weight: 600; color: #888; }
+        .fc-tx-arrow { color: #118989; flex-shrink: 0; display: flex; align-items: center; }
+        .fc-tx-arrow.locked { color: #ccc; }
+        .fc-penjualan-wrap { padding: 12px 0 0 0; }
+        .fc-penjualan-btn {
+            width: 100%; border: 1.5px solid #b8d8d8; background: #f0f8f8; border-radius: 10px;
+            padding: 10px 0; display: flex; align-items: center; justify-content: center;
+            gap: 7px; color: #118989; font-size: 15px; font-weight: 800;
+            font-family: 'Nunito', sans-serif; cursor: pointer; transition: background .1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .fc-penjualan-btn:active { background: #e0f0f0; }
+        .fc-empty-state { padding: 32px 0; text-align: center; color: #aaa; }
+        .fc-empty-state svg { margin: 0 auto 8px auto; display: block; }
+        /* Cart screen styles */
+        .fc-cart-header { display: flex; align-items: center; gap: 10px; padding: 8px 0 10px 0; border-bottom: 1px solid #e8e8e8; margin-bottom: 10px; }
+        .fc-cart-back { width: 34px; height: 34px; border: 1.5px solid #c0c0c0; border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+        .fc-cart-back:active { background: #f0f0f0; }
+        .fc-cart-title { flex: 1; font-size: 16px; font-weight: 800; color: #111; font-family: 'Nunito', sans-serif; }
+        .fc-cart-pay-btn {
+            background: #118989; color: #fff; border: none; border-radius: 8px;
+            padding: 8px 16px; font-size: 14px; font-weight: 800; font-family: 'Nunito', sans-serif;
+            cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s;
+        }
+        .fc-cart-pay-btn:active { background: #0e7070; }
+        .fc-cart-pay-btn:disabled { background: #b8d8d8; cursor: not-allowed; }
         .fcsb-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.4); transition: opacity .25s ease; }
         .fcsb-overlay.hidden { opacity: 0; pointer-events: none; }
         .fcsb-sidebar { position: fixed; top: 0; left: 0; width: 62vw; max-width: 240px; height: 100vh; background: #118989; z-index: 200; display: flex; flex-direction: column; transform: translateX(0); transition: transform .3s cubic-bezier(.4,0,.2,1); }
@@ -7270,158 +7326,117 @@
 
             if (!isSessionActive) {
                 return (
-                    <div className="fade-in h-full overflow-y-auto pb-20 md:pb-0 flex flex-col items-center md:justify-start md:pt-8 justify-center relative z-10">
-                        <div className="w-full max-w-sm px-4 flex flex-col items-center">
-
-                             {/* BANNER STATUS ONLINE/OFFLINE */}
-                             {!isOnline && (
-                                 <div className="w-full mb-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in">
-                                     <div className="w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center flex-shrink-0">
-                                         <Icon name="wifi" className="text-white text-[10px]" />
-                                     </div>
-                                     <div className="flex-1 min-w-0">
-                                         <p className="text-xs font-black text-amber-700">Tidak ada koneksi internet</p>
-                                         <p className="text-[10px] text-amber-600">Gunakan Mode Offline untuk tetap berjualan</p>
-                                     </div>
-                                 </div>
-                             )}
-
-                             {/* BANNER SINKRONISASI */}
-                             {isSyncing && (
-                                 <div className="w-full mb-3 bg-sky-50 border border-sky-200 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in">
-                                     <Icon name="spinner" className="text-sky-500 animate-spin text-sm flex-shrink-0" />
-                                     <p className="text-xs font-bold text-sky-700">Menyinkronkan transaksi offline...</p>
-                                 </div>
-                             )}
-                             {isOnline && offlineQueue.length > 0 && !isSyncing && (
-                                 <div className="w-full mb-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in">
-                                     <Icon name="check-circle" className="text-green-500 text-sm flex-shrink-0" />
-                                     <div className="flex-1">
-                                         <p className="text-xs font-black text-green-700">{offlineQueue.length} transaksi menunggu sinkronisasi</p>
-                                         <p className="text-[10px] text-green-600">Akan otomatis tersinkron saat online</p>
-                                     </div>
-                                 </div>
-                             )}
-
-                             {/* BANNER TOKO AKTIF */}
-                             <div className="mb-4 bg-white/60 backdrop-blur-md p-4 rounded-2xl border border-white shadow-sm w-full text-center">
-                                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">POS Kasir Aktif</p>
-                                <h2 className="text-xl font-black text-slate-800 flex items-center justify-center gap-2">
-                                    <Icon name="store" className="text-sky-600" /> {currentProfile.name}
-                                </h2>
-                                {/* Indikator status koneksi di dalam banner */}
-                                <div className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${isOnline ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-amber-500'}`}></span>
-                                    {isOnline ? 'Online' : 'Offline'}
-                                    {offlineQueue.length > 0 && isOnline && <span className="ml-1 bg-orange-400 text-white rounded-full px-1.5 text-[9px]">{offlineQueue.length} pending</span>}
+                    <div style={{padding: '0', margin: '0'}}>
+                        {/* ── BANNERS ── */}
+                        {!isOnline && (
+                            <div style={{margin:'0 0 10px 0', background:'#fff8e1', border:'1px solid #ffe082', borderRadius:'10px', padding:'10px 14px', display:'flex', alignItems:'center', gap:'10px'}}>
+                                <span style={{fontSize:'18px'}}>⚠️</span>
+                                <div>
+                                    <p style={{fontSize:'12px', fontWeight:800, color:'#b45309', margin:0}}>Tidak ada koneksi internet</p>
+                                    <p style={{fontSize:'11px', color:'#d97706', margin:0}}>Gunakan Mode Offline untuk tetap berjualan</p>
                                 </div>
-                             </div>
-
-                             {/* Tombol Penjualan Baru - compact, di bawah banner */}
-                             <button onClick={() => handleStartSession(cashierName)} className="w-full mb-3 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-md transition-all group">
-                                 <div className="flex items-center gap-3">
-                                     <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
-                                         <Icon name="cart-plus" />
-                                     </div>
-                                     <div className="text-left">
-                                         <p className="font-black text-sm leading-none">+ Penjualan Baru</p>
-                                         <p className="text-[10px] text-sky-100 mt-0.5">👤 {cashierName}</p>
-                                     </div>
-                                 </div>
-                                 <Icon name="chevron-right" className="text-sky-200 text-sm" />
-                             </button>
-
-                             {/* ── TOMBOL MODE OFFLINE ────────────────────────────────── */}
-                             <button
-                                 onClick={startOfflineMode}
-                                 className={`w-full mb-4 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm transition-all group active:scale-95 border-2 ${
-                                     !isOnline
-                                         ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-400'
-                                         : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200 hover:border-amber-300'
-                                 }`}
-                                 title="Mode tanpa internet — transaksi disimpan lokal & otomatis tersinkron saat online"
-                             >
-                                 <div className="flex items-center gap-3">
-                                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg group-hover:scale-110 transition-transform ${!isOnline ? 'bg-white/20' : 'bg-amber-100'}`}>
-                                         <Icon name="plug" className={!isOnline ? 'text-white' : 'text-amber-500'} />
-                                     </div>
-                                     <div className="text-left">
-                                         <p className={`font-black text-sm leading-none ${!isOnline ? 'text-white' : 'text-slate-700'}`}>Mode Offline</p>
-                                         <p className={`text-[10px] mt-0.5 ${!isOnline ? 'text-amber-100' : 'text-slate-400'}`}>
-                                             {offlineQueue.length > 0 ? `${offlineQueue.length} transaksi belum tersinkron` : 'Transaksi disimpan lokal, sync otomatis'}
-                                         </p>
-                                     </div>
-                                 </div>
-                                 <div className="flex items-center gap-1.5">
-                                     {offlineQueue.length > 0 && (
-                                         <span className="w-5 h-5 bg-orange-400 text-white rounded-full text-[10px] font-black flex items-center justify-center">{offlineQueue.length}</span>
-                                     )}
-                                     <Icon name="chevron-right" className={`text-sm ${!isOnline ? 'text-amber-200' : 'text-slate-300'}`} />
-                                 </div>
-                             </button>
-                             {/* ───────────────────────────────────────────────────────── */}
-
-                             {(activeCarts.length > 0 || pendingCarts.length > 0) && (
-                                <div className="w-full mb-4 fade-in">
-                                    <div className="flex items-center justify-between mb-2 px-0.5">
-                                        <div className="flex items-center gap-1.5">
-                                            <Icon name="clock-rotate-left" className="text-sky-500 text-xs" />
-                                            <h3 className="font-bold text-slate-600 text-xs">Keranjang di {currentProfile.name}</h3>
-                                        </div>
-                                        <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-bold">{activeCarts.length + pendingCarts.length} keranjang</span>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        {/* Keranjang aktif (live, milik kasir lain) */}
-                                        {activeCarts.map(ac => {
-                                            const total = ac.total || (ac.items || []).reduce((s, i) => s + (i.price || 0) * (i.cartQty || 1), 0);
-                                            return (
-                                                <div key={ac.id} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2 relative overflow-hidden">
-                                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-sky-400 to-sky-600"></div>
-                                                    <div className="w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ml-1">
-                                                        {(ac.cashierName || '?').charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <div className="text-left flex-1 min-w-0">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <p className="font-bold text-sky-700 text-[11px] truncate">{ac.cashierName || 'Kasir'}</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                            <p className="font-black text-slate-800 text-sm transition-all">{formatRupiah(total)}</p>
-                                                            <span className="text-[9px] text-slate-400">{(ac.items || []).length} barang</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                        {/* Keranjang tertunda (bisa dilanjutkan) */}
-                                        {pendingCarts.map(pending => (
-                                            <button key={pending.id} onClick={() => resumeTransaction(pending)} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-sky-300 transition-all flex items-center gap-2 group relative overflow-hidden">
-                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-sky-400 to-sky-600"></div>
-                                                <div className="w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ml-1">
-                                                    {(pending.cashierName || '?').charAt(0).toUpperCase()}
-                                                </div>
-                                                <div className="text-left flex-1 min-w-0">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <p className="font-bold text-sky-700 text-[11px] truncate">{pending.cashierName || 'Kasir'}</p>
-                                                        <span className="text-[9px] text-slate-400 font-medium flex-shrink-0">{new Date(pending.date).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <p className="font-black text-slate-800 text-sm">{formatRupiah(pending.total)}</p>
-                                                        <span className="text-[9px] text-slate-400">{pending.items.length} barang</span>
-                                                    </div>
-                                                </div>
-                                                <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-sky-50 group-hover:text-sky-500 transition-colors flex-shrink-0"><Icon name="chevron-right" className="text-[10px]" /></div>
-                                            </button>
-                                        ))}
-                                    </div>
+                            </div>
+                        )}
+                        {isSyncing && (
+                            <div style={{margin:'0 0 10px 0', background:'#e8f5f5', border:'1px solid #b8d8d8', borderRadius:'10px', padding:'10px 14px', display:'flex', alignItems:'center', gap:'10px'}}>
+                                <Icon name="spinner" className="animate-spin" style={{color:'#118989', fontSize:'14px', flexShrink:0}} />
+                                <p style={{fontSize:'12px', fontWeight:700, color:'#118989', margin:0}}>Menyinkronkan transaksi offline...</p>
+                            </div>
+                        )}
+                        {isOnline && offlineQueue.length > 0 && !isSyncing && (
+                            <div style={{margin:'0 0 10px 0', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'10px', padding:'10px 14px', display:'flex', alignItems:'center', gap:'10px'}}>
+                                <Icon name="check-circle" style={{color:'#16a34a', fontSize:'14px', flexShrink:0}} />
+                                <div>
+                                    <p style={{fontSize:'12px', fontWeight:800, color:'#15803d', margin:0}}>{offlineQueue.length} transaksi menunggu sinkronisasi</p>
+                                    <p style={{fontSize:'11px', color:'#4ade80', margin:0}}>Akan otomatis tersinkron saat online</p>
                                 </div>
-                             )}
+                            </div>
+                        )}
 
-
-
-                            <button onClick={() => handleStartSession(cashierName)} className="group relative w-full aspect-square md:aspect-video rounded-3xl border-4 border-dashed border-sky-300 bg-sky-50/50 hover:bg-sky-100 hover:border-sky-400 transition-all flex flex-col items-center justify-center gap-4 active:scale-95"><div className="w-20 h-20 rounded-full bg-white text-sky-500 shadow-soft flex items-center justify-center text-4xl group-hover:scale-110 transition-transform"><Icon name="cart-plus" /></div><div className="text-center"><h2 className="text-2xl font-black text-slate-700 group-hover:text-sky-700">+ Penjualan Baru</h2><p className="text-sm text-slate-500 font-medium mt-1">Mulai sesi kasir di toko ini</p><p className="text-xs text-sky-600 font-bold mt-1">👤 {cashierName}</p></div></button>
+                        {/* ── MODE OFFLINE BUTTON ── */}
+                        <div className="fc-offline-wrap">
+                            <button
+                                className={`fc-offline-btn${isOfflineMode ? ' active' : ''}`}
+                                onClick={startOfflineMode}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    {isOfflineMode ? (
+                                        <><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></>
+                                    ) : (
+                                        <><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></>
+                                    )}
+                                </svg>
+                                {isOfflineMode ? 'Mode Offline Aktif' : 'Mode Offline'}
+                                {offlineQueue.length > 0 && (
+                                    <span style={{background:'#e8460a', color:'#fff', fontSize:'10px', fontWeight:800, borderRadius:'99px', minWidth:'18px', height:'18px', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'0 4px'}}>
+                                        {offlineQueue.length}
+                                    </span>
+                                )}
+                            </button>
                         </div>
-                        
-                        {/* NEW: Modal Input Nama Kasir - Render sebagai overlay */}
+
+                        {/* ── TRANSACTION LIST ── */}
+                        <div className="fc-tx-list">
+                            {activeCarts.length === 0 && pendingCarts.length === 0 && (
+                                <div className="fc-empty-state">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                                    <p style={{fontSize:'13px', fontWeight:600}}>Belum ada transaksi hari ini</p>
+                                    <p style={{fontSize:'11px', marginTop:'2px'}}>Klik tombol Penjualan di bawah untuk mulai</p>
+                                </div>
+                            )}
+                            {/* Keranjang aktif (kasir lain) */}
+                            {activeCarts.map(ac => {
+                                const total = ac.total || (ac.items || []).reduce((s, i) => s + (i.price || 0) * (i.cartQty || 1), 0);
+                                return (
+                                    <div key={ac.id} className="fc-tx-item" style={{cursor:'default'}}>
+                                        <div className="fc-tx-avatar" style={{background:'#e8f5f5', color:'#118989'}}>
+                                            {(ac.cashierName || '?').charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="fc-tx-info">
+                                            <div className="fc-tx-amount">{formatRupiah(total)}</div>
+                                            <div className="fc-tx-meta">{(ac.items || []).length} barang · Sedang aktif</div>
+                                            <div className="fc-tx-name">{ac.cashierName || 'Kasir'}</div>
+                                        </div>
+                                        <div className="fc-tx-arrow locked">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {/* Keranjang tertunda (bisa dilanjutkan) */}
+                            {pendingCarts.map(pending => (
+                                <button key={pending.id} className="fc-tx-item" onClick={() => resumeTransaction(pending)}>
+                                    <div className="fc-tx-avatar">
+                                        {(pending.cashierName || '?').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="fc-tx-info">
+                                        <div className="fc-tx-amount">{formatRupiah(pending.total)}</div>
+                                        <div className="fc-tx-meta">
+                                            #{pending.id ? pending.id.slice(-8).toUpperCase() : '-'}, {pending.items.length} barang
+                                        </div>
+                                        <div className="fc-tx-name">
+                                            {pending.cashierName || 'Kasir'} · {new Date(pending.date).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}
+                                        </div>
+                                    </div>
+                                    <div className="fc-tx-arrow">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* ── PENJUALAN BUTTON ── */}
+                        <div className="fc-penjualan-wrap">
+                            <button className="fc-penjualan-btn" onClick={() => handleStartSession(cashierName)}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"/>
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                                Penjualan
+                            </button>
+                        </div>
+
+                        {/* Modal konfirmasi kasir */}
                         {showCashierModal && (
                             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
                                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 relative">
@@ -7429,15 +7444,16 @@
                                         <Icon name="xmark" className="text-xl" />
                                     </button>
                                     <div className="text-center mb-6">
-                                        <div className="w-20 h-20 bg-sky-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 text-sky-600">
+                                        <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl mx-auto mb-4" style={{background:'#e8f5f5', color:'#118989'}}>
                                             <Icon name="user-circle" />
                                         </div>
                                         <h3 className="text-2xl font-black text-slate-800">{`Halo, ${cashierName}!`}</h3>
                                         <p className="text-sm text-slate-500 mt-2">Siap mulai sesi kasir?</p>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={startCashierSession}
-                                        className="w-full py-4 bg-sky-600 text-white rounded-xl font-bold shadow-lg shadow-sky-100 flex items-center justify-center gap-2 hover:bg-sky-700 active:scale-95 transition-all text-lg"
+                                        className="w-full py-4 text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all text-lg"
+                                        style={{background:'#118989'}}
                                     >
                                         <Icon name="rocket" /> Mulai Kasir
                                     </button>
@@ -7449,14 +7465,26 @@
                 );
             }
 
-            return (
-                <div className="fade-in h-full flex flex-col md:flex-row gap-4 pb-20 md:pb-0 relative z-10">
-                    <div className="flex-1 flex flex-col h-full min-h-0">
-                        
-                        {/* Tombol Kembali - paling atas */}
-                        <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-white text-slate-400 hover:text-sky-600 hover:border-sky-300 border border-slate-200 flex items-center justify-center shadow-sm transition-colors mb-3" title="Kembali & Simpan Sementara"><Icon name="arrow-left" /></button>
 
-                        {/* OFFLINE MODE BANNER */}
+            return (
+                <div style={{padding:'0', margin:'0'}}>
+                    {/* ── CART HEADER BAR (Sidebar.html style) ── */}
+                    <div className="fc-cart-header">
+                        <button className="fc-cart-back" onClick={handleBack} title="Kembali & Simpan Sementara">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <span className="fc-cart-title">
+                            {cashierName}
+                            {isOfflineMode && <span style={{fontSize:'11px', background:'#fff0eb', color:'#e8460a', borderRadius:'99px', padding:'2px 8px', marginLeft:'8px', fontWeight:800}}>🔌 Offline</span>}
+                        </span>
+                        <button
+                            className="fc-cart-pay-btn"
+                            onClick={() => { if(readOnly){showToast('Akses terbatas — hubungi owner','error');return;} setPaymentAmount(''); setPaymentMethod(''); setCartPembulatan(0); setCheckoutModal(true); }}
+                            disabled={cart.length === 0}
+                        >
+                            Bayar{cart.length > 0 ? ` (${cart.length})` : ''}
+                        </button>
+                    </div>
                         {isOfflineMode && (
                             <div className="mb-3 bg-amber-50 border-2 border-amber-300 rounded-2xl px-3 py-2 flex items-center gap-2 fade-in">
                                 <div className="w-7 h-7 bg-amber-400 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -8740,6 +8768,7 @@
                         </div>
                     )}
                     {noteModalItem && <ItemNoteModal item={noteModalItem} onClose={() => setNoteModalItem(null)} canEdit={settings?.noteEditAccess !== 'owner_only' || isOwner} />}
+                </div>
                 </div>
             );
         };
@@ -14650,7 +14679,7 @@
                                 <div className="fcsb-page-header">
                                     <div className="fcsb-page-title">Kasir</div>
                                 </div>
-                                <div className="fcsb-page-content">
+                                <div className="fcsb-page-content" style={{padding:'0 16px 80px 16px'}}>
                                     <CashierView
                                         items={inventoryData}
                                         user={user}
