@@ -13075,7 +13075,7 @@
                             {/* Print header */}
                             <div className="text-center mb-3 hidden-screen" style={{display:'none'}} id="shift-print-header">
                                 <h2 style={{fontWeight:'bold',fontSize:'16px',textTransform:'uppercase'}}>JADWAL SHIFT {storeName.toUpperCase()}</h2>
-                                <h3 style={{fontSize:'13px'}}>Lokasi Kerja</h3>
+                                <h3 style={{fontSize:'11px'}}>Lokasi Kerja</h3>
                             </div>
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="overflow-x-auto">
@@ -15398,11 +15398,11 @@
                             </button>
                             {/* Brand */}
                             <div className="flex-1 flex flex-col gap-0.5 cursor-pointer select-none" onClick={() => setShowStoreMenu(!showStoreMenu)}>
-                                <div className="flex items-center gap-1 text-sky-500 font-extrabold leading-tight" style={{fontSize:'19px'}}>
+                                <div className="flex items-center gap-1 text-sky-500 font-extrabold leading-tight" style={{fontSize:'15px'}}>
                                     {currentProfile.name}
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                                 </div>
-                                <div className="text-slate-500 font-semibold leading-none" style={{fontSize:'13px'}}>
+                                <div className="text-slate-500 font-semibold leading-none" style={{fontSize:'11px'}}>
                                     {authSession?.namaLengkap || authSession?.username || 'Kasir'} — {isOwner ? 'Pemilik Toko' : (authSession?.jabatan || 'Karyawan')}
                                 </div>
                             </div>
