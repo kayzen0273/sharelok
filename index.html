@@ -1468,7 +1468,7 @@
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className={`font-bold text-sm ${checked ? 'text-teal-900' : 'text-slate-600'}`}>{profile.name}</p>
-                                                    {profile.address && <p className="text-[10px] text-white/70 truncate">{profile.address}</p>}
+                                                    {profile.address && <p className="text-[10px] text-slate-400 truncate">{profile.address}</p>}
                                                 </div>
                                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? 'bg-teal-500 border-teal-500' : 'border-slate-300'}`}>
                                                     {checked && <Icon name="check" className="text-white text-[9px]" />}
@@ -7230,158 +7230,202 @@
 
             if (!isSessionActive) {
                 return (
-                    <div className="fade-in h-full overflow-y-auto pb-20 md:pb-0 flex flex-col items-center md:justify-start md:pt-8 justify-center relative z-10">
-                        <div className="w-full max-w-sm px-4 flex flex-col items-center">
+                    <div className="fade-in h-full flex flex-col relative z-10" style={{fontFamily:"'Nunito','Inter',sans-serif",background:'#fff'}}>
 
-                             {/* BANNER STATUS ONLINE/OFFLINE */}
-                             {!isOnline && (
-                                 <div className="w-full mb-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in">
-                                     <div className="w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center flex-shrink-0">
-                                         <Icon name="wifi" className="text-white text-[10px]" />
-                                     </div>
-                                     <div className="flex-1 min-w-0">
-                                         <p className="text-xs font-black text-amber-700">Tidak ada koneksi internet</p>
-                                         <p className="text-[10px] text-amber-600">Gunakan Mode Offline untuk tetap berjualan</p>
-                                     </div>
-                                 </div>
-                             )}
+                        {/* ── FARMACARE TOPBAR ── */}
+                        <div style={{background:'#fff',display:'flex',alignItems:'center',padding:'5px 14px',gap:'10px',borderBottom:'1px solid #e0e0e0',minHeight:'46px',flexShrink:0}}>
+                            {/* Hamburger 3 garis */}
+                            <div style={{cursor:'pointer',padding:'6px',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}} onClick={() => {/* sidebar handled by parent */}}>
+                                <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
+                                    <rect width="18" height="2" rx="1" fill="#118989"/>
+                                    <rect y="5.5" width="18" height="2" rx="1" fill="#118989"/>
+                                    <rect y="11" width="18" height="2" rx="1" fill="#118989"/>
+                                </svg>
+                            </div>
 
-                             {/* BANNER SINKRONISASI */}
-                             {isSyncing && (
-                                 <div className="w-full mb-3 bg-sky-50 border border-sky-200 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in">
-                                     <Icon name="spinner" className="text-sky-500 animate-spin text-sm flex-shrink-0" />
-                                     <p className="text-xs font-bold text-sky-700">Menyinkronkan transaksi offline...</p>
-                                 </div>
-                             )}
-                             {isOnline && offlineQueue.length > 0 && !isSyncing && (
-                                 <div className="w-full mb-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 fade-in">
-                                     <Icon name="check-circle" className="text-green-500 text-sm flex-shrink-0" />
-                                     <div className="flex-1">
-                                         <p className="text-xs font-black text-green-700">{offlineQueue.length} transaksi menunggu sinkronisasi</p>
-                                         <p className="text-[10px] text-green-600">Akan otomatis tersinkron saat online</p>
-                                     </div>
-                                 </div>
-                             )}
-
-                             {/* BANNER TOKO AKTIF */}
-                             <div className="mb-4 bg-white/60 backdrop-blur-md p-4 rounded-2xl border border-white shadow-sm w-full text-center">
-                                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">POS Kasir Aktif</p>
-                                <h2 className="text-xl font-black text-slate-800 flex items-center justify-center gap-2">
-                                    <Icon name="store" className="text-sky-600" /> {currentProfile.name}
-                                </h2>
-                                {/* Indikator status koneksi di dalam banner */}
-                                <div className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${isOnline ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-amber-500'}`}></span>
-                                    {isOnline ? 'Online' : 'Offline'}
-                                    {offlineQueue.length > 0 && isOnline && <span className="ml-1 bg-orange-400 text-white rounded-full px-1.5 text-[9px]">{offlineQueue.length} pending</span>}
+                            {/* Brand */}
+                            <div style={{flex:1,display:'flex',flexDirection:'column',gap:'1px',userSelect:'none'}}>
+                                <div style={{display:'flex',alignItems:'center',gap:'4px',color:'#118989',fontSize:'17px',fontWeight:800,lineHeight:1.2}}>
+                                    {currentProfile.name}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                                 </div>
-                             </div>
+                                <div style={{color:'#666',fontSize:'12.5px',fontWeight:600}}>{cashierName} · Kasir</div>
+                            </div>
 
-                             {/* Tombol Penjualan Baru - compact, di bawah banner */}
-                             <button onClick={() => handleStartSession(cashierName)} className="w-full mb-3 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-md transition-all group">
-                                 <div className="flex items-center gap-3">
-                                     <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
-                                         <Icon name="cart-plus" />
-                                     </div>
-                                     <div className="text-left">
-                                         <p className="font-black text-sm leading-none">+ Penjualan Baru</p>
-                                         <p className="text-[10px] text-sky-100 mt-0.5">👤 {cashierName}</p>
-                                     </div>
-                                 </div>
-                                 <Icon name="chevron-right" className="text-sky-200 text-sm" />
-                             </button>
-
-                             {/* ── TOMBOL MODE OFFLINE ────────────────────────────────── */}
-                             <button
-                                 onClick={startOfflineMode}
-                                 className={`w-full mb-4 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm transition-all group active:scale-95 border-2 ${
-                                     !isOnline
-                                         ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-400'
-                                         : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200 hover:border-amber-300'
-                                 }`}
-                                 title="Mode tanpa internet — transaksi disimpan lokal & otomatis tersinkron saat online"
-                             >
-                                 <div className="flex items-center gap-3">
-                                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg group-hover:scale-110 transition-transform ${!isOnline ? 'bg-white/20' : 'bg-amber-100'}`}>
-                                         <Icon name="plug" className={!isOnline ? 'text-white' : 'text-amber-500'} />
-                                     </div>
-                                     <div className="text-left">
-                                         <p className={`font-black text-sm leading-none ${!isOnline ? 'text-white' : 'text-slate-700'}`}>Mode Offline</p>
-                                         <p className={`text-[10px] mt-0.5 ${!isOnline ? 'text-amber-100' : 'text-slate-400'}`}>
-                                             {offlineQueue.length > 0 ? `${offlineQueue.length} transaksi belum tersinkron` : 'Transaksi disimpan lokal, sync otomatis'}
-                                         </p>
-                                     </div>
-                                 </div>
-                                 <div className="flex items-center gap-1.5">
-                                     {offlineQueue.length > 0 && (
-                                         <span className="w-5 h-5 bg-orange-400 text-white rounded-full text-[10px] font-black flex items-center justify-center">{offlineQueue.length}</span>
-                                     )}
-                                     <Icon name="chevron-right" className={`text-sm ${!isOnline ? 'text-amber-200' : 'text-slate-300'}`} />
-                                 </div>
-                             </button>
-                             {/* ───────────────────────────────────────────────────────── */}
-
-                             {(activeCarts.length > 0 || pendingCarts.length > 0) && (
-                                <div className="w-full mb-4 fade-in">
-                                    <div className="flex items-center justify-between mb-2 px-0.5">
-                                        <div className="flex items-center gap-1.5">
-                                            <Icon name="clock-rotate-left" className="text-sky-500 text-xs" />
-                                            <h3 className="font-bold text-slate-600 text-xs">Keranjang di {currentProfile.name}</h3>
-                                        </div>
-                                        <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-bold">{activeCarts.length + pendingCarts.length} keranjang</span>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        {/* Keranjang aktif (live, milik kasir lain) */}
-                                        {activeCarts.map(ac => {
-                                            const total = ac.total || (ac.items || []).reduce((s, i) => s + (i.price || 0) * (i.cartQty || 1), 0);
-                                            return (
-                                                <div key={ac.id} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2 relative overflow-hidden">
-                                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-sky-400 to-sky-600"></div>
-                                                    <div className="w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ml-1">
-                                                        {(ac.cashierName || '?').charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <div className="text-left flex-1 min-w-0">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <p className="font-bold text-sky-700 text-[11px] truncate">{ac.cashierName || 'Kasir'}</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                            <p className="font-black text-slate-800 text-sm transition-all">{formatRupiah(total)}</p>
-                                                            <span className="text-[9px] text-slate-400">{(ac.items || []).length} barang</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                        {/* Keranjang tertunda (bisa dilanjutkan) */}
-                                        {pendingCarts.map(pending => (
-                                            <button key={pending.id} onClick={() => resumeTransaction(pending)} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-sky-300 transition-all flex items-center gap-2 group relative overflow-hidden">
-                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-sky-400 to-sky-600"></div>
-                                                <div className="w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ml-1">
-                                                    {(pending.cashierName || '?').charAt(0).toUpperCase()}
-                                                </div>
-                                                <div className="text-left flex-1 min-w-0">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <p className="font-bold text-sky-700 text-[11px] truncate">{pending.cashierName || 'Kasir'}</p>
-                                                        <span className="text-[9px] text-slate-400 font-medium flex-shrink-0">{new Date(pending.date).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <p className="font-black text-slate-800 text-sm">{formatRupiah(pending.total)}</p>
-                                                        <span className="text-[9px] text-slate-400">{pending.items.length} barang</span>
-                                                    </div>
-                                                </div>
-                                                <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-sky-50 group-hover:text-sky-500 transition-colors flex-shrink-0"><Icon name="chevron-right" className="text-[10px]" /></div>
-                                            </button>
-                                        ))}
-                                    </div>
+                            {/* Action Buttons */}
+                            <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
+                                {/* Status koneksi */}
+                                <div style={{width:'34px',height:'34px',borderRadius:'8px',border:'1.5px solid #c0c0c0',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',cursor:'pointer'}}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isOnline ? '#118989' : '#e8460a'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        {isOnline ? (
+                                            <>
+                                                <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                                                <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                                                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                                                <line x1="12" y1="20" x2="12.01" y2="20"/>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <line x1="1" y1="1" x2="23" y2="23"/>
+                                                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+                                                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+                                                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"/>
+                                                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+                                                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                                                <line x1="12" y1="20" x2="12.01" y2="20"/>
+                                            </>
+                                        )}
+                                    </svg>
                                 </div>
-                             )}
-
-
-
-                            <button onClick={() => handleStartSession(cashierName)} className="group relative w-full aspect-square md:aspect-video rounded-3xl border-4 border-dashed border-sky-300 bg-sky-50/50 hover:bg-sky-100 hover:border-sky-400 transition-all flex flex-col items-center justify-center gap-4 active:scale-95"><div className="w-20 h-20 rounded-full bg-white text-sky-500 shadow-soft flex items-center justify-center text-4xl group-hover:scale-110 transition-transform"><Icon name="cart-plus" /></div><div className="text-center"><h2 className="text-2xl font-black text-slate-700 group-hover:text-sky-700">+ Penjualan Baru</h2><p className="text-sm text-slate-500 font-medium mt-1">Mulai sesi kasir di toko ini</p><p className="text-xs text-sky-600 font-bold mt-1">👤 {cashierName}</p></div></button>
+                                {/* Notif bell */}
+                                <div style={{width:'34px',height:'34px',borderRadius:'8px',border:'1.5px solid #c0c0c0',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',cursor:'pointer'}}
+                                     onClick={typeof handleOpenNotif === 'function' ? handleOpenNotif : undefined}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#118989" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                                    </svg>
+                                    {unreadCount > 0 && (
+                                        <span style={{position:'absolute',top:'-6px',right:'-6px',background:'#e8460a',color:'#fff',fontSize:'10px',fontWeight:800,borderRadius:'99px',minWidth:'19px',height:'19px',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px',border:'2px solid #fff'}}>
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                        
-                        {/* NEW: Modal Input Nama Kasir - Render sebagai overlay */}
+
+                        {/* ── PAGE CONTENT ── */}
+                        <div style={{flex:1,overflowY:'auto',background:'#fff'}}>
+
+                            {/* Page Header */}
+                            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px 8px 16px'}}>
+                                <div style={{fontSize:'26px',fontWeight:800,color:'#111',lineHeight:1.1}}>Kasir</div>
+                                <div onClick={() => handleStartSession(cashierName)}
+                                     style={{width:'38px',height:'38px',borderRadius:'8px',border:'1.5px solid #bbb',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5" strokeLinecap="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"/>
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            {/* Sinkronisasi Banner */}
+                            {isSyncing && (
+                                <div style={{margin:'0 16px 10px',background:'#f0f8ff',border:'1px solid #b3d8f5',borderRadius:'10px',padding:'8px 12px',display:'flex',alignItems:'center',gap:'8px'}}>
+                                    <Icon name="spinner" className="text-sky-500 animate-spin text-sm" />
+                                    <span style={{fontSize:'13px',fontWeight:700,color:'#0284c7'}}>Menyinkronkan transaksi offline...</span>
+                                </div>
+                            )}
+                            {isOnline && offlineQueue.length > 0 && !isSyncing && (
+                                <div style={{margin:'0 16px 10px',background:'#f0fff4',border:'1px solid #86efac',borderRadius:'10px',padding:'8px 12px',display:'flex',alignItems:'center',gap:'8px'}}>
+                                    <Icon name="check-circle" className="text-green-500 text-sm" />
+                                    <span style={{fontSize:'13px',fontWeight:700,color:'#15803d'}}>{offlineQueue.length} transaksi menunggu sinkronisasi</span>
+                                </div>
+                            )}
+
+                            {/* ── TOMBOL MODE OFFLINE ── */}
+                            <div style={{padding:'0 16px 12px'}}>
+                                <button onClick={startOfflineMode}
+                                    style={{
+                                        width:'100%',border:`1.5px solid ${!isOnline ? '#ffd0c0' : '#dcdcdc'}`,
+                                        background:!isOnline ? '#fff0eb' : '#f9f9f9',
+                                        borderRadius:'10px',padding:'8px 0',
+                                        display:'flex',alignItems:'center',justifyContent:'center',gap:'7px',
+                                        color:!isOnline ? '#e8460a' : '#555',
+                                        fontSize:'14.5px',fontWeight:700,
+                                        fontFamily:"'Nunito',sans-serif",cursor:'pointer',
+                                        transition:'all .15s ease'
+                                    }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        {!isOnline ? (
+                                            <>
+                                                <line x1="1" y1="1" x2="23" y2="23"/>
+                                                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+                                                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+                                                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"/>
+                                                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+                                                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                                                <line x1="12" y1="20" x2="12.01" y2="20"/>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                                                <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                                                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                                                <line x1="12" y1="20" x2="12.01" y2="20"/>
+                                            </>
+                                        )}
+                                    </svg>
+                                    {!isOnline ? 'Mode Offline (Aktif)' : 'Mode Offline'}
+                                    {offlineQueue.length > 0 && (
+                                        <span style={{background:'#e8460a',color:'#fff',borderRadius:'99px',minWidth:'20px',height:'20px',fontSize:'11px',fontWeight:800,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 5px'}}>
+                                            {offlineQueue.length}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* ── TRANSACTION LIST (active + pending carts) ── */}
+                            <div style={{borderTop:'1px solid #e8e8e8'}}>
+                                {/* Keranjang aktif milik kasir lain */}
+                                {activeCarts.map(ac => {
+                                    const total = ac.total || (ac.items || []).reduce((s, i) => s + (i.price || 0) * (i.cartQty || 1), 0);
+                                    return (
+                                        <div key={ac.id} style={{display:'flex',alignItems:'center',padding:'13px 16px',borderBottom:'1px solid #e8e8e8',gap:'10px'}}>
+                                            <div style={{flex:1,display:'flex',flexDirection:'column',gap:'2px'}}>
+                                                <div style={{fontSize:'15px',fontWeight:800,color:'#111'}}>{formatRupiah(total)}</div>
+                                                <div style={{fontSize:'13px',fontWeight:600,color:'#444'}}>{(ac.items || []).length} barang · Sedang aktif</div>
+                                                <div style={{fontSize:'13px',fontWeight:600,color:'#555'}}>{ac.cashierName || 'Kasir lain'}</div>
+                                            </div>
+                                            <div style={{color:'#118989',flexShrink:0,display:'flex',alignItems:'center'}}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {/* Keranjang tertunda */}
+                                {pendingCarts.map(pending => (
+                                    <div key={pending.id} onClick={() => resumeTransaction(pending)}
+                                         style={{display:'flex',alignItems:'center',padding:'13px 16px',borderBottom:'1px solid #e8e8e8',cursor:'pointer',gap:'10px'}}>
+                                        <div style={{flex:1,display:'flex',flexDirection:'column',gap:'2px'}}>
+                                            <div style={{fontSize:'15px',fontWeight:800,color:'#111'}}>{formatRupiah(pending.total)}</div>
+                                            <div style={{fontSize:'13px',fontWeight:600,color:'#444'}}>
+                                                #{pending.id ? pending.id.slice(-8).toUpperCase() : '-'}, {pending.items.length} barang
+                                            </div>
+                                            <div style={{fontSize:'13px',fontWeight:600,color:'#555'}}>{pending.cashierName || cashierName}</div>
+                                        </div>
+                                        <div style={{color:'#118989',flexShrink:0,display:'flex',alignItems:'center'}}>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                                        </div>
+                                    </div>
+                                ))}
+                                {activeCarts.length === 0 && pendingCarts.length === 0 && (
+                                    <div style={{padding:'28px 16px',textAlign:'center',color:'#aaa',fontSize:'13px',fontWeight:600}}>
+                                        Belum ada transaksi hari ini
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ── TOMBOL PENJUALAN BARU ── */}
+                            <div style={{padding:'4px 16px',marginTop:'10px'}}>
+                                <button onClick={() => handleStartSession(cashierName)}
+                                    style={{
+                                        width:'100%',border:'1.5px solid #b8d8d8',background:'#f0f8f8',
+                                        borderRadius:'10px',padding:'8px 0',
+                                        display:'flex',alignItems:'center',justifyContent:'center',gap:'7px',
+                                        color:'#118989',fontSize:'14.5px',fontWeight:700,
+                                        fontFamily:"'Nunito',sans-serif",cursor:'pointer',
+                                        transition:'background .1s'
+                                    }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"/>
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                    </svg>
+                                    Penjualan Baru
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Kasir */}
                         {showCashierModal && (
                             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
                                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 relative">
@@ -7397,7 +7441,8 @@
                                     </div>
                                     <button 
                                         onClick={startCashierSession}
-                                        className="w-full py-4 bg-sky-600 text-white rounded-xl font-bold shadow-lg shadow-sky-100 flex items-center justify-center gap-2 hover:bg-sky-700 active:scale-95 transition-all text-lg"
+                                        className="w-full py-4 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all text-lg"
+                                        style={{background:'#118989'}}
                                     >
                                         <Icon name="rocket" /> Mulai Kasir
                                     </button>
@@ -13404,7 +13449,7 @@
                                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                                     <span className="text-5xl">📋</span>
                                     <p className="text-sm font-bold text-slate-400">Belum ada data absensi</p>
-                                    <p className="text-xs text-white/50">{filterAbsensiDate ? 'Tidak ada absensi pada tanggal ini' : 'Mulai absen dengan kamera di atas'}</p>
+                                    <p className="text-xs text-slate-300">{filterAbsensiDate ? 'Tidak ada absensi pada tanggal ini' : 'Mulai absen dengan kamera di atas'}</p>
                                 </div>
                             ) : (
                                 <div className="divide-y divide-slate-50">
@@ -14528,26 +14573,7 @@
                 };
                 // ====== END REKAP BARANG TERJUAL VIEW ======
 
-    
-            // ── TesView Component ──
-            const TesView = () => {
-                const b64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImlkIj4KPGhlYWQ+CjxtZXRhIGNoYXJzZXQ9IlVURi04Ij4KPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAsIG1heGltdW0tc2NhbGU9MS4wIj4KPHRpdGxlPkZhcm1hY2FyZSDigJMgS2FzaXI8L3RpdGxlPgo8bGluayBocmVmPSJodHRwczovL2ZvbnRzLmdvb2dsZWFwaXMuY29tL2NzczI/ZmFtaWx5PU51bml0bzp3Z2h0QDQwMDs2MDA7NzAwOzgwMCZkaXNwbGF5PXN3YXAiIHJlbD0ic3R5bGVzaGVldCI+CjxzdHlsZT4KKiB7IG1hcmdpbjogMDsgcGFkZGluZzogMDsgYm94LXNpemluZzogYm9yZGVyLWJveDsgLXdlYmtpdC10YXAtaGlnaGxpZ2h0LWNvbG9yOiB0cmFuc3BhcmVudDsgfQoKOnJvb3QgewogIC0tdGVhbDogIzExODk4OTsKICAtLXRlYWwtbGlnaHQ6ICNlOGY1ZjU7Cn0KCmh0bWwsIGJvZHkgewogIHdpZHRoOiAxMDAlOyBoZWlnaHQ6IDEwMCU7CiAgb3ZlcmZsb3c6IGhpZGRlbjsKICBmb250LWZhbWlseTogJ051bml0bycsIHNhbnMtc2VyaWY7CiAgYmFja2dyb3VuZDogI2ZmZjsKfQoKLyog4pSA4pSAIE1BSU4gQVBQIOKUgOKUgCAqLwouYXBwIHsKICBwb3NpdGlvbjogZml4ZWQ7IGluc2V0OiAwOwogIGJhY2tncm91bmQ6ICNmZmY7CiAgZGlzcGxheTogZmxleDsgZmxleC1kaXJlY3Rpb246IGNvbHVtbjsKfQoKLyog4pSA4pSAIFRPUEJBUiDilIDilIAgKi8KLnRvcGJhciB7CiAgYmFja2dyb3VuZDogI2ZmZjsKICBkaXNwbGF5OiBmbGV4OyBhbGlnbi1pdGVtczogY2VudGVyOwogIHBhZGRpbmc6IDVweCAxNHB4OwogIGdhcDogMTBweDsKICBib3JkZXItYm90dG9tOiAxcHggc29saWQgI2UwZTBlMDsKICBtaW4taGVpZ2h0OiA0NnB4OwogIGZsZXgtc2hyaW5rOiAwOwp9Ci50b3BiYXItaGFtYnVyZ2VyIHsKICBjdXJzb3I6IHBvaW50ZXI7CiAgcGFkZGluZzogNnB4IDZweDsKICBib3JkZXItcmFkaXVzOiA4cHg7CiAgZGlzcGxheTogZmxleDsgYWxpZ24taXRlbXM6IGNlbnRlcjsganVzdGlmeS1jb250ZW50OiBjZW50ZXI7CiAgdHJhbnNpdGlvbjogYmFja2dyb3VuZCAuMTVzOwogIGZsZXgtc2hyaW5rOiAwOwp9Ci50b3BiYXItaGFtYnVyZ2VyOmFjdGl2ZSB7IGJhY2tncm91bmQ6IHJnYmEoMCwwLDAsLjA4KTsgfQoKLnRvcGJhci1icmFuZCB7CiAgZmxleDogMTsKICBkaXNwbGF5OiBmbGV4OyBmbGV4LWRpcmVjdGlvbjogY29sdW1uOwogIGdhcDogMXB4OwogIGN1cnNvcjogcG9pbnRlcjsKICB1c2VyLXNlbGVjdDogbm9uZTsKfQoudG9wYmFyLWJyYW5kLW5hbWUgewogIGRpc3BsYXk6IGZsZXg7IGFsaWduLWl0ZW1zOiBjZW50ZXI7IGdhcDogNHB4OwogIGNvbG9yOiB2YXIoLS10ZWFsKTsKICBmb250LXNpemU6IDE3cHg7CiAgZm9udC13ZWlnaHQ6IDgwMDsKICBsaW5lLWhlaWdodDogMS4yOwp9Ci50b3BiYXItYnJhbmQtbmFtZSBzdmcgeyBmbGV4LXNocmluazogMDsgfQoudG9wYmFyLWJyYW5kLXN1YiB7CiAgY29sb3I6ICM2NjY7CiAgZm9udC1zaXplOiAxMi41cHg7CiAgZm9udC13ZWlnaHQ6IDYwMDsKfQoKLnRvcGJhci1hY3Rpb25zIHsKICBkaXNwbGF5OiBmbGV4OyBhbGlnbi1pdGVtczogY2VudGVyOyBnYXA6IDhweDsKICBmbGV4LXNocmluazogMDsKfQoudG9wYmFyLWJ0biB7CiAgd2lkdGg6IDM0cHg7IGhlaWdodDogMzRweDsKICBib3JkZXItcmFkaXVzOiA4cHg7CiAgYm9yZGVyOiAxLjVweCBzb2xpZCAjYzBjMGMwOwogIGJhY2tncm91bmQ6ICNmZmY7CiAgZGlzcGxheTogZmxleDsgYWxpZ24taXRlbXM6IGNlbnRlcjsganVzdGlmeS1jb250ZW50OiBjZW50ZXI7CiAgcG9zaXRpb246IHJlbGF0aXZlOwogIGN1cnNvcjogcG9pbnRlcjsKfQoudG9wYmFyLWJhZGdlIHsKICBwb3NpdGlvbjogYWJzb2x1dGU7IHRvcDogLTVweDsgcmlnaHQ6IC01cHg7CiAgYmFja2dyb3VuZDogI2U4NDYwYTsKICBjb2xvcjogI2ZmZjsKICBmb250LXNpemU6IDEwcHg7IGZvbnQtd2VpZ2h0OiA4MDA7CiAgYm9yZGVyLXJhZGl1czogOTlweDsgbWluLXdpZHRoOiAxOXB4OyBoZWlnaHQ6IDE5cHg7CiAgZGlzcGxheTogZmxleDsgYWxpZ24taXRlbXM6IGNlbnRlcjsganVzdGlmeS1jb250ZW50OiBjZW50ZXI7CiAgcGFkZGluZzogMCA0cHg7CiAgYm9yZGVyOiAycHggc29saWQgI2VmZWZlZjsKfQoKLyog4pSA4pSAIFBBR0UgQ09OVEVOVCDilIDilIAgKi8KLnBhZ2UgewogIGZsZXg6IDE7CiAgb3ZlcmZsb3cteTogYXV0bzsKICBiYWNrZ3JvdW5kOiAjZmZmOwp9CgoucGFnZS1oZWFkZXIgewogIGRpc3BsYXk6IGZsZXg7IGFsaWduLWl0ZW1zOiBjZW50ZXI7IGp1c3RpZnktY29udGVudDogc3BhY2UtYmV0d2VlbjsKICBwYWRkaW5nOiAxMHB4IDE2cHggOHB4IDE2cHg7Cn0KLnBhZ2UtdGl0bGUgewogIGZvbnQtc2l6ZTogMjZweDsKICBmb250LXdlaWdodDogODAwOwogIGNvbG9yOiAjMTExOwogIGxpbmUtaGVpZ2h0OiAxLjE7Cn0KLnBhZ2UtcGx1cyB7CiAgd2lkdGg6IDM4cHg7IGhlaWdodDogMzhweDsKICBib3JkZXItcmFkaXVzOiA4cHg7CiAgYm9yZGVyOiAxLjVweCBzb2xpZCAjYmJiOwogIGJhY2tncm91bmQ6ICNmZmY7CiAgZGlzcGxheTogZmxleDsgYWxpZ24taXRlbXM6IGNlbnRlcjsganVzdGlmeS1jb250ZW50OiBjZW50ZXI7CiAgY3Vyc29yOiBwb2ludGVyOwogIGZsZXgtc2hyaW5rOiAwOwp9Ci5wYWdlLXBsdXM6YWN0aXZlIHsgYmFja2dyb3VuZDogI2YwZjBmMDsgfQoKLyog4pSA4pSAIE9GRkxJTkUgQlVUVE9OIOKUgOKUgCAqLwouYnRuLW9mZmxpbmUtd3JhcCB7CiAgcGFkZGluZzogMCAxNnB4IDEycHggMTZweDsKfQouYnRuLW9mZmxpbmUgewogIHdpZHRoOiAxMDAlOwogIGJvcmRlcjogMS41cHggc29saWQgI2RjZGNkYzsKICBiYWNrZ3JvdW5kOiAjZjlmOWY5OwogIGJvcmRlci1yYWRpdXM6IDEwcHg7CiAgcGFkZGluZzogOHB4IDA7CiAgZGlzcGxheTogZmxleDsgYWxpZ24taXRlbXM6IGNlbnRlcjsganVzdGlmeS1jb250ZW50OiBjZW50ZXI7CiAgZ2FwOiA3cHg7CiAgY29sb3I6ICM1NTU7CiAgZm9udC1zaXplOiAxNC41cHg7CiAgZm9udC13ZWlnaHQ6IDcwMDsKICBmb250LWZhbWlseTogJ051bml0bycsIHNhbnMtc2VyaWY7CiAgY3Vyc29yOiBwb2ludGVyOwogIHRyYW5zaXRpb246IGFsbCAuMTVzIGVhc2U7Cn0KLmJ0bi1vZmZsaW5lOmFjdGl2ZSB7IGJhY2tncm91bmQ6ICNmMGYwZjA7IH0KCi8qIFN0YXRlIGtldGlrYSBtb2RlIG9mZmxpbmUgYWt0aWYgKi8KLmJ0bi1vZmZsaW5lLmFjdGl2ZSB7CiAgYm9yZGVyLWNvbG9yOiAjZmZkMGMwOwogIGJhY2tncm91bmQ6ICNmZmYwZWI7CiAgY29sb3I6ICNlODQ2MGE7Cn0KLmJ0bi1vZmZsaW5lLmFjdGl2ZTphY3RpdmUgeyBiYWNrZ3JvdW5kOiAjZmZlNGRiOyB9CgovKiDilIDilIAgVFJBTlNBQ1RJT04gTElTVCDilIDilIAgKi8KLnR4LWxpc3QgewogIGJvcmRlci10b3A6IDFweCBzb2xpZCAjZThlOGU4Owp9Ci50eC1pdGVtIHsKICBkaXNwbGF5OiBmbGV4OyBhbGlnbi1pdGVtczogY2VudGVyOwogIHBhZGRpbmc6IDEzcHggMTZweDsKICBib3JkZXItYm90dG9tOiAxcHggc29saWQgI2U4ZThlODsKICBjdXJzb3I6IHBvaW50ZXI7CiAgZ2FwOiAxMHB4OwogIHRyYW5zaXRpb246IGJhY2tncm91bmQgLjFzOwp9Ci50eC1pdGVtOmFjdGl2ZSB7IGJhY2tncm91bmQ6ICNmOGY4Zjg7IH0KLnR4LWluZm8gewogIGZsZXg6IDE7CiAgZGlzcGxheTogZmxleDsgZmxleC1kaXJlY3Rpb246IGNvbHVtbjsKICBnYXA6IDJweDsKfQoudHgtYW1vdW50IHsKICBmb250LXNpemU6IDE1cHg7CiAgZm9udC13ZWlnaHQ6IDgwMDsKICBjb2xvcjogIzExMTsKfQoudHgtbWV0YSB7CiAgZm9udC1zaXplOiAxM3B4OwogIGZvbnQtd2VpZ2h0OiA2MDA7CiAgY29sb3I6ICM0NDQ7Cn0KLnR4LW5hbWUgewogIGZvbnQtc2l6ZTogMTNweDsKICBmb250LXdlaWdodDogNjAwOwogIGNvbG9yOiAjNTU1Owp9Ci50eC1hcnJvdyB7CiAgY29sb3I6IHZhcigtLXRlYWwpOwogIGZsZXgtc2hyaW5rOiAwOwogIGRpc3BsYXk6IGZsZXg7IGFsaWduLWl0ZW1zOiBjZW50ZXI7Cn0KCi8qIOKUgOKUgCBQRU5KVUFMQU4gQlVUVE9OIOKUgOKUgCAqLwouYnRuLXBlbmp1YWxhbi13cmFwIHsKICBwYWRkaW5nOiA0cHggMTZweDsKICBtYXJnaW4tdG9wOiAxMHB4Owp9Ci5idG4tcGVuanVhbGFuIHsKICB3aWR0aDogMTAwJTsKICBib3JkZXI6IDEuNXB4IHNvbGlkICNiOGQ4ZDg7CiAgYmFja2dyb3VuZDogI2YwZjhmODsKICBib3JkZXItcmFkaXVzOiAxMHB4OwogIHBhZGRpbmc6IDhweCAwOwogIGRpc3BsYXk6IGZsZXg7IGFsaWduLWl0ZW1zOiBjZW50ZXI7IGp1c3RpZnktY29udGVudDogY2VudGVyOwogIGdhcDogN3B4OwogIGNvbG9yOiB2YXIoLS10ZWFsKTsKICBmb250LXNpemU6IDE0LjVweDsKICBmb250LXdlaWdodDogNzAwOwogIGZvbnQtZmFtaWx5OiAnTnVuaXRvJywgc2Fucy1zZXJpZjsKICBjdXJzb3I6IHBvaW50ZXI7CiAgdHJhbnNpdGlvbjogYmFja2dyb3VuZCAuMXM7Cn0KLmJ0bi1wZW5qdWFsYW46YWN0aXZlIHsgYmFja2dyb3VuZDogI2UwZjBmMDsgfQoKLyog4pSA4pSAIE9WRVJMQVkg4pSA4pSAICovCi5vdmVybGF5IHsKICBwb3NpdGlvbjogZml4ZWQ7IGluc2V0OiAwOyB6LWluZGV4OiAxMDA7CiAgYmFja2dyb3VuZDogcmdiYSgwLDAsMCwuNCk7CiAgdHJhbnNpdGlvbjogb3BhY2l0eSAuMjVzIGVhc2U7Cn0KLm92ZXJsYXkuaGlkZGVuIHsgb3BhY2l0eTogMDsgcG9pbnRlci1ldmVudHM6IG5vbmU7IH0KCi8qIOKUgOKUgCBTSURFQkFSIOKUgOKUgCAqLwouc2lkZWJhciB7CiAgcG9zaXRpb246IGZpeGVkOyB0b3A6IDA7IGxlZnQ6IDA7CiAgd2lkdGg6IDYydnc7IG1heC13aWR0aDogMjQwcHg7CiAgaGVpZ2h0OiAxMDB2aDsKICBiYWNrZ3JvdW5kOiB2YXIoLS10ZWFsKTsKICB6LWluZGV4OiAyMDA7CiAgZGlzcGxheTogZmxleDsgZmxleC1kaXJlY3Rpb246IGNvbHVtbjsKICB0cmFuc2Zvcm06IHRyYW5zbGF0ZVgoMCk7CiAgdHJhbnNpdGlvbjogdHJhbnNmb3JtIC4zcyBjdWJpYy1iZXppZXIoLjQsMCwuMiwxKTsKfQouc2lkZWJhci5jbG9zZWQgeyB0cmFuc2Zvcm06IHRyYW5zbGF0ZVgoLTEwMCUpOyB9Cgouc2ItaGVhZGVyIHsKICBkaXNwbGF5OiBmbGV4OyBhbGlnbi1pdGVtczogY2VudGVyOyBqdXN0aWZ5LWNvbnRlbnQ6IHNwYWNlLWJldHdlZW47CiAgcGFkZGluZzogMTRweCAxNHB4IDhweCAxNHB4OwogIGZsZXgtc2hyaW5rOiAwOwp9Ci5zYi1jbG9zZSB7CiAgY29sb3I6ICNmZmY7IGN1cnNvcjogcG9pbnRlcjsKICBmb250LXNpemU6IDIycHg7IGZvbnQtd2VpZ2h0OiA0MDA7IGxpbmUtaGVpZ2h0OiAxOwogIG9wYWNpdHk6IC45OwogIGRpc3BsYXk6IGZsZXg7IGFsaWduLWl0ZW1zOiBjZW50ZXI7Cn0KLnNiLXZlcnNpb24geyBjb2xvcjogcmdiYSgyNTUsMjU1LDI1NSwuNzUpOyBmb250LXNpemU6IDEycHg7IH0KCi5zYi1tZW51IHsKICBmbGV4OiAxOyBvdmVyZmxvdy15OiBhdXRvOyBvdmVyZmxvdy14OiBoaWRkZW47CiAgcGFkZGluZzogMnB4IDhweCAxNnB4OwogIHNjcm9sbGJhci13aWR0aDogbm9uZTsKfQouc2ItbWVudTo6LXdlYmtpdC1zY3JvbGxiYXIgeyBkaXNwbGF5OiBub25lOyB9Cgouc2Itcm93IHsKICBkaXNwbGF5OiBmbGV4OyBhbGlnbi1pdGVtczogY2VudGVyOwogIHBhZGRpbmc6IDlweCAxMHB4OwogIGJvcmRlci1yYWRpdXM6IDhweDsKICBjdXJzb3I6IHBvaW50ZXI7IGdhcDogMTBweDsKICBjb2xvcjogI2ZmZjsKICBmb250LXNpemU6IDEzLjVweDsgZm9udC13ZWlnaHQ6IDcwMDsKICB1c2VyLXNlbGVjdDogbm9uZTsKICB0cmFuc2l0aW9uOiBiYWNrZ3JvdW5kIC4xczsKICBsZXR0ZXItc3BhY2luZzogLjFweDsKfQouc2Itcm93OmFjdGl2ZSB7IGZpbHRlcjogYnJpZ2h0bmVzcyguOTIpOyB9Ci5zYi1yb3cuYWN0aXZlIHsgYmFja2dyb3VuZDogI2ZmZjsgY29sb3I6IHZhcigtLXRlYWwpOyB9Ci5zYi1yb3cuYWN0aXZlIC5pYyB7IGNvbG9yOiB2YXIoLS10ZWFsKTsgfQouc2Itcm93LmFjdGl2ZSAuY2hldiB7IGNvbG9yOiB2YXIoLS10ZWFsKTsgfQoKLmljIHsKICBmbGV4LXNocmluazogMDsgY29sb3I6ICNmZmY7CiAgZGlzcGxheTogZmxleDsgYWxpZ24taXRlbXM6IGNlbnRlcjsgd2lkdGg6IDE4cHg7IGhlaWdodDogMThweDsKfQoubGJsIHsgZmxleDogMTsgfQouY2hldiB7CiAgZmxleC1zaHJpbms6IDA7IGNvbG9yOiAjZmZmOwogIGRpc3BsYXk6IGZsZXg7IGFsaWduLWl0ZW1zOiBjZW50ZXI7CiAgdHJhbnNpdGlvbjogdHJhbnNmb3JtIC4yNXM7Cn0KLmNoZXYub3BlbiB7IHRyYW5zZm9ybTogcm90YXRlKDE4MGRlZyk7IH0KCi5zYi1zdWIgeyBvdmVyZmxvdzogaGlkZGVuOyBtYXgtaGVpZ2h0OiAwOyB0cmFuc2l0aW9uOiBtYXgtaGVpZ2h0IC4yOHMgZWFzZTsgfQouc2Itc3ViLm9wZW4geyBtYXgtaGVpZ2h0OiAyNTBweDsgfQouc2Itc3ViLXJvdyB7CiAgZGlzcGxheTogZmxleDsgYWxpZ24taXRlbXM6IGNlbnRlcjsKICBwYWRkaW5nOiA3cHggMTJweCA3cHggNDRweDsKICBjb2xvcjogcmdiYSgyNTUsMjU1LDI1NSwuODIpOwogIGZvbnQtc2l6ZTogMTMuNXB4OyBmb250LXdlaWdodDogNjAwOwogIGN1cnNvcjogcG9pbnRlcjsgYm9yZGVyLXJhZGl1czogOHB4Owp9Ci5zYi1zdWItcm93OmJlZm9yZSB7IGNvbnRlbnQ6ICfigLonOyBtYXJnaW4tcmlnaHQ6IDhweDsgZm9udC1zaXplOiAxOHB4OyBjb2xvcjogcmdiYSgyNTUsMjU1LDI1NSwuNSk7IH0KLnNiLXN1Yi1yb3c6YWN0aXZlIHsgYmFja2dyb3VuZDogcmdiYSgwLDAsMCwuMSk7IH0KPC9zdHlsZT4KPC9oZWFkPgo8Ym9keT4KCjwhLS0gTUFJTiBBUFAgLS0+CjxkaXYgY2xhc3M9ImFwcCI+CgogIDwhLS0gVE9QQkFSIC0tPgogIDxkaXYgY2xhc3M9InRvcGJhciI+CiAgICA8ZGl2IGNsYXNzPSJ0b3BiYXItaGFtYnVyZ2VyIiBvbmNsaWNrPSJvcGVuU2lkZWJhcigpIj4KICAgICAgPHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTMiIHZpZXdCb3g9IjAgMCAxOCAxMyIgZmlsbD0ibm9uZSI+CiAgICAgICAgPHJlY3Qgd2lkdGg9IjE4IiBoZWlnaHQ9IjIiIHJ4PSIxIiBmaWxsPSIjMTE4OTg5Ii8+CiAgICAgICAgPHJlY3QgeT0iNS41IiB3aWR0aD0iMTgiIGhlaWdodD0iMiIgcng9IjEiIGZpbGw9IiMxMTg5ODkiLz4KICAgICAgICA8cmVjdCB5PSIxMSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjIiIHJ4PSIxIiBmaWxsPSIjMTE4OTg5Ii8+CiAgICAgIDwvc3ZnPgogICAgPC9kaXY+CgogICAgPGRpdiBjbGFzcz0idG9wYmFyLWJyYW5kIj4KICAgICAgPGRpdiBjbGFzcz0idG9wYmFyLWJyYW5kLW5hbWUiPgogICAgICAgIFJhZmEgTWVkaWNhCiAgICAgICAgPHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjYgOSAxMiAxNSAxOCA5Ii8+PC9zdmc+CiAgICAgIDwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJ0b3BiYXItYnJhbmQtc3ViIj5aZW5pIElibnUgSGFraW0gLSBLYXJ5YXdhbjwvZGl2PgogICAgPC9kaXY+CgogICAgPGRpdiBjbGFzcz0idG9wYmFyLWFjdGlvbnMiPgogICAgICA8ZGl2IGNsYXNzPSJ0b3BiYXItYnRuIj4KICAgICAgICA8c3ZnIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxMTg5ODkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgICAgICAgIDxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+CiAgICAgICAgICA8cGF0aCBkPSJNOS4wOSA5YTMgMyAwIDAgMSA1LjgzIDFjMCAyLTMgMy0zIDMiLz4KICAgICAgICAgIDxjaXJjbGUgY3g9IjEyIiBjeT0iMTciIHI9Ii41IiBmaWxsPSIjMTE4OTg5Ii8+CiAgICAgICAgPC9zdmc+CiAgICAgIDwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJ0b3BiYXItYnRuIj4KICAgICAgICA8c3ZnIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxMTg5ODkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgICAgICAgIDxwYXRoIGQ9Ik0xOCA4QTYgNiAwIDAgMCA2IDhjMCA3LTMgOS0zIDloMThzLTMtMi0zLTkiLz4KICAgICAgICAgIDxwYXRoIGQ9Ik0xMy43MyAyMWEyIDIgMCAwIDEtMy40NiAwIi8+CiAgICAgICAgPC9zdmc+CiAgICAgICAgPHNwYW4gY2xhc3M9InRvcGJhci1iYWRnZSI+Njwvc3Bhbj4KICAgICAgPC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPCEtLSBQQUdFIENPTlRFTlQgLS0+CiAgPGRpdiBjbGFzcz0icGFnZSI+CiAgICA8ZGl2IGNsYXNzPSJwYWdlLWhlYWRlciI+CiAgICAgIDxkaXYgY2xhc3M9InBhZ2UtdGl0bGUiPkthc2lyPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InBhZ2UtcGx1cyI+CiAgICAgICAgPHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNTU1IiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj4KICAgICAgICAgIDxsaW5lIHgxPSIxMiIgeTE9IjUiIHgyPSIxMiIgeTI9IjE5Ii8+CiAgICAgICAgICA8bGluZSB4MT0iNSIgeTE9IjEyIiB4Mj0iMTkiIHkyPSIxMiIvPgogICAgICAgIDwvc3ZnPgogICAgICA8L2Rpdj4KICAgIDwvZGl2PgoKICAgIDwhLS0gVG9tYm9sIE1vZGUgT2ZmbGluZSAtLT4KICAgIDxkaXYgY2xhc3M9ImJ0bi1vZmZsaW5lLXdyYXAiPgogICAgICA8YnV0dG9uIGNsYXNzPSJidG4tb2ZmbGluZSIgb25jbGljaz0idGhpcy5jbGFzc0xpc3QudG9nZ2xlKCdhY3RpdmUnKSI+CiAgICAgICAgPHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgogICAgICAgICAgPGxpbmUgeDE9IjEiIHkxPSIxIiB4Mj0iMjMiIHkyPSIyMyI+PC9saW5lPgogICAgICAgICAgPHBhdGggZD0iTTE2LjcyIDExLjA2QTEwLjk0IDEwLjk0IDAgMCAxIDE5IDEyLjU1Ij48L3BhdGg+CiAgICAgICAgICA8cGF0aCBkPSJNNSAxMi41NWExMC45NCAxMC45NCAwIDAgMSA1LjE3LTIuMzkiPjwvcGF0aD4KICAgICAgICAgIDxwYXRoIGQ9Ik0xMC43MSA1LjA1QTE2IDE2IDAgMCAxIDIyLjU4IDkiPjwvcGF0aD4KICAgICAgICAgIDxwYXRoIGQ9Ik0xLjQyIDlhMTUuOTEgMTUuOTEgMCAwIDEgNC43LTIuODgiPjwvcGF0aD4KICAgICAgICAgIDxwYXRoIGQ9Ik04LjUzIDE2LjExYTYgNiAwIDAgMSA2Ljk1IDAiPjwvcGF0aD4KICAgICAgICAgIDxsaW5lIHgxPSIxMiIgeTE9IjIwIiB4Mj0iMTIuMDEiIHkyPSIyMCI+PC9saW5lPgogICAgICAgIDwvc3ZnPgogICAgICAgIE1vZGUgT2ZmbGluZQogICAgICA8L2J1dHRvbj4KICAgIDwvZGl2PgoKICAgIDwhLS0gVHJhbnNhY3Rpb24gTGlzdCAtLT4KICAgIDxkaXYgY2xhc3M9InR4LWxpc3QiPgoKICAgICAgPCEtLSBJdGVtIDEgLS0+CiAgICAgIDxkaXYgY2xhc3M9InR4LWl0ZW0iPgogICAgICAgIDxkaXYgY2xhc3M9InR4LWluZm8iPgogICAgICAgICAgPGRpdiBjbGFzcz0idHgtYW1vdW50Ij5ScDY5LjAwMDwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0idHgtbWV0YSI+IzI2MDUwNjAwMzgsIDIgYmFyYW5nPC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJ0eC1uYW1lIj5CZWxsYSBQdXRyaSBGaXJhbnRpPC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0idHgtYXJyb3ciPgogICAgICAgICAgPHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjkgMTggMTUgMTIgOSA2Ii8+PC9zdmc+CiAgICAgICAgPC9kaXY+CiAgICAgIDwvZGl2PgoKICAgICAgPCEtLSBJdGVtIDIgLS0+CiAgICAgIDxkaXYgY2xhc3M9InR4LWl0ZW0iPgogICAgICAgIDxkaXYgY2xhc3M9InR4LWluZm8iPgogICAgICAgICAgPGRpdiBjbGFzcz0idHgtYW1vdW50Ij5ScDE1LjUwMDwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0idHgtbWV0YSI+IzI2MDUwNjAwMzksIDIgYmFyYW5nPC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJ0eC1uYW1lIj5aZW5pIElibnUgSGFraW08L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJ0eC1hcnJvdyI+CiAgICAgICAgICA8c3ZnIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PHBvbHlsaW5lIHBvaW50cz0iOSAxOCAxNSAxMiA5IDYiLz48L3N2Zz4KICAgICAgICA8L2Rpdj4KICAgICAgPC9kaXY+CgogICAgPC9kaXY+CgogICAgPCEtLSBQZW5qdWFsYW4gQnV0dG9uIC0tPgogICAgPGRpdiBjbGFzcz0iYnRuLXBlbmp1YWxhbi13cmFwIj4KICAgICAgPGJ1dHRvbiBjbGFzcz0iYnRuLXBlbmp1YWxhbiI+CiAgICAgICAgPHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiPgogICAgICAgICAgPGxpbmUgeDE9IjEyIiB5MT0iNSIgeDI9IjEyIiB5Mj0iMTkiLz4KICAgICAgICAgIDxsaW5lIHgxPSI1IiB5MT0iMTIiIHgyPSIxOSIgeTI9IjEyIi8+CiAgICAgICAgPC9zdmc+CiAgICAgICAgUGVuanVhbGFuCiAgICAgIDwvYnV0dG9uPgogICAgPC9kaXY+CiAgPC9kaXY+Cgo8L2Rpdj4KCjwhLS0gT1ZFUkxBWSAtLT4KPGRpdiBjbGFzcz0ib3ZlcmxheSBoaWRkZW4iIGlkPSJvdmVybGF5IiBvbmNsaWNrPSJjbG9zZVNpZGViYXIoKSI+PC9kaXY+Cgo8IS0tIFNJREVCQVIgLS0+CjxkaXYgY2xhc3M9InNpZGViYXIgY2xvc2VkIiBpZD0ic2lkZWJhciI+CgogIDxkaXYgY2xhc3M9InNiLWhlYWRlciI+CiAgICA8c3BhbiBjbGFzcz0ic2ItY2xvc2UiIG9uY2xpY2s9ImNsb3NlU2lkZWJhcigpIj4mI3gyNzE1Ozwvc3Bhbj4KICAgIDxzcGFuIGNsYXNzPSJzYi12ZXJzaW9uIj5WZXIgMS45MC4wPC9zcGFuPgogIDwvZGl2PgoKICA8ZGl2IGNsYXNzPSJzYi1tZW51Ij4KCiAgICA8IS0tIDEuIEthc2lyIC0tPgogICAgPGRpdiBjbGFzcz0ic2Itcm93IGFjdGl2ZSIgaWQ9InJvdy1rYXNpciIgb25jbGljaz0idG9nZ2xlKCdrYXNpcicsdGhpcykiPgogICAgICA8c3BhbiBjbGFzcz0iaWMiPgogICAgICAgIDxzdmcgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICAgICAgICA8cmVjdCB4PSIyIiB5PSI2IiB3aWR0aD0iMjAiIGhlaWdodD0iMTQiIHJ4PSIyIi8+CiAgICAgICAgICA8bGluZSB4MT0iMiIgeTE9IjExIiB4Mj0iMjIiIHkyPSIxMSIvPgogICAgICAgICAgPHJlY3QgeD0iNSIgeT0iMTUiIHdpZHRoPSIzIiBoZWlnaHQ9IjIiIHJ4PSIuNCIvPgogICAgICAgICAgPHJlY3QgeD0iMTAuNSIgeT0iMTUiIHdpZHRoPSI0IiBoZWlnaHQ9IjIiIHJ4PSIuNCIvPgogICAgICAgICAgPHBhdGggZD0iTTggNlY0YTIgMiAwIDAgMSAyLTJoNGEyIDIgMCAwIDEgMiAydjIiLz4KICAgICAgICA8L3N2Zz4KICAgICAgPC9zcGFuPgogICAgICA8c3BhbiBjbGFzcz0ibGJsIj5LYXNpcjwvc3Bhbj4KICAgICAgPHNwYW4gY2xhc3M9ImNoZXYgb3BlbiIgaWQ9ImNoZXYta2FzaXIiPgogICAgICAgIDxzdmcgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI2IDkgMTIgMTUgMTggOSIvPjwvc3ZnPgogICAgICA8L3NwYW4+CiAgICA8L2Rpdj4KICAgIDxkaXYgY2xhc3M9InNiLXN1YiBvcGVuIiBpZD0ic3ViLWthc2lyIj4KICAgICAgPGRpdiBjbGFzcz0ic2Itc3ViLXJvdyI+VHJhbnNha3NpIEJhcnU8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0ic2Itc3ViLXJvdyI+Uml3YXlhdCBUcmFuc2Frc2k8L2Rpdj4KICAgIDwvZGl2PgoKICAgIDwhLS0gMi4gUmVrYW0gbWVkaXMgLS0+CiAgICA8ZGl2IGNsYXNzPSJzYi1yb3ciIGlkPSJyb3ctcmVrYW0iIG9uY2xpY2s9InRvZ2dsZSgncmVrYW0nLHRoaXMpIj4KICAgICAgPHNwYW4gY2xhc3M9ImljIj4KICAgICAgICA8c3ZnIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgogICAgICAgICAgPHJlY3QgeD0iOCIgeT0iMiIgd2lkdGg9IjgiIGhlaWdodD0iNCIgcng9IjEiIHJ5PSIxIi8+CiAgICAgICAgICA8cGF0aCBkPSJNMTYgNGgyYTIgMiAwIDAgMSAyIDJ2MTRhMiAyIDAgMCAxLTIgMkg2YTIgMiAwIDAgMS0yLTJWNmEyIDIgMCAwIDEgMi0yaDIiLz4KICAgICAgICAgIDxwYXRoIGQ9Ik0xMiAxMWg0Ii8+CiAgICAgICAgICA8cGF0aCBkPSJNMTIgMTZoNCIvPgogICAgICAgICAgPHBhdGggZD0iTTggMTFoLjAxIi8+CiAgICAgICAgICA8cGF0aCBkPSJNOCAxNmguMDEiLz4KICAgICAgICA8L3N2Zz4KICAgICAgPC9zcGFuPgogICAgICA8c3BhbiBjbGFzcz0ibGJsIj5SZWthbSBtZWRpczwvc3Bhbj4KICAgICAgPHNwYW4gY2xhc3M9ImNoZXYiIGlkPSJjaGV2LXJla2FtIj4KICAgICAgICA8c3ZnIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PHBvbHlsaW5lIHBvaW50cz0iNiA5IDEyIDE1IDE4IDkiLz48L3N2Zz4KICAgICAgPC9zcGFuPgogICAgPC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJzYi1zdWIiIGlkPSJzdWItcmVrYW0iPgogICAgICA8ZGl2IGNsYXNzPSJzYi1zdWItcm93Ij5EYXRhIFBhc2llbjwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJzYi1zdWItcm93Ij5LdW5qdW5nYW48L2Rpdj4KICAgIDwvZGl2PgoKICAgIDwhLS0gMy4gRmFybWFjYXJlIE9yZGVyIC0tPgogICAgPGRpdiBjbGFzcz0ic2Itcm93IiBpZD0icm93LW9yZGVyIiBvbmNsaWNrPSJ0b2dnbGUoJ29yZGVyJyx0aGlzKSI+CiAgICAgIDxzcGFuIGNsYXNzPSJpYyI+CiAgICAgICAgPHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgICAgICAgIDxwYXRoIGQ9Im01IDExIDQtNyIvPgogICAgICAgICAgPHBhdGggZD0ibTE5IDExLTQtNyIvPgogICAgICAgICAgPHBhdGggZD0iTTIgMTFoMjAiLz4KICAgICAgICAgIDxwYXRoIGQ9Im0zLjUgMTEgMS42IDcuNGEyIDIgMCAwIDAgMiAxLjZoOS44Yy45IDAgMS44LS43IDItMS42bDEuNy03LjQiLz4KICAgICAgICAgIDxwYXRoIGQ9Im05IDExIDEgOSIvPgogICAgICAgICAgPHBhdGggZD0iTTQuNSAxNS41aDE1Ii8+CiAgICAgICAgICA8cGF0aCBkPSJtMTUgMTEtMSA5Ii8+CiAgICAgICAgPC9zdmc+CiAgICAgIDwvc3Bhbj4KICAgICAgPHNwYW4gY2xhc3M9ImxibCI+RmFybWFjYXJlIE9yZGVyPC9zcGFuPgogICAgICA8c3BhbiBjbGFzcz0iY2hldiIgaWQ9ImNoZXYtb3JkZXIiPgogICAgICAgIDxzdmcgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI2IDkgMTIgMTUgMTggOSIvPjwvc3ZnPgogICAgICA8L3NwYW4+CiAgICA8L2Rpdj4KICAgIDxkaXYgY2xhc3M9InNiLXN1YiIgaWQ9InN1Yi1vcmRlciI+CiAgICAgIDxkaXYgY2xhc3M9InNiLXN1Yi1yb3ciPkJ1YXQgT3JkZXI8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0ic2Itc3ViLXJvdyI+RGFmdGFyIE9yZGVyPC9kaXY+CiAgICA8L2Rpdj4KCiAgICA8IS0tIDQuIFBlbWJlbGlhbiAtLT4KICAgIDxkaXYgY2xhc3M9InNiLXJvdyIgaWQ9InJvdy1iZWxpIiBvbmNsaWNrPSJ0b2dnbGUoJ2JlbGknLHRoaXMpIj4KICAgICAgPHNwYW4gY2xhc3M9ImljIj4KICAgICAgICA8c3ZnIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgogICAgICAgICAgPHBhdGggZD0iTTIxIDE2VjhhMiAyIDAgMCAwLTEtMS43M2wtNy00YTIgMiAwIDAgMC0yIDBsLTcgNEEyIDIgMCAwIDAgMyA4djhhMiAyIDAgMCAwIDEgMS43M2w3IDRhMiAyIDAgMCAwIDIgMGw3LTRBMiAyIDAgMCAwIDIxIDE2eiIvPgogICAgICAgICAgPHBvbHlsaW5lIHBvaW50cz0iMy4yNyA2Ljk2IDEyIDEyLjAxIDIwLjczIDYuOTYiLz4KICAgICAgICAgIDxsaW5lIHgxPSIxMiIgeTE9IjIyLjA4IiB4Mj0iMTIiIHkyPSIxMiIvPgogICAgICAgIDwvc3ZnPgogICAgICA8L3NwYW4+CiAgICAgIDxzcGFuIGNsYXNzPSJsYmwiPlBlbWJlbGlhbjwvc3Bhbj4KICAgICAgPHNwYW4gY2xhc3M9ImNoZXYiIGlkPSJjaGV2LWJlbGkiPgogICAgICAgIDxzdmcgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI2IDkgMTIgMTUgMTggOSIvPjwvc3ZnPgogICAgICA8L3NwYW4+CiAgICA8L2Rpdj4KICAgIDxkaXYgY2xhc3M9InNiLXN1YiIgaWQ9InN1Yi1iZWxpIj4KICAgICAgPGRpdiBjbGFzcz0ic2Itc3ViLXJvdyI+UHVyY2hhc2UgT3JkZXI8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0ic2Itc3ViLXJvdyI+UGVuZXJpbWFhbiBCYXJhbmc8L2Rpdj4KICAgIDwvZGl2PgoKICAgIDwhLS0gNS4gRmFybWFjYXJlIFBheSAtLT4KICAgIDxkaXYgY2xhc3M9InNiLXJvdyIgaWQ9InJvdy1wYXkiIG9uY2xpY2s9InRvZ2dsZSgncGF5Jyx0aGlzKSI+CiAgICAgIDxzcGFuIGNsYXNzPSJpYyI+CiAgICAgICAgPHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgICAgICAgIDxwYXRoIGQ9Ik0yMSAxMlY3SDVhMiAyIDAgMCAxIDAtNGgxNHY0Ii8+CiAgICAgICAgICA8cGF0aCBkPSJNMyA1djE0YTIgMiAwIDAgMCAyIDJoMTZ2LTUiLz4KICAgICAgICAgIDxwYXRoIGQ9Ik0xOCAxMmEyIDIgMCAwIDAgMCA0aDR2LTRaIi8+CiAgICAgICAgPC9zdmc+CiAgICAgIDwvc3Bhbj4KICAgICAgPHNwYW4gY2xhc3M9ImxibCI+RmFybWFjYXJlIFBheTwvc3Bhbj4KICAgICAgPHNwYW4gY2xhc3M9ImNoZXYiIGlkPSJjaGV2LXBheSI+CiAgICAgICAgPHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjYgOSAxMiAxNSAxOCA5Ii8+PC9zdmc+CiAgICAgIDwvc3Bhbj4KICAgIDwvZGl2PgogICAgPGRpdiBjbGFzcz0ic2Itc3ViIiBpZD0ic3ViLXBheSI+CiAgICAgIDxkaXYgY2xhc3M9InNiLXN1Yi1yb3ciPlNhbGRvICYgTXV0YXNpPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InNiLXN1Yi1yb3ciPlBlbWJheWFyYW48L2Rpdj4KICAgIDwvZGl2PgoKICAgIDwhLS0gNi4gQmFyYW5nIC0tPgogICAgPGRpdiBjbGFzcz0ic2Itcm93IiBpZD0icm93LWJhcmFuZyIgb25jbGljaz0idG9nZ2xlKCdiYXJhbmcnLHRoaXMpIj4KICAgICAgPHNwYW4gY2xhc3M9ImljIj4KICAgICAgICA8c3ZnIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgogICAgICAgICAgPHBhdGggZD0iTTkgM0g1YTIgMiAwIDAgMC0yIDJ2NG02LTZoMTBhMiAyIDAgMCAxIDIgMnY0TTkgM3YxOG0wIDBoMTBhMiAyIDAgMCAwIDItMnYtNE05IDIxSDVhMiAyIDAgMCAxLTItMnYtNG0wIDBoMTgiLz4KICAgICAgICA8L3N2Zz4KICAgICAgPC9zcGFuPgogICAgICA8c3BhbiBjbGFzcz0ibGJsIj5CYXJhbmc8L3NwYW4+CiAgICAgIDxzcGFuIGNsYXNzPSJjaGV2IiBpZD0iY2hldi1iYXJhbmciPgogICAgICAgIDxzdmcgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI2IDkgMTIgMTUgMTggOSIvPjwvc3ZnPgogICAgICA8L3NwYW4+CiAgICA8L2Rpdj4KICAgIDxkaXYgY2xhc3M9InNiLXN1YiIgaWQ9InN1Yi1iYXJhbmciPgogICAgICA8ZGl2IGNsYXNzPSJzYi1zdWItcm93Ij5EYWZ0YXIgQmFyYW5nPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InNiLXN1Yi1yb3ciPlN0b2sgT3BuYW1lPC9kaXY+CiAgICA8L2Rpdj4KCiAgICA8IS0tIDcuIEJ1a3Uga2FzIC0tPgogICAgPGRpdiBjbGFzcz0ic2Itcm93IiBpZD0icm93LWJ1a3VrYXMiIG9uY2xpY2s9InNldEFjdGl2ZSgnYnVrdWthcycsdGhpcykiPgogICAgICA8c3BhbiBjbGFzcz0iaWMiPgogICAgICAgIDxzdmcgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICAgICAgICA8cGF0aCBkPSJNNCAxOS41QTIuNSAyLjUgMCAwIDEgNi41IDE3SDIwIi8+CiAgICAgICAgICA8cGF0aCBkPSJNNi41IDJIMjB2MjBINi41QTIuNSAyLjUgMCAwIDEgNCAxOS41di0xNUEyLjUgMi41IDAgMCAxIDYuNSAyeiIvPgogICAgICAgICAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMCIgcj0iMiIvPgogICAgICAgICAgPHBhdGggZD0iTTkgMTZoNiIvPgogICAgICAgIDwvc3ZnPgogICAgICA8L3NwYW4+CiAgICAgIDxzcGFuIGNsYXNzPSJsYmwiPkJ1a3Uga2FzPC9zcGFuPgogICAgPC9kaXY+CgogICAgPCEtLSA4LiBMYXBvcmFuIC0tPgogICAgPGRpdiBjbGFzcz0ic2Itcm93IiBpZD0icm93LWxhcG9yYW4iIG9uY2xpY2s9InNldEFjdGl2ZSgnbGFwb3JhbicsdGhpcykiPgogICAgICA8c3BhbiBjbGFzcz0iaWMiPgogICAgICAgIDxzdmcgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICAgICAgICA8cmVjdCB4PSI4IiB5PSIyIiB3aWR0aD0iOCIgaGVpZ2h0PSI0IiByeD0iMSIgcnk9IjEiLz4KICAgICAgICAgIDxwYXRoIGQ9Ik0xNiA0aDJhMiAyIDAgMCAxIDIgMnYxNGEyIDIgMCAwIDEtMiAySDZhMiAyIDAgMCAxLTItMlY2YTIgMiAwIDAgMSAyLTJoMiIvPgogICAgICAgICAgPGxpbmUgeDE9IjkiIHkxPSIxMiIgeDI9IjE1IiB5Mj0iMTIiLz4KICAgICAgICAgIDxsaW5lIHgxPSI5IiB5MT0iMTYiIHgyPSIxMyIgeTI9IjE2Ii8+CiAgICAgICAgICA8bGluZSB4MT0iOSIgeTE9IjgiIHgyPSIxNSIgeTI9IjgiLz4KICAgICAgICA8L3N2Zz4KICAgICAgPC9zcGFuPgogICAgICA8c3BhbiBjbGFzcz0ibGJsIj5MYXBvcmFuPC9zcGFuPgogICAgPC9kaXY+CgogICAgPCEtLSA5LiBCZXJsYW5nZ2FuYW4gLS0+CiAgICA8ZGl2IGNsYXNzPSJzYi1yb3ciIGlkPSJyb3ctYmVybGFuZyIgb25jbGljaz0ic2V0QWN0aXZlKCdiZXJsYW5nJyx0aGlzKSI+CiAgICAgIDxzcGFuIGNsYXNzPSJpYyI+CiAgICAgICAgPHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgICAgICAgIDxyZWN0IHg9IjMiIHk9IjQiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgcng9IjIiIHJ5PSIyIi8+CiAgICAgICAgICA8bGluZSB4MT0iMTYiIHkxPSIyIiB4Mj0iMTYiIHkyPSI2Ii8+CiAgICAgICAgICA8bGluZSB4MT0iOCIgeTE9IjIiIHgyPSI4IiB5Mj0iNiIvPgogICAgICAgICAgPGxpbmUgeDE9IjMiIHkxPSIxMCIgeDI9IjIxIiB5Mj0iMTAiLz4KICAgICAgICAgIDxwYXRoIGQ9Im05IDE2IDIgMiA0LTQiLz4KICAgICAgICA8L3N2Zz4KICAgICAgPC9zcGFuPgogICAgICA8c3BhbiBjbGFzcz0ibGJsIj5CZXJsYW5nZ2FuYW48L3NwYW4+CiAgICA8L2Rpdj4KCiAgICA8IS0tIDEwLiBQZW5nYXR1cmFuIC0tPgogICAgPGRpdiBjbGFzcz0ic2Itcm93IiBpZD0icm93LXBlbmdhdCIgb25jbGljaz0ic2V0QWN0aXZlKCdwZW5nYXQnLHRoaXMpIj4KICAgICAgPHNwYW4gY2xhc3M9ImljIj4KICAgICAgICA8c3ZnIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgogICAgICAgICAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMyIvPgogICAgICAgICAgPHBhdGggZD0iTTE5LjQgMTVhMS42NSAxLjY1IDAgMCAwIC4zMyAxLjgybC4wNi4wNmEyIDIgMCAwIDEtMi44MyAyLjgzbC0uMDYtLjA2YTEuNjUgMS42NSAwIDAgMC0xLjgyLS4zMyAxLjY1IDEuNjUgMCAwIDAtMSAxLjUxVjIxYTIgMiAwIDAgMS00IDB2LS4wOUExLjY1IDEuNjUgMCAwIDAgOSAxOS40YTEuNjUgMS42NSAwIDAgMC0xLjgyLjMzbC0uMDYuMDZhMiAyIDAgMCAxLTIuODMtMi44M2wuMDYtLjA2QTEuNjUgMS42NSAwIDAgMCA0LjY4IDE1YTEuNjUgMS42NSAwIDAgMC0xLjUxLTFIM2EyIDIgMCAwIDEgMC00aC4wOUExLjY1IDEuNjUgMCAwIDAgNC42IDlhMS42NSAxLjY1IDAgMCAwLS4zMy0xLjgybC0uMDYtLjA2YTIgMiAwIDAgMSAyLjgzLTIuODNsLjA2LjA2QTEuNjUgMS42NSAwIDAgMCA5IDQuNjhhMS42NSAxLjY1IDAgMCAwIDEtMS41MVYzYTIgMiAwIDAgMSA0IDB2LjA5YTEuNjUgMS42NSAwIDAgMCAxIDEuNTEgMS42NSAxLjY1IDAgMCAwIDEuODItLjMzbC4wNi0uMDZhMiAyIDAgMCAxIDIuODMgMi44M2wtLjA2LjA2QTEuNjUgMS42NSAwIDAgMCAxOS40IDlhMS42NSAxLjY1IDAgMCAwIDEuNTEgMUgyMWEyIDIgMCAwIDEgMCA0aC0uMDlhMS42NSAxLjY1IDAgMCAwLTEuNTEgMXoiLz4KICAgICAgICA8L3N2Zz4KICAgICAgPC9zcGFuPgogICAgICA8c3BhbiBjbGFzcz0ibGJsIj5QZW5nYXR1cmFuPC9zcGFuPgogICAgPC9kaXY+CgogICAgPCEtLSAxMS4gQmFudHVhbiAtLT4KICAgIDxkaXYgY2xhc3M9InNiLXJvdyIgaWQ9InJvdy1iYW50dWFuIiBvbmNsaWNrPSJzZXRBY3RpdmUoJ2JhbnR1YW4nLHRoaXMpIj4KICAgICAgPHNwYW4gY2xhc3M9ImljIj4KICAgICAgICA8c3ZnIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgogICAgICAgICAgPHBhdGggZD0iTTMgMTh2LTZhOSA5IDAgMCAxIDE4IDB2NiIvPgogICAgICAgICAgPHBhdGggZD0iTTIxIDE5YTIgMiAwIDAgMS0yIDJoLTFhMiAyIDAgMCAxLTItMnYtM2EyIDIgMCAwIDEgMi0yaDN6Ii8+CiAgICAgICAgICA8cGF0aCBkPSJNMyAxOWEyIDIgMCAwIDAgMiAyaDFhMiAyIDAgMCAwIDItMnYtM2EyIDIgMCAwIDAtMi0ySDN6Ii8+CiAgICAgICAgPC9zdmc+CiAgICAgIDwvc3Bhbj4KICAgICAgPHNwYW4gY2xhc3M9ImxibCI+QmFudHVhbjwvc3Bhbj4KICAgIDwvZGl2PgoKICAgIDwhLS0gMTIuIFR1dHVwIHNoaWZ0IC0tPgogICAgPGRpdiBjbGFzcz0ic2Itcm93IiBpZD0icm93LXR1dHVwIiBvbmNsaWNrPSJzZXRBY3RpdmUoJ3R1dHVwJyx0aGlzKSI+CiAgICAgIDxzcGFuIGNsYXNzPSJpYyI+CiAgICAgICAgPHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgICAgICAgIDxwYXRoIGQ9Ik05IDIxSDVhMiAyIDAgMCAxLTItMlY1YTIgMiAwIDAgMSAyLTJoNCIvPgogICAgICAgICAgPHBvbHlsaW5lIHBvaW50cz0iMTYgMTcgMjEgMTIgMTYgNyIvPgogICAgICAgICAgPGxpbmUgeDE9IjIxIiB5MT0iMTIiIHgyPSI5IiB5Mj0iMTIiLz4KICAgICAgICA8L3N2Zz4KICAgICAgPC9zcGFuPgogICAgICA8c3BhbiBjbGFzcz0ibGJsIj5UdXR1cCBzaGlmdDwvc3Bhbj4KICAgIDwvZGl2PgoKICA8L2Rpdj4KPC9kaXY+Cgo8c2NyaXB0PgogIGZ1bmN0aW9uIGNsb3NlU2lkZWJhcigpIHsKICAgIGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdzaWRlYmFyJykuY2xhc3NMaXN0LmFkZCgnY2xvc2VkJyk7CiAgICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnb3ZlcmxheScpLmNsYXNzTGlzdC5hZGQoJ2hpZGRlbicpOwogIH0KICBmdW5jdGlvbiBvcGVuU2lkZWJhcigpIHsKICAgIGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdzaWRlYmFyJykuY2xhc3NMaXN0LnJlbW92ZSgnY2xvc2VkJyk7CiAgICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnb3ZlcmxheScpLmNsYXNzTGlzdC5yZW1vdmUoJ2hpZGRlbicpOwogIH0KICBmdW5jdGlvbiBjbGVhckFjdGl2ZSgpIHsKICAgIGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3JBbGwoJy5zYi1yb3cnKS5mb3JFYWNoKHIgPT4gci5jbGFzc0xpc3QucmVtb3ZlKCdhY3RpdmUnKSk7CiAgfQogIGZ1bmN0aW9uIHNldEFjdGl2ZShrZXksIGVsKSB7CiAgICBjbGVhckFjdGl2ZSgpOwogICAgZWwuY2xhc3NMaXN0LmFkZCgnYWN0aXZlJyk7CiAgfQogIGZ1bmN0aW9uIHRvZ2dsZShrZXksIGVsKSB7CiAgICBjb25zdCBzdWIgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnc3ViLScgKyBrZXkpOwogICAgY29uc3QgY2hldiA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdjaGV2LScgKyBrZXkpOwogICAgY29uc3Qgd2FzT3BlbiA9IHN1YiAmJiBzdWIuY2xhc3NMaXN0LmNvbnRhaW5zKCdvcGVuJyk7CiAgICBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCcuc2Itc3ViJykuZm9yRWFjaChzID0+IHMuY2xhc3NMaXN0LnJlbW92ZSgnb3BlbicpKTsKICAgIGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3JBbGwoJ1tpZF49ImNoZXYtIl0nKS5mb3JFYWNoKGMgPT4gYy5jbGFzc0xpc3QucmVtb3ZlKCdvcGVuJykpOwogICAgaWYgKCF3YXNPcGVuKSB7CiAgICAgIGlmIChzdWIpIHN1Yi5jbGFzc0xpc3QuYWRkKCdvcGVuJyk7CiAgICAgIGlmIChjaGV2KSBjaGV2LmNsYXNzTGlzdC5hZGQoJ29wZW4nKTsKICAgIH0KICAgIGNsZWFyQWN0aXZlKCk7CiAgICBlbC5jbGFzc0xpc3QuYWRkKCdhY3RpdmUnKTsKICB9Cjwvc2NyaXB0Pgo8L2JvZHk+CjwvaHRtbD4=";
-                const html = decodeURIComponent(escape(atob(b64)));
-                const blob = new Blob([html], {type: 'text/html'});
-                const url = URL.createObjectURL(blob);
-                return (
-                    <div style={{position:'fixed', inset:0, zIndex:10, background:'#fff'}}>
-                        <iframe
-                            src={url}
-                            style={{width:'100%', height:'100%', border:'none', display:'block'}}
-                            title="Farmacare Kasir"
-                        />
-                    </div>
-                );
-            };
-
-
-            const App = () => {
+                const App = () => {
             const [inventoryData, setInventoryData] = useState([]);
             const [rawInventory, setRawInventory] = useState([]); // Store original data from DB
             const [settingsData, setSettingsData] = useState(DEFAULT_SETTINGS); 
@@ -15125,7 +15151,6 @@
                 { id: 'transfer_barang', label: 'Transfer Barang', icon: 'right-left',         enabled: isOwner || showMenu('showMenuTransferBarang', settingsData.showMenuTransferBarang), readOnly: !isOwner && !menuOn('enableTransferBarang', settingsData.enableTransferBarang) },
                 { id: 'pengguna_akun', label: 'Pengguna Akun',   icon: 'users',               enabled: true, readOnly: false },
                 { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
-                { id: 'tes',         label: 'Tes',               icon: 'flask',               enabled: true, readOnly: false },
             ];
             const visibleMenuItems = menuItems.filter(m => m.enabled);
 
@@ -15184,15 +15209,15 @@
                         </div> 
                     </div> )}
 
-                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 md:w-80 shadow-2xl md:shadow-soft transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:min-h-screen ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                        <div className="p-4 pb-3 h-full flex flex-col" style={{background:"#118989"}}>
+                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 md:w-80 bg-white/95 backdrop-blur-xl md:backdrop-blur-md md:bg-white border-r border-slate-200 md:border-white/20 shadow-2xl md:shadow-soft transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:min-h-screen ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                        <div className="p-4 pb-3 h-full flex flex-col">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3 relative z-50">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all duration-500 bg-white/20 text-white`}><Icon name="shop" className="text-lg" /></div>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg transition-all duration-500 ${activeStoreId === 'all_stores' ? 'bg-indigo-600' : 'bg-sky-600'}`}><Icon name="shop" className="text-lg" /></div>
                                     <div className="relative">
                                         <button onClick={() => setShowStoreMenu(!showStoreMenu)} className="text-left group flex items-center gap-2 hover:bg-slate-50 p-1 -ml-1 rounded-lg transition-colors">
-                                            <div><h1 className="font-black text-lg text-white leading-none tracking-tight">{currentProfile.name}</h1><p className="text-[9px] font-bold uppercase tracking-widest mt-1 text-white/60">Inventory App (Online)</p></div>
-                                            <Icon name="chevron-down" className={`text-xs text-white/60 transition-transform ${showStoreMenu ? 'rotate-180' : ''}`} />
+                                            <div><h1 className="font-black text-lg text-slate-800 leading-none tracking-tight">{currentProfile.name}</h1><p className="text-[9px] font-bold uppercase tracking-widest mt-1 text-slate-400">Inventory App (Online)</p></div>
+                                            <Icon name="chevron-down" className={`text-xs text-slate-400 transition-transform ${showStoreMenu ? 'rotate-180' : ''}`} />
                                         </button>
                                         {showStoreMenu && (
                                             <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden fade-in z-[60]">
@@ -15217,7 +15242,7 @@
                                 <div className="flex items-center gap-1">
                                     {/* Bell - tampil di sidebar (desktop & mobile drawer) */}
                                     <div className="relative">
-                                        <button onClick={handleOpenNotif} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/20 transition-all">
+                                        <button onClick={handleOpenNotif} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all">
                                             <Icon name="bell" className="text-base" />
                                             {unreadCount > 0 && (
                                                 <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow animate-pulse">
@@ -15226,7 +15251,7 @@
                                             )}
                                         </button>
                                     </div>
-                                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/20 transition-all"><Icon name="xmark" className="text-xl" /></button>
+                                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"><Icon name="xmark" className="text-xl" /></button>
                                 </div>
                             </div>
                             <nav className="space-y-0.5 flex-1 overflow-y-auto min-h-0 pr-1">
@@ -15243,11 +15268,11 @@
                                         return (
                                             <div key="kasir-group">
                                                 {/* Tombol induk Kasir — navigasi ke submenu pertama */}
-                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isKasirGroupActive ? 'text-white' : 'text-white/70'}`}
+                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isKasirGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
                                                     onClick={() => { setKasirDropdownOpen(true); setActiveTab('cashier'); setShowOnlyLowStock(false); }}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
-                                                        <Icon name="cash-register" className={`text-base ${isKasirGroupActive ? 'text-white' : 'text-white/60'}`} />
+                                                        <Icon name="cash-register" className={`text-base ${isKasirGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
                                                         {menu.badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow-sm animate-pulse">{menu.badge > 9 ? '9+' : menu.badge}</span>}
                                                     </div>
                                                     <span className="flex-1 text-left">Kasir</span>
@@ -15255,7 +15280,7 @@
                                                         onClick={(e) => { e.stopPropagation(); setKasirDropdownOpen(prev => !prev); }}
                                                         className="w-6 h-6 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
                                                     >
-                                                        <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-white/50" />
+                                                        <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
                                                     </button>
                                                 </div>
                                                 {/* Dropdown sub-menu */}
@@ -15265,9 +15290,9 @@
                                                             <button
                                                                 key={sub.id}
                                                                 onClick={(e) => handleNavClick(sub.id, e)}
-                                                                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-white text-[#118989] shadow-md' : 'text-white/80 hover:bg-white/15'}`}
+                                                                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
                                                             >
-                                                                <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-[#118989]' : 'text-white/70'}`} />
+                                                                <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
                                                                 <span className="flex-1 text-left">{sub.label}</span>
                                                             </button>
                                                         ))}
@@ -15290,18 +15315,18 @@
                                         return (
                                             <div key="barang-group">
                                                 {/* Tombol induk Barang — navigasi ke submenu pertama */}
-                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isBarangGroupActive ? 'text-white' : 'text-white/70'}`}
+                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isBarangGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
                                                     onClick={() => { setBarangDropdownOpen(true); setActiveTab('list'); setShowOnlyLowStock(false); }}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
-                                                        <Icon name="box-open" className={`text-base ${isBarangGroupActive ? 'text-white' : 'text-white/60'}`} />
+                                                        <Icon name="box-open" className={`text-base ${isBarangGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
                                                     </div>
                                                     <span className="flex-1 text-left">Barang</span>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setBarangDropdownOpen(prev => !prev); }}
                                                         className="w-6 h-6 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
                                                     >
-                                                        <Icon name={barangDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-white/50" />
+                                                        <Icon name={barangDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
                                                     </button>
                                                 </div>
                                                 {/* Dropdown sub-menu */}
@@ -15315,11 +15340,11 @@
                                                                 <button
                                                                     key={sub.id}
                                                                     onClick={(e) => handleNavClick(sub.id, e)}
-                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-white text-[#118989] shadow-md' : 'text-white/80 hover:bg-white/15'}`}
+                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
                                                                 >
-                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-[#118989]' : 'text-white/70'}`} />
+                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
                                                                     <span className="flex-1 text-left">{sub.label}</span>
-                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-white/40 flex-shrink-0" title="Lihat saja" />}
+                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}
                                                                 </button>
                                                             );
                                                         })}
@@ -15338,18 +15363,18 @@
                                         return (
                                             <div key="pembelian-group">
                                                 {/* Tombol induk Pembelian — navigasi ke submenu pertama */}
-                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isPembelianGroupActive ? 'text-white' : 'text-white/70'}`}
+                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isPembelianGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
                                                     onClick={() => { setPembelianDropdownOpen(true); setActiveTab('purchases'); setShowOnlyLowStock(false); }}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
-                                                        <Icon name="cart-shopping" className={`text-base ${isPembelianGroupActive ? 'text-white' : 'text-white/60'}`} />
+                                                        <Icon name="cart-shopping" className={`text-base ${isPembelianGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
                                                     </div>
                                                     <span className="flex-1 text-left">Pembelian</span>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setPembelianDropdownOpen(prev => !prev); }}
                                                         className="w-6 h-6 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
                                                     >
-                                                        <Icon name={pembelianDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-white/50" />
+                                                        <Icon name={pembelianDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
                                                     </button>
                                                 </div>
                                                 {/* Dropdown sub-menu */}
@@ -15363,11 +15388,11 @@
                                                                 <button
                                                                     key={sub.id}
                                                                     onClick={(e) => handleNavClick(sub.id, e)}
-                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-white text-[#118989] shadow-md' : 'text-white/80 hover:bg-white/15'}`}
+                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
                                                                 >
-                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-[#118989]' : 'text-white/70'}`} />
+                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
                                                                     <span className="flex-1 text-left">{sub.label}</span>
-                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-white/40 flex-shrink-0" title="Lihat saja" />}
+                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}
                                                                 </button>
                                                             );
                                                         })}
@@ -15382,23 +15407,23 @@
                                     if (['stock_opname','add','import','transfer_barang'].includes(menu.id)) return null;
                                     // --- Menu biasa ---
                                     return (
-                                        <button key={menu.id} onClick={(e) => handleNavClick(menu.id, e)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group ${activeTab === menu.id ? 'bg-white text-[#118989] shadow-lg' : 'text-white/80 hover:bg-white/15'}`}>
+                                        <button key={menu.id} onClick={(e) => handleNavClick(menu.id, e)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group ${activeTab === menu.id ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>
                                             <div className="relative w-5 flex-shrink-0">
-                                                <Icon name={menu.icon} className={`text-base ${activeTab === menu.id ? 'text-[#118989]' : 'text-white/70'}`} />
+                                                <Icon name={menu.icon} className={`text-base ${activeTab === menu.id ? 'text-white' : 'text-slate-400'}`} />
                                                 {menu.badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow-sm animate-pulse">{menu.badge > 9 ? '9+' : menu.badge}</span>}
                                             </div>
                                             <span className="flex-1 text-left">{menu.label}</span>
-                                            {menu.readOnly && activeTab !== menu.id && <Icon name="eye" className="text-[9px] text-white/40 flex-shrink-0" title="Lihat saja" />}
+                                            {menu.readOnly && activeTab !== menu.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}
                                             {menu.badge > 0 && activeTab !== menu.id && <span className="text-[9px] bg-red-100 text-red-600 font-black px-1.5 py-0.5 rounded-full border border-red-200">{menu.badge} baru</span>}
                                         </button>
                                     );
                                 })}
                             </nav>
-                            <div className="pt-4 border-t border-white/20 flex-shrink-0">
+                            <div className="pt-4 border-t border-slate-100 flex-shrink-0">
                                 {authSession && (
-                                    <div className="mb-2 px-3 py-2 rounded-xl border" style={{background:"rgba(255,255,255,0.15)", borderColor:"rgba(255,255,255,0.2)"}}>
+                                    <div className="mb-2 px-3 py-2 bg-sky-50 rounded-xl border border-sky-100">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-lg bg-white/30 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                            <div className="w-7 h-7 rounded-lg bg-sky-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
                                                 {authSession.profilePhoto ? (
                                                     <img src={authSession.profilePhoto} alt="foto" className="w-full h-full object-cover" style={{objectPosition: authSession.photoPosition||'50% 50%'}} />
                                                 ) : (
@@ -15406,13 +15431,13 @@
                                                 )}
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-xs font-black text-white truncate">{authSession.namaLengkap}</p>
+                                                <p className="text-xs font-black text-slate-700 truncate">{authSession.namaLengkap}</p>
                                                 <p className="text-[10px] text-slate-400 truncate">@{authSession.username}</p>
                                             </div>
                                         </div>
                                     </div>
                                 )}
-                                <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/80 font-bold text-xs transition-all mb-2" style={{hover:{background:"rgba(255,255,255,0.1)"}}}>
+                                <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 font-bold text-xs transition-all mb-2">
                                     <Icon name="right-from-bracket" className="text-sm" /> Keluar / Logout
                                 </button>
                                 <p className="text-[10px] text-center text-slate-400">Versi 44 • Faktur Pembelian Dipisah Per Toko</p>
@@ -15420,56 +15445,23 @@
                         </div>
                     </aside>
                     <main className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
-                        <div className="md:hidden mb-4 flex items-center gap-2 relative z-30" style={{background:"#fff", borderBottom:"1px solid #e0e0e0", padding:"5px 14px", minHeight:"46px", margin:"0 -1rem 1rem -1rem"}}>
-                            {/* Hamburger 3 garis */}
-                            <div onClick={() => setIsSidebarOpen(true)} style={{cursor:"pointer", padding:"6px", borderRadius:"8px", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center"}}>
-                                <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
-                                    <rect width="18" height="2" rx="1" fill="#118989"/>
-                                    <rect y="5.5" width="18" height="2" rx="1" fill="#118989"/>
-                                    <rect y="11" width="18" height="2" rx="1" fill="#118989"/>
-                                </svg>
+                        <div className="md:hidden mb-6 flex items-center justify-between gap-4 relative z-30">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white ${activeStoreId === 'all_stores' ? 'bg-indigo-600' : 'bg-sky-600'} shadow-md`}><Icon name="shop" /></div>
+                                <h1 className="font-bold text-slate-800 text-lg">{currentProfile.name}</h1>
                             </div>
-                            {/* Brand - nama toko + role */}
-                            <div style={{flex:1, cursor:"pointer", userSelect:"none"}} onClick={() => setShowStoreMenu(!showStoreMenu)}>
-                                <div style={{color:"#118989", fontSize:"17px", fontWeight:800, lineHeight:1.2, display:"flex", alignItems:"center", gap:"4px"}}>
-                                    {currentProfile.name}
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#118989" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                                </div>
-                                <div style={{color:"#666", fontSize:"12.5px", fontWeight:600}}>
-                                    {authSession?.namaLengkap || 'Karyawan'}
-                                </div>
-                            </div>
-                            {/* Actions: bell + pertanyaan */}
-                            <div style={{display:"flex", alignItems:"center", gap:"8px", flexShrink:0}}>
-                                <div style={{width:"34px", height:"34px", borderRadius:"8px", border:"1.5px solid #c0c0c0", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", position:"relative", cursor:"pointer"}} onClick={handleOpenNotif}>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#118989" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                                    </svg>
+                            <div className="flex items-center gap-2">
+                                {/* Bell - mobile header */}
+                                <button onClick={handleOpenNotif} className="relative bg-white/90 backdrop-blur-md w-10 h-10 rounded-xl text-slate-600 shadow-sm border border-slate-200 active:scale-95 transition-all flex items-center justify-center">
+                                    <Icon name="bell" className="text-base" />
                                     {unreadCount > 0 && (
-                                        <span style={{position:"absolute", top:"-5px", right:"-5px", background:"#e8460a", color:"#fff", fontSize:"10px", fontWeight:800, borderRadius:"99px", minWidth:"19px", height:"19px", display:"flex", alignItems:"center", justifyContent:"center", padding:"0 4px", border:"2px solid #efefef"}}>
+                                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center leading-none shadow animate-pulse">
                                             {unreadCount > 9 ? '9+' : unreadCount}
                                         </span>
                                     )}
-                                </div>
+                                </button>
+                                <button onClick={() => setIsSidebarOpen(true)} className="bg-white/90 backdrop-blur-md w-10 h-10 rounded-xl shadow-sm border border-slate-200 active:scale-95 transition-all flex items-center justify-center" title="Menu"><svg width="18" height="13" viewBox="0 0 18 13" fill="none"><rect width="18" height="2" rx="1" fill="#0284c7"/><rect y="5.5" width="18" height="2" rx="1" fill="#0284c7"/><rect y="11" width="18" height="2" rx="1" fill="#0284c7"/></svg></button>
                             </div>
-                            {/* Store dropdown */}
-                            {showStoreMenu && (
-                                <div style={{position:"absolute", top:"100%", left:"46px", marginTop:"4px", width:"220px", background:"#fff", borderRadius:"12px", boxShadow:"0 8px 24px rgba(0,0,0,0.12)", border:"1px solid #e8e8e8", zIndex:60, overflow:"hidden"}}>
-                                    <div style={{padding:"8px", borderBottom:"1px solid #f0f0f0", background:"#fafafa"}}>
-                                        <span style={{fontSize:"10px", fontWeight:700, color:"#888", textTransform:"uppercase", padding:"0 8px"}}>Pilih Profil Toko</span>
-                                    </div>
-                                    <div style={{maxHeight:"192px", overflowY:"auto"}}>
-                                        {visibleStoreProfiles.map(profile => (
-                                            <button key={profile.id} onClick={() => { handleSwitchStore(profile.id); setShowStoreMenu(false); }} style={{width:"100%", textAlign:"left", padding:"12px 16px", fontSize:"14px", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"space-between", background: activeStoreId===profile.id ? "#e8f5f5" : "#fff", color: activeStoreId===profile.id ? "#118989" : "#333", border:"none", cursor:"pointer"}}>
-                                                <span style={{overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{profile.name}</span>
-                                                {activeStoreId===profile.id && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#118989" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 12 4 12"/></svg>}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <button onClick={() => { setActiveTab('settings'); setShowStoreMenu(false); }} style={{width:"100%", textAlign:"left", padding:"8px 16px", fontSize:"10px", fontWeight:700, color:"#999", background:"#fff", border:"none", borderTop:"1px solid #f0f0f0", cursor:"pointer"}}>+ Kelola Toko di Pengaturan</button>
-                                </div>
-                            )}
                         </div>
                         {/* Notification Panel - Tabbed Modal */}
                         {showNotifPanel && (
@@ -15643,7 +15635,6 @@
                         {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} settings={settingsData} />)}
-                        {activeTab === 'tes' && (<TesView />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
