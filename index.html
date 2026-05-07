@@ -7220,15 +7220,18 @@
                              {/* ── TOMBOL MODE OFFLINE ── */}
                              <div style={{padding:'0 8px 12px 8px'}}>
                              <button
-                                 onClick={startOfflineMode}
+                                 onClick={!isOnline ? startOfflineMode : undefined}
+                                 disabled={isOnline}
+                                 title={isOnline ? 'Mode Offline hanya tersedia saat tidak ada koneksi internet' : 'Klik untuk masuk Mode Offline'}
                                  style={{
                                      width:'100%', borderRadius:'10px', padding:'8px 14px',
                                      display:'flex', alignItems:'center', justifyContent:'space-between',
-                                     gap:'8px', cursor:'pointer', transition:'all .15s ease',
+                                     gap:'8px', cursor: isOnline ? 'not-allowed' : 'pointer', transition:'all .15s ease',
                                      fontFamily:"'Nunito',sans-serif", fontWeight:700, fontSize:'14.5px',
-                                     border: !isOnline ? '1.5px solid #ffd0c0' : '1.5px solid #dcdcdc',
-                                     background: !isOnline ? '#fff0eb' : '#f9f9f9',
-                                     color: !isOnline ? '#e8460a' : '#555',
+                                     border: !isOnline ? '1.5px solid #ffd0c0' : '1.5px solid #e0e0e0',
+                                     background: !isOnline ? '#fff0eb' : '#f3f3f3',
+                                     color: !isOnline ? '#e8460a' : '#bbb',
+                                     opacity: isOnline ? 0.6 : 1,
                                  }}
                              >
                                  <div style={{display:'flex',alignItems:'center',gap:'7px'}}>
