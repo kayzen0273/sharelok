@@ -1468,7 +1468,7 @@
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className={`font-bold text-sm ${checked ? 'text-teal-900' : 'text-slate-600'}`}>{profile.name}</p>
-                                                    {profile.address && <p className="text-[10px] text-slate-400 truncate">{profile.address}</p>}
+                                                    {profile.address && <p className="text-[10px] text-white/70 truncate">{profile.address}</p>}
                                                 </div>
                                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? 'bg-teal-500 border-teal-500' : 'border-slate-300'}`}>
                                                     {checked && <Icon name="check" className="text-white text-[9px]" />}
@@ -13404,7 +13404,7 @@
                                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                                     <span className="text-5xl">📋</span>
                                     <p className="text-sm font-bold text-slate-400">Belum ada data absensi</p>
-                                    <p className="text-xs text-slate-300">{filterAbsensiDate ? 'Tidak ada absensi pada tanggal ini' : 'Mulai absen dengan kamera di atas'}</p>
+                                    <p className="text-xs text-white/50">{filterAbsensiDate ? 'Tidak ada absensi pada tanggal ini' : 'Mulai absen dengan kamera di atas'}</p>
                                 </div>
                             ) : (
                                 <div className="divide-y divide-slate-50">
@@ -15184,15 +15184,15 @@
                         </div> 
                     </div> )}
 
-                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 md:w-80 bg-white/95 backdrop-blur-xl md:backdrop-blur-md md:bg-white border-r border-slate-200 md:border-white/20 shadow-2xl md:shadow-soft transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:min-h-screen ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                        <div className="p-4 pb-3 h-full flex flex-col">
+                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 md:w-80 shadow-2xl md:shadow-soft transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:min-h-screen ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                        <div className="p-4 pb-3 h-full flex flex-col" style={{background:"#118989"}}>
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3 relative z-50">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg transition-all duration-500 ${activeStoreId === 'all_stores' ? 'bg-indigo-600' : 'bg-sky-600'}`}><Icon name="shop" className="text-lg" /></div>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all duration-500 bg-white/20 text-white`}><Icon name="shop" className="text-lg" /></div>
                                     <div className="relative">
                                         <button onClick={() => setShowStoreMenu(!showStoreMenu)} className="text-left group flex items-center gap-2 hover:bg-slate-50 p-1 -ml-1 rounded-lg transition-colors">
-                                            <div><h1 className="font-black text-lg text-slate-800 leading-none tracking-tight">{currentProfile.name}</h1><p className="text-[9px] font-bold uppercase tracking-widest mt-1 text-slate-400">Inventory App (Online)</p></div>
-                                            <Icon name="chevron-down" className={`text-xs text-slate-400 transition-transform ${showStoreMenu ? 'rotate-180' : ''}`} />
+                                            <div><h1 className="font-black text-lg text-white leading-none tracking-tight">{currentProfile.name}</h1><p className="text-[9px] font-bold uppercase tracking-widest mt-1 text-white/60">Inventory App (Online)</p></div>
+                                            <Icon name="chevron-down" className={`text-xs text-white/60 transition-transform ${showStoreMenu ? 'rotate-180' : ''}`} />
                                         </button>
                                         {showStoreMenu && (
                                             <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden fade-in z-[60]">
@@ -15217,7 +15217,7 @@
                                 <div className="flex items-center gap-1">
                                     {/* Bell - tampil di sidebar (desktop & mobile drawer) */}
                                     <div className="relative">
-                                        <button onClick={handleOpenNotif} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all">
+                                        <button onClick={handleOpenNotif} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/20 transition-all">
                                             <Icon name="bell" className="text-base" />
                                             {unreadCount > 0 && (
                                                 <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow animate-pulse">
@@ -15226,7 +15226,7 @@
                                             )}
                                         </button>
                                     </div>
-                                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"><Icon name="xmark" className="text-xl" /></button>
+                                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/20 transition-all"><Icon name="xmark" className="text-xl" /></button>
                                 </div>
                             </div>
                             <nav className="space-y-0.5 flex-1 overflow-y-auto min-h-0 pr-1">
@@ -15243,11 +15243,11 @@
                                         return (
                                             <div key="kasir-group">
                                                 {/* Tombol induk Kasir — navigasi ke submenu pertama */}
-                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isKasirGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
+                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isKasirGroupActive ? 'text-white' : 'text-white/70'}`}
                                                     onClick={() => { setKasirDropdownOpen(true); setActiveTab('cashier'); setShowOnlyLowStock(false); }}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
-                                                        <Icon name="cash-register" className={`text-base ${isKasirGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
+                                                        <Icon name="cash-register" className={`text-base ${isKasirGroupActive ? 'text-white' : 'text-white/60'}`} />
                                                         {menu.badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow-sm animate-pulse">{menu.badge > 9 ? '9+' : menu.badge}</span>}
                                                     </div>
                                                     <span className="flex-1 text-left">Kasir</span>
@@ -15255,7 +15255,7 @@
                                                         onClick={(e) => { e.stopPropagation(); setKasirDropdownOpen(prev => !prev); }}
                                                         className="w-6 h-6 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
                                                     >
-                                                        <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
+                                                        <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-white/50" />
                                                     </button>
                                                 </div>
                                                 {/* Dropdown sub-menu */}
@@ -15265,9 +15265,9 @@
                                                             <button
                                                                 key={sub.id}
                                                                 onClick={(e) => handleNavClick(sub.id, e)}
-                                                                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-white text-[#118989] shadow-md' : 'text-white/80 hover:bg-white/15'}`}
                                                             >
-                                                                <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
+                                                                <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-[#118989]' : 'text-white/70'}`} />
                                                                 <span className="flex-1 text-left">{sub.label}</span>
                                                             </button>
                                                         ))}
@@ -15290,18 +15290,18 @@
                                         return (
                                             <div key="barang-group">
                                                 {/* Tombol induk Barang — navigasi ke submenu pertama */}
-                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isBarangGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
+                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isBarangGroupActive ? 'text-white' : 'text-white/70'}`}
                                                     onClick={() => { setBarangDropdownOpen(true); setActiveTab('list'); setShowOnlyLowStock(false); }}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
-                                                        <Icon name="box-open" className={`text-base ${isBarangGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
+                                                        <Icon name="box-open" className={`text-base ${isBarangGroupActive ? 'text-white' : 'text-white/60'}`} />
                                                     </div>
                                                     <span className="flex-1 text-left">Barang</span>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setBarangDropdownOpen(prev => !prev); }}
                                                         className="w-6 h-6 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
                                                     >
-                                                        <Icon name={barangDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
+                                                        <Icon name={barangDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-white/50" />
                                                     </button>
                                                 </div>
                                                 {/* Dropdown sub-menu */}
@@ -15315,11 +15315,11 @@
                                                                 <button
                                                                     key={sub.id}
                                                                     onClick={(e) => handleNavClick(sub.id, e)}
-                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-white text-[#118989] shadow-md' : 'text-white/80 hover:bg-white/15'}`}
                                                                 >
-                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
+                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-[#118989]' : 'text-white/70'}`} />
                                                                     <span className="flex-1 text-left">{sub.label}</span>
-                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}
+                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-white/40 flex-shrink-0" title="Lihat saja" />}
                                                                 </button>
                                                             );
                                                         })}
@@ -15338,18 +15338,18 @@
                                         return (
                                             <div key="pembelian-group">
                                                 {/* Tombol induk Pembelian — navigasi ke submenu pertama */}
-                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isPembelianGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
+                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isPembelianGroupActive ? 'text-white' : 'text-white/70'}`}
                                                     onClick={() => { setPembelianDropdownOpen(true); setActiveTab('purchases'); setShowOnlyLowStock(false); }}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
-                                                        <Icon name="cart-shopping" className={`text-base ${isPembelianGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
+                                                        <Icon name="cart-shopping" className={`text-base ${isPembelianGroupActive ? 'text-white' : 'text-white/60'}`} />
                                                     </div>
                                                     <span className="flex-1 text-left">Pembelian</span>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setPembelianDropdownOpen(prev => !prev); }}
                                                         className="w-6 h-6 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
                                                     >
-                                                        <Icon name={pembelianDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
+                                                        <Icon name={pembelianDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-white/50" />
                                                     </button>
                                                 </div>
                                                 {/* Dropdown sub-menu */}
@@ -15363,11 +15363,11 @@
                                                                 <button
                                                                     key={sub.id}
                                                                     onClick={(e) => handleNavClick(sub.id, e)}
-                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-white text-[#118989] shadow-md' : 'text-white/80 hover:bg-white/15'}`}
                                                                 >
-                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
+                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-[#118989]' : 'text-white/70'}`} />
                                                                     <span className="flex-1 text-left">{sub.label}</span>
-                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}
+                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-white/40 flex-shrink-0" title="Lihat saja" />}
                                                                 </button>
                                                             );
                                                         })}
@@ -15382,23 +15382,23 @@
                                     if (['stock_opname','add','import','transfer_barang'].includes(menu.id)) return null;
                                     // --- Menu biasa ---
                                     return (
-                                        <button key={menu.id} onClick={(e) => handleNavClick(menu.id, e)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group ${activeTab === menu.id ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                        <button key={menu.id} onClick={(e) => handleNavClick(menu.id, e)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group ${activeTab === menu.id ? 'bg-white text-[#118989] shadow-lg' : 'text-white/80 hover:bg-white/15'}`}>
                                             <div className="relative w-5 flex-shrink-0">
-                                                <Icon name={menu.icon} className={`text-base ${activeTab === menu.id ? 'text-white' : 'text-slate-400'}`} />
+                                                <Icon name={menu.icon} className={`text-base ${activeTab === menu.id ? 'text-[#118989]' : 'text-white/70'}`} />
                                                 {menu.badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow-sm animate-pulse">{menu.badge > 9 ? '9+' : menu.badge}</span>}
                                             </div>
                                             <span className="flex-1 text-left">{menu.label}</span>
-                                            {menu.readOnly && activeTab !== menu.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}
+                                            {menu.readOnly && activeTab !== menu.id && <Icon name="eye" className="text-[9px] text-white/40 flex-shrink-0" title="Lihat saja" />}
                                             {menu.badge > 0 && activeTab !== menu.id && <span className="text-[9px] bg-red-100 text-red-600 font-black px-1.5 py-0.5 rounded-full border border-red-200">{menu.badge} baru</span>}
                                         </button>
                                     );
                                 })}
                             </nav>
-                            <div className="pt-4 border-t border-slate-100 flex-shrink-0">
+                            <div className="pt-4 border-t border-white/20 flex-shrink-0">
                                 {authSession && (
-                                    <div className="mb-2 px-3 py-2 bg-sky-50 rounded-xl border border-sky-100">
+                                    <div className="mb-2 px-3 py-2 rounded-xl border" style={{background:"rgba(255,255,255,0.15)", borderColor:"rgba(255,255,255,0.2)"}}>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-lg bg-sky-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                            <div className="w-7 h-7 rounded-lg bg-white/30 flex items-center justify-center flex-shrink-0 overflow-hidden">
                                                 {authSession.profilePhoto ? (
                                                     <img src={authSession.profilePhoto} alt="foto" className="w-full h-full object-cover" style={{objectPosition: authSession.photoPosition||'50% 50%'}} />
                                                 ) : (
@@ -15406,13 +15406,13 @@
                                                 )}
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-xs font-black text-slate-700 truncate">{authSession.namaLengkap}</p>
+                                                <p className="text-xs font-black text-white truncate">{authSession.namaLengkap}</p>
                                                 <p className="text-[10px] text-slate-400 truncate">@{authSession.username}</p>
                                             </div>
                                         </div>
                                     </div>
                                 )}
-                                <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 font-bold text-xs transition-all mb-2">
+                                <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/80 font-bold text-xs transition-all mb-2" style={{hover:{background:"rgba(255,255,255,0.1)"}}}>
                                     <Icon name="right-from-bracket" className="text-sm" /> Keluar / Logout
                                 </button>
                                 <p className="text-[10px] text-center text-slate-400">Versi 44 • Faktur Pembelian Dipisah Per Toko</p>
@@ -15420,23 +15420,56 @@
                         </div>
                     </aside>
                     <main className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
-                        <div className="md:hidden mb-6 flex items-center justify-between gap-4 relative z-30">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white ${activeStoreId === 'all_stores' ? 'bg-indigo-600' : 'bg-sky-600'} shadow-md`}><Icon name="shop" /></div>
-                                <h1 className="font-bold text-slate-800 text-lg">{currentProfile.name}</h1>
+                        <div className="md:hidden mb-4 flex items-center gap-2 relative z-30" style={{background:"#fff", borderBottom:"1px solid #e0e0e0", padding:"5px 14px", minHeight:"46px", margin:"0 -1rem 1rem -1rem"}}>
+                            {/* Hamburger 3 garis */}
+                            <div onClick={() => setIsSidebarOpen(true)} style={{cursor:"pointer", padding:"6px", borderRadius:"8px", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center"}}>
+                                <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
+                                    <rect width="18" height="2" rx="1" fill="#118989"/>
+                                    <rect y="5.5" width="18" height="2" rx="1" fill="#118989"/>
+                                    <rect y="11" width="18" height="2" rx="1" fill="#118989"/>
+                                </svg>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {/* Bell - mobile header */}
-                                <button onClick={handleOpenNotif} className="relative bg-white/90 backdrop-blur-md w-10 h-10 rounded-xl text-slate-600 shadow-sm border border-slate-200 active:scale-95 transition-all flex items-center justify-center">
-                                    <Icon name="bell" className="text-base" />
+                            {/* Brand - nama toko + role */}
+                            <div style={{flex:1, cursor:"pointer", userSelect:"none"}} onClick={() => setShowStoreMenu(!showStoreMenu)}>
+                                <div style={{color:"#118989", fontSize:"17px", fontWeight:800, lineHeight:1.2, display:"flex", alignItems:"center", gap:"4px"}}>
+                                    {currentProfile.name}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#118989" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                </div>
+                                <div style={{color:"#666", fontSize:"12.5px", fontWeight:600}}>
+                                    {authSession?.namaLengkap || 'Karyawan'}
+                                </div>
+                            </div>
+                            {/* Actions: bell + pertanyaan */}
+                            <div style={{display:"flex", alignItems:"center", gap:"8px", flexShrink:0}}>
+                                <div style={{width:"34px", height:"34px", borderRadius:"8px", border:"1.5px solid #c0c0c0", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", position:"relative", cursor:"pointer"}} onClick={handleOpenNotif}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#118989" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                                    </svg>
                                     {unreadCount > 0 && (
-                                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center leading-none shadow animate-pulse">
+                                        <span style={{position:"absolute", top:"-5px", right:"-5px", background:"#e8460a", color:"#fff", fontSize:"10px", fontWeight:800, borderRadius:"99px", minWidth:"19px", height:"19px", display:"flex", alignItems:"center", justifyContent:"center", padding:"0 4px", border:"2px solid #efefef"}}>
                                             {unreadCount > 9 ? '9+' : unreadCount}
                                         </span>
                                     )}
-                                </button>
-                                <button onClick={() => setIsSidebarOpen(true)} className="bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-xl text-slate-700 font-bold text-sm shadow-sm border border-slate-200 active:scale-95 transition-all flex items-center gap-2"><Icon name="bars" className="text-sky-600" /> Menu</button>
+                                </div>
                             </div>
+                            {/* Store dropdown */}
+                            {showStoreMenu && (
+                                <div style={{position:"absolute", top:"100%", left:"46px", marginTop:"4px", width:"220px", background:"#fff", borderRadius:"12px", boxShadow:"0 8px 24px rgba(0,0,0,0.12)", border:"1px solid #e8e8e8", zIndex:60, overflow:"hidden"}}>
+                                    <div style={{padding:"8px", borderBottom:"1px solid #f0f0f0", background:"#fafafa"}}>
+                                        <span style={{fontSize:"10px", fontWeight:700, color:"#888", textTransform:"uppercase", padding:"0 8px"}}>Pilih Profil Toko</span>
+                                    </div>
+                                    <div style={{maxHeight:"192px", overflowY:"auto"}}>
+                                        {visibleStoreProfiles.map(profile => (
+                                            <button key={profile.id} onClick={() => { handleSwitchStore(profile.id); setShowStoreMenu(false); }} style={{width:"100%", textAlign:"left", padding:"12px 16px", fontSize:"14px", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"space-between", background: activeStoreId===profile.id ? "#e8f5f5" : "#fff", color: activeStoreId===profile.id ? "#118989" : "#333", border:"none", cursor:"pointer"}}>
+                                                <span style={{overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{profile.name}</span>
+                                                {activeStoreId===profile.id && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#118989" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 12 4 12"/></svg>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button onClick={() => { setActiveTab('settings'); setShowStoreMenu(false); }} style={{width:"100%", textAlign:"left", padding:"8px 16px", fontSize:"10px", fontWeight:700, color:"#999", background:"#fff", border:"none", borderTop:"1px solid #f0f0f0", cursor:"pointer"}}>+ Kelola Toko di Pengaturan</button>
+                                </div>
+                            )}
                         </div>
                         {/* Notification Panel - Tabbed Modal */}
                         {showNotifPanel && (
