@@ -273,7 +273,7 @@
         .exp-banner-exit  { animation: expBannerOut 0.4s  ease-in            forwards; }
     </style>
 </head>
-<body class="islamic-pattern relative">
+<body class="relative">
     <div id="root" class="relative z-10"></div>
 
     <!-- React App (Babel) -->
@@ -15036,7 +15036,7 @@
             const visibleMenuItems = menuItems.filter(m => m.enabled);
 
             return (
-                <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
+                <div className={`min-h-screen flex flex-col md:flex-row bg-white transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
                     <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> <ExpiryBanner items={expiryAlertItems} thresholdDays={(settingsData.expiryNotifMonths || 3) * 30} durationMs={(settingsData.expiryNotifSeconds || 3) * 1000} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
