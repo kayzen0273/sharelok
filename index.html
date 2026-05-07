@@ -15387,7 +15387,7 @@
                     </aside>
                     <main className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
                         {/* ── FARMACARE-STYLE TOPBAR (mobile only) ── */}
-                        <div className="md:hidden -mx-4 -mt-4 mb-5 flex items-center bg-white border-b border-slate-200 px-3.5 gap-2.5 sticky top-0 z-30" style={{minHeight:'46px'}}>
+                        <div className="md:hidden -mx-4 -mt-4 mb-5 flex items-center bg-white border-b border-slate-200 px-4 gap-3 sticky top-0 z-30" style={{minHeight:'60px'}}>
                             {/* Hamburger */}
                             <button onClick={() => setIsSidebarOpen(true)} className="flex items-center justify-center p-1.5 rounded-lg active:bg-slate-100 transition-colors flex-shrink-0">
                                 <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
@@ -15398,16 +15398,16 @@
                             </button>
                             {/* Brand */}
                             <div className="flex-1 flex flex-col gap-0.5 cursor-pointer select-none" onClick={() => setShowStoreMenu(!showStoreMenu)}>
-                                <div className="flex items-center gap-1 text-sky-500 font-extrabold leading-tight" style={{fontSize:'17px'}}>
+                                <div className="flex items-center gap-1 text-sky-500 font-extrabold leading-tight" style={{fontSize:'19px'}}>
                                     {currentProfile.name}
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                                 </div>
-                                <div className="text-slate-500 font-semibold leading-none" style={{fontSize:'12px'}}>
+                                <div className="text-slate-500 font-semibold leading-none" style={{fontSize:'13px'}}>
                                     {authSession?.namaLengkap || authSession?.username || 'Kasir'} — {isOwner ? 'Pemilik Toko' : (authSession?.jabatan || 'Karyawan')}
                                 </div>
                             </div>
                             {/* Bell */}
-                            <button onClick={handleOpenNotif} className="relative flex items-center justify-center flex-shrink-0 bg-white active:bg-slate-50 transition-colors" style={{width:'34px',height:'34px',borderRadius:'8px',border:'1.5px solid #c0c0c0'}}>
+                            <button onClick={handleOpenNotif} className="relative flex items-center justify-center flex-shrink-0 bg-white active:bg-slate-50 transition-colors" style={{width:'40px',height:'40px',borderRadius:'10px',border:'1.5px solid #c0c0c0'}}>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
