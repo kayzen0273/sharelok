@@ -211,10 +211,9 @@
             background-image: none;
         }
         .auth-card {
-            background: rgba(255,255,255,0.97);
-            backdrop-filter: blur(20px);
+            background: #ffffff;
             border-radius: 24px;
-            box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+            box-shadow: 0 4px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06);
         }
         .auth-input {
             width: 100%;
@@ -657,73 +656,11 @@
 
 
 
-        // --- DEKORASI KASIR MODERN ---
-        const RamadhanDecor = () => (
+        // --- DEKORASI KASIR MODERN (dinonaktifkan) ---
+        const RamadhanDecor = () => null;
+        const _RamadhanDecor_DISABLED = () => (
             <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
-                {/* Partikel koin & receipt melayang */}
-                <div className="absolute inset-0 z-0">
-                    {[...Array(16)].map((_, i) => (
-                        <div key={i} className="absolute opacity-0 animate-float-up"
-                             style={{
-                                 left: Math.random() * 100 + '%',
-                                 animationDelay: Math.random() * 12 + 's',
-                                 animationDuration: Math.random() * 10 + 12 + 's',
-                                 fontSize: (Math.random() * 8 + 8) + 'px',
-                                 color: i % 4 === 0 ? '#f59e0b' : i % 4 === 1 ? '#38bdf8' : i % 4 === 2 ? '#34d399' : '#a78bfa',
-                             }}>
-                            {i % 4 === 0 ? '💰' : i % 4 === 1 ? '🧾' : i % 4 === 2 ? '🛒' : '💳'}
-                        </div>
-                    ))}
-                </div>
-
-                {/* Titik-titik glowing tech */}
-                <div className="absolute top-8 left-[8%] w-1.5 h-1.5 rounded-full bg-sky-400 animate-twinkle opacity-50" style={{animationDelay:'0.2s'}}></div>
-                <div className="absolute top-20 left-[30%] w-1 h-1 rounded-full bg-emerald-400 animate-twinkle opacity-40" style={{animationDelay:'1.1s'}}></div>
-                <div className="absolute top-6 right-[18%] w-2 h-2 rounded-full bg-amber-400 animate-twinkle opacity-60" style={{animationDelay:'0.5s'}}></div>
-                <div className="absolute top-14 right-[40%] w-1 h-1 rounded-full bg-violet-400 animate-twinkle opacity-45" style={{animationDelay:'1.8s'}}></div>
-                <div className="absolute top-28 left-[55%] w-1.5 h-1.5 rounded-full bg-sky-300 animate-twinkle opacity-35" style={{animationDelay:'0.9s'}}></div>
-
-                {/* Shooting line (bukan bintang jatuh, lebih seperti laser scan) */}
-                <div className="absolute -top-10 right-10 w-24 h-0.5 bg-gradient-to-l from-transparent via-sky-400 to-transparent opacity-30 animate-falling-star"></div>
-
-                {/* Gantungan kiri: Icon Kasir / Register */}
-                <div className="absolute -top-8 left-2 md:left-12 z-0 animate-swing origin-top" style={{animationDuration:'4200ms'}}>
-                    <div className="h-20 md:h-32 w-[1px] bg-sky-400/50 mx-auto"></div>
-                    <div className="text-sky-500 text-4xl md:text-6xl drop-shadow-md relative z-10"><Icon name="cash-register" /></div>
-                </div>
-
-                {/* Gantungan kedua kiri: Receipt tag */}
-                <div className="absolute -top-14 left-20 md:left-40 z-0 animate-sway origin-top" style={{animationDuration:'5800ms'}}>
-                    <div className="h-28 md:h-44 w-[1px] bg-sky-400/30 mx-auto"></div>
-                    <div className="flex flex-col items-center gap-1">
-                        <div className="receipt-tag">
-                            <div className="receipt-tag-line"></div>
-                            <div className="receipt-tag-line short"></div>
-                            <div className="receipt-tag-line"></div>
-                            <div className="receipt-tag-line short"></div>
-                        </div>
-                        <div className="h-3 w-[1px] bg-sky-400/30 mx-auto"></div>
-                        <div className="text-sky-500 text-[10px]"><Icon name="receipt" /></div>
-                    </div>
-                </div>
-
-                {/* Gantungan tengah: Barcode scanner */}
-                <div className="absolute -top-12 left-[30%] hidden md:block z-0 animate-swing-slow origin-top" style={{animationDuration:'4800ms'}}>
-                    <div className="h-20 w-[1px] bg-emerald-400/40 mx-auto"></div>
-                    <div className="text-emerald-500 text-2xl drop-shadow-md animate-pulse"><Icon name="barcode" /></div>
-                </div>
-
-                {/* Gantungan kanan: Shopping cart */}
-                <div className="absolute -top-8 right-4 md:right-12 z-0 animate-swing origin-top" style={{animationDuration:'3800ms'}}>
-                    <div className="h-20 md:h-32 w-[1px] bg-amber-400/50 mx-auto"></div>
-                    <div className="text-amber-500 text-4xl md:text-6xl drop-shadow-md relative z-10"><Icon name="cart-shopping" /></div>
-                </div>
-
-                {/* Gantungan kedua kanan: Koin */}
-                <div className="absolute -top-14 right-20 md:right-40 z-0 animate-sway origin-top" style={{animationDuration:'5200ms'}}>
-                    <div className="h-28 md:h-44 w-[1px] bg-amber-400/30 mx-auto"></div>
-                    <div className="coin-decor">Rp</div>
-                </div>
+                {/* SEMUA DEKORASI & ANIMASI DINONAKTIFKAN */}
 
                 {/* Siluet toko / ruko di bawah */}
                 <div className="absolute bottom-0 left-0 right-0 pointer-events-none overflow-hidden" style={{opacity: 0.06}}>
@@ -12174,18 +12111,6 @@
 
             return (
                 <div className="auth-bg flex items-center justify-center min-h-screen p-4">
-                    {/* Orbs */}
-                    <div className="auth-orb" style={{width:'400px',height:'400px',background:'rgba(14,165,233,0.15)',top:'-100px',left:'-100px'}}></div>
-                    <div className="auth-orb" style={{width:'300px',height:'300px',background:'rgba(250,204,21,0.1)',bottom:'50px',right:'-80px'}}></div>
-                    <div className="auth-orb" style={{width:'200px',height:'200px',background:'rgba(34,197,94,0.1)',top:'40%',right:'5%'}}></div>
-                    
-                    {/* Stars */}
-                    {[...Array(8)].map((_,i) => (
-                        <div key={i} className="auth-floating-star text-yellow-300" style={{
-                            top: Math.random()*80+'%', left: Math.random()*95+'%',
-                            fontSize: (Math.random()*8+6)+'px', animationDelay: i*0.5+'s', opacity:0.4
-                        }}><Icon name="star" /></div>
-                    ))}
 
                     <div className="auth-card auth-fade-in w-full max-w-md relative z-10">
                         {/* Header */}
