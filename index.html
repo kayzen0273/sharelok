@@ -146,6 +146,10 @@
             background-image: none;
         }
 
+        /* Sidebar menu hover - hanya putih transparan, bukan putih penuh */
+        .sb-item-hover:hover { background: rgba(255,255,255,0.15) !important; }
+        .sb-item-active:hover { background: #fff !important; }
+
         .font-arab { font-family: 'Amiri', serif; }
 
         /* Receipt Tag Style */
@@ -15146,7 +15150,8 @@
                                             <div key="kasir-group">
                                                 {/* Tombol induk Kasir */}
                                                 <div
-                                                    onClick={() => { setKasirDropdownOpen(true); setActiveTab('cashier'); setShowOnlyLowStock(false); }}
+                                                    onClick={() => { setKasirDropdownOpen(true); setBarangDropdownOpen(false); setPembelianDropdownOpen(false); setActiveTab('cashier'); setShowOnlyLowStock(false); }}
+                                                    className={isKasirGroupActive ? 'sb-item-hover sb-item-active' : 'sb-item-hover'}
                                                     style={{display:'flex',alignItems:'center',padding:'9px 10px',borderRadius:'8px',cursor:'pointer',gap:'10px',color: isKasirGroupActive ? '#118989' : '#fff',fontSize:'13.5px',fontWeight:700,userSelect:'none',transition:'background .1s',letterSpacing:'.1px',background: isKasirGroupActive ? '#fff' : 'transparent'}}
                                                 >
                                                     <span style={{flexShrink:0,color: isKasirGroupActive ? '#118989' : '#fff',display:'flex',alignItems:'center',width:'18px',height:'18px'}}>
@@ -15155,7 +15160,7 @@
                                                     </span>
                                                     <span style={{flex:1}}>Kasir</span>
                                                     <span
-                                                        onClick={(e) => { e.stopPropagation(); setKasirDropdownOpen(prev => !prev); }}
+                                                        onClick={(e) => { e.stopPropagation(); setKasirDropdownOpen(prev => { if(!prev){setBarangDropdownOpen(false);setPembelianDropdownOpen(false);} return !prev; }); }}
                                                         style={{flexShrink:0,color: isKasirGroupActive ? '#118989' : '#fff',display:'flex',alignItems:'center',transition:'transform .25s',transform: kasirDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}
                                                     >
                                                         <Icon name="chevron-down" className="text-sm" />
@@ -15168,6 +15173,7 @@
                                                             <button
                                                                 key={sub.id}
                                                                 onClick={(e) => handleNavClick(sub.id, e)}
+                                                                className="sb-item-hover"
                                                                 style={{display:'flex',alignItems:'center',width:'100%',padding:'7px 12px 7px 36px',color: activeTab === sub.id ? '#fff' : 'rgba(255,255,255,0.82)',fontSize:'13.5px',fontWeight:600,cursor:'pointer',borderRadius:'8px',background: activeTab === sub.id ? 'rgba(0,0,0,0.2)' : 'transparent',border:'none',textAlign:'left'}}
                                                             >
                                                                 <span className="flex-1 text-left">{sub.label}</span>
@@ -15193,7 +15199,8 @@
                                             <div key="barang-group">
                                                 {/* Tombol induk Barang */}
                                                 <div
-                                                    onClick={() => { setBarangDropdownOpen(true); setActiveTab('list'); setShowOnlyLowStock(false); }}
+                                                    onClick={() => { setBarangDropdownOpen(true); setKasirDropdownOpen(false); setPembelianDropdownOpen(false); setActiveTab('list'); setShowOnlyLowStock(false); }}
+                                                    className={isBarangGroupActive ? 'sb-item-hover sb-item-active' : 'sb-item-hover'}
                                                     style={{display:'flex',alignItems:'center',padding:'9px 10px',borderRadius:'8px',cursor:'pointer',gap:'10px',color: isBarangGroupActive ? '#118989' : '#fff',fontSize:'13.5px',fontWeight:700,userSelect:'none',transition:'background .1s',letterSpacing:'.1px',background: isBarangGroupActive ? '#fff' : 'transparent'}}
                                                 >
                                                     <span style={{flexShrink:0,color: isBarangGroupActive ? '#118989' : '#fff',display:'flex',alignItems:'center',width:'18px',height:'18px'}}>
@@ -15201,7 +15208,7 @@
                                                     </span>
                                                     <span style={{flex:1}}>Barang</span>
                                                     <span
-                                                        onClick={(e) => { e.stopPropagation(); setBarangDropdownOpen(prev => !prev); }}
+                                                        onClick={(e) => { e.stopPropagation(); setBarangDropdownOpen(prev => { if(!prev){setKasirDropdownOpen(false);setPembelianDropdownOpen(false);} return !prev; }); }}
                                                         style={{flexShrink:0,color: isBarangGroupActive ? '#118989' : '#fff',display:'flex',alignItems:'center',transition:'transform .25s',transform: barangDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}
                                                     >
                                                         <Icon name="chevron-down" className="text-sm" />
@@ -15218,6 +15225,7 @@
                                                                 <button
                                                                     key={sub.id}
                                                                     onClick={(e) => handleNavClick(sub.id, e)}
+                                                                    className="sb-item-hover"
                                                                     style={{display:'flex',alignItems:'center',width:'100%',padding:'7px 12px 7px 36px',color: activeTab === sub.id ? '#fff' : 'rgba(255,255,255,0.82)',fontSize:'13.5px',fontWeight:600,cursor:'pointer',borderRadius:'8px',background: activeTab === sub.id ? 'rgba(0,0,0,0.2)' : 'transparent',border:'none',textAlign:'left'}}
                                                                 >
                                                                     <span className="flex-1 text-left">{sub.label}</span>
@@ -15241,7 +15249,8 @@
                                             <div key="pembelian-group">
                                                 {/* Tombol induk Pembelian */}
                                                 <div
-                                                    onClick={() => { setPembelianDropdownOpen(true); setActiveTab('purchases'); setShowOnlyLowStock(false); }}
+                                                    onClick={() => { setPembelianDropdownOpen(true); setKasirDropdownOpen(false); setBarangDropdownOpen(false); setActiveTab('purchases'); setShowOnlyLowStock(false); }}
+                                                    className={isPembelianGroupActive ? 'sb-item-hover sb-item-active' : 'sb-item-hover'}
                                                     style={{display:'flex',alignItems:'center',padding:'9px 10px',borderRadius:'8px',cursor:'pointer',gap:'10px',color: isPembelianGroupActive ? '#118989' : '#fff',fontSize:'13.5px',fontWeight:700,userSelect:'none',transition:'background .1s',letterSpacing:'.1px',background: isPembelianGroupActive ? '#fff' : 'transparent'}}
                                                 >
                                                     <span style={{flexShrink:0,color: isPembelianGroupActive ? '#118989' : '#fff',display:'flex',alignItems:'center',width:'18px',height:'18px'}}>
@@ -15249,7 +15258,7 @@
                                                     </span>
                                                     <span style={{flex:1}}>Pembelian</span>
                                                     <span
-                                                        onClick={(e) => { e.stopPropagation(); setPembelianDropdownOpen(prev => !prev); }}
+                                                        onClick={(e) => { e.stopPropagation(); setPembelianDropdownOpen(prev => { if(!prev){setKasirDropdownOpen(false);setBarangDropdownOpen(false);} return !prev; }); }}
                                                         style={{flexShrink:0,color: isPembelianGroupActive ? '#118989' : '#fff',display:'flex',alignItems:'center',transition:'transform .25s',transform: pembelianDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}
                                                     >
                                                         <Icon name="chevron-down" className="text-sm" />
@@ -15266,6 +15275,7 @@
                                                                 <button
                                                                     key={sub.id}
                                                                     onClick={(e) => handleNavClick(sub.id, e)}
+                                                                    className="sb-item-hover"
                                                                     style={{display:'flex',alignItems:'center',width:'100%',padding:'7px 12px 7px 36px',color: activeTab === sub.id ? '#fff' : 'rgba(255,255,255,0.82)',fontSize:'13.5px',fontWeight:600,cursor:'pointer',borderRadius:'8px',background: activeTab === sub.id ? 'rgba(0,0,0,0.2)' : 'transparent',border:'none',textAlign:'left'}}
                                                                 >
                                                                     <span className="flex-1 text-left">{sub.label}</span>
@@ -15286,7 +15296,8 @@
                                     return (
                                         <div
                                             key={menu.id}
-                                            onClick={(e) => handleNavClick(menu.id, e)}
+                                            onClick={(e) => { setKasirDropdownOpen(false); setBarangDropdownOpen(false); setPembelianDropdownOpen(false); handleNavClick(menu.id, e); }}
+                                            className={activeTab === menu.id ? 'sb-item-hover sb-item-active' : 'sb-item-hover'}
                                             style={{display:'flex',alignItems:'center',padding:'9px 10px',borderRadius:'8px',cursor:'pointer',gap:'10px',color: activeTab === menu.id ? '#118989' : '#fff',fontSize:'13.5px',fontWeight:700,userSelect:'none',transition:'background .1s',letterSpacing:'.1px',background: activeTab === menu.id ? '#fff' : 'transparent',position:'relative'}}
                                         >
                                             <span style={{flexShrink:0,color: activeTab === menu.id ? '#118989' : '#fff',display:'flex',alignItems:'center',width:'18px',height:'18px'}}>
