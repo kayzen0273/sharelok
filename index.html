@@ -11348,28 +11348,26 @@
             }, []);
 
             const initializedSessionRef = React.useRef(null);
-            // Menyimpan snapshot stok sistem sebelumnya untuk mendeteksi perubahan akibat transaksi
+            // Snapshot stok sistem: { itemId: qty } — untuk mendeteksi perubahan akibat transaksi
             const prevItemQtyRef = React.useRef({});
+            // True setelah snapshot pertama kali diisi untuk sesi aktif
+            const snapshotReadyRef = React.useRef(false);
 
             useEffect(() => {
                 const active = sessions.find(s => s.status === 'open' && s.profileId === profileId);
                 if (active) {
                     setActiveSession(active);
                     setSessionId(active.id);
-                    // Hanya load physicalCounts saat pertama kali sesi ditemukan,
-                    // supaya snapshot berikutnya tidak overwrite input user
                     if (initializedSessionRef.current !== active.id) {
                         initializedSessionRef.current = active.id;
+                        snapshotReadyRef.current = false; // snapshot akan diisi oleh useEffect [items]
                         const counts = {};
                         (active.entries || []).forEach(e => { counts[e.itemId] = e.physicalQty; });
                         setPhysicalCounts(counts);
-                        // Inisialisasi snapshot stok sistem
-                        const snapshot = {};
-                        items.forEach(i => { snapshot[i.id] = Number(i.qty || 0); });
-                        prevItemQtyRef.current = snapshot;
                     }
                 } else {
                     initializedSessionRef.current = null;
+                    snapshotReadyRef.current = false;
                     setActiveSession(null);
                     setSessionId(null);
                     setPhysicalCounts({});
@@ -11377,20 +11375,32 @@
                 }
             }, [sessions, profileId]);
 
-            // Sinkronisasi stok fisik saat stok sistem berkurang akibat transaksi
+            // Sinkronisasi stok fisik saat stok sistem berubah akibat transaksi
             useEffect(() => {
-                // Hanya jalankan jika ada sesi aktif
-                if (!initializedSessionRef.current) return;
-                const prevQty = prevItemQtyRef.current;
-                // Jika snapshot belum terisi, skip
-                if (Object.keys(prevQty).length === 0) return;
+                if (!initializedSessionRef.current) {
+                    // Tidak ada sesi aktif, reset snapshot
+                    prevItemQtyRef.current = {};
+                    snapshotReadyRef.current = false;
+                    return;
+                }
 
+                if (!snapshotReadyRef.current) {
+                    // Sesi baru dimulai — simpan snapshot awal, jangan ubah physicalCounts
+                    const snapshot = {};
+                    items.forEach(i => { snapshot[i.id] = Number(i.qty || 0); });
+                    prevItemQtyRef.current = snapshot;
+                    snapshotReadyRef.current = true;
+                    return;
+                }
+
+                // Snapshot sudah ada — bandingkan dengan kondisi items saat ini
+                const prevQty = prevItemQtyRef.current;
                 const changed = {};
                 items.forEach(item => {
                     const prev = prevQty[item.id];
                     const curr = Number(item.qty || 0);
                     if (prev !== undefined && curr !== prev) {
-                        changed[item.id] = curr - prev; // negatif = berkurang karena terjual
+                        changed[item.id] = curr - prev; // negatif = berkurang karena transaksi
                     }
                 });
 
@@ -11399,7 +11409,7 @@
                         const next = { ...prevCounts };
                         Object.entries(changed).forEach(([itemId, delta]) => {
                             if (next[itemId] !== undefined) {
-                                // Kurangi stok fisik sebesar delta (ikut transaksi)
+                                // Ikuti perubahan stok sistem
                                 const newVal = Math.max(0, Number(next[itemId]) + delta);
                                 next[itemId] = newVal;
                             }
@@ -11408,7 +11418,7 @@
                     });
                 }
 
-                // Update snapshot stok sistem
+                // Perbarui snapshot ke kondisi terbaru
                 const newSnapshot = {};
                 items.forEach(i => { newSnapshot[i.id] = Number(i.qty || 0); });
                 prevItemQtyRef.current = newSnapshot;
