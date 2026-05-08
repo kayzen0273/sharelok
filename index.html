@@ -10384,391 +10384,79 @@
             const filteredRacks = uniqueRacksData.filter(r => r.name.toLowerCase().includes(rackSearch.toLowerCase()));
             const displayedItems = filteredItems.slice(0, displayedLimit);
 
-            // Stats computation for summary cards
-            const deadStockItems = items.filter(i => safeNumber(i.qty) === 0);
-            const totalKonsinyasiValue = items.filter(i => i.isKonsinyasi).reduce((sum, i) => sum + (safeNumber(i.price) * safeNumber(i.qty)), 0);
-            const lowStockItems = items.filter(i => { const thr = i.minStock ? safeNumber(i.minStock) : lowStockThreshold; return safeNumber(i.qty) > 0 && safeNumber(i.qty) < thr; });
-
-            // Format date like farmacare: "2027 Apr 30"
-            const formatDateFarma = (dateStr) => {
-                if (!dateStr) return '-';
-                try {
-                    const d = new Date(dateStr + 'T00:00:00');
-                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                    return `${d.getFullYear()} ${months[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')}`;
-                } catch(e) { return dateStr; }
-            };
-
-            const [sortMode, setSortMode] = React.useState('name_az');
-            const sortedDisplayedItems = [...displayedItems].sort((a, b) => {
-                if (sortMode === 'name_az') return (a.name||'').localeCompare(b.name||'');
-                if (sortMode === 'name_za') return (b.name||'').localeCompare(a.name||'');
-                if (sortMode === 'stok_asc') return safeNumber(a.qty) - safeNumber(b.qty);
-                if (sortMode === 'stok_desc') return safeNumber(b.qty) - safeNumber(a.qty);
-                return 0;
-            });
-            const sortLabels = { name_az: 'Nama A-Z', name_za: 'Nama Z-A', stok_asc: 'Stok Terkecil', stok_desc: 'Stok Terbesar' };
-            const [showSortDropdown, setShowSortDropdown] = React.useState(false);
-
-            // Farmacare teal color
-            const teal = '#0b8b7a';
-
             return (
-                <div className="fade-in h-full flex flex-col relative z-10" style={{background:'#f5f7fa', minHeight:'100vh'}}>
-                    <div className="flex-1 overflow-y-auto pb-32 custom-scrollbar">
-                    {/* Page Header */}
-                    <div style={{background:'white', borderBottom:'1px solid #e8edf2', padding:'16px 16px 12px'}}>
-                        <div className="flex items-center justify-between mb-1">
-                            <h1 style={{fontSize:'28px', fontWeight:'900', color:'#1a1a2e', letterSpacing:'-0.5px'}}>
-                                {showOnlyLowStock ? 'Stok Menipis' : 'Stok'}
-                            </h1>
-                            {(isOwner || settings.enableExportExcel !== false) && (
-                                <button onClick={handleExportExcel} style={{display:'flex',alignItems:'center',gap:'6px',padding:'8px 14px',borderRadius:'10px',border:'1.5px solid #e2e8f0',background:'white',color:'#475569',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>
-                                    <Icon name="cloud-arrow-down" style={{fontSize:'13px'}} />
-                                    Unduh
-                                </button>
-                            )}
+                <div className="space-y-4 fade-in h-full flex flex-col relative z-10">
+                    
+                    <header className="flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight drop-shadow-sm">{showOnlyLowStock ? '⚠️ Stok Menipis' : 'Daftar Barang'}</h2>
+                                <p className="text-slate-500 text-xs mt-1">Stok: <b>{currentProfile.name}</b> • Total: {filteredItems.length}</p>
+                            </div>
                         </div>
-                        <p style={{fontSize:'11px', color:'#94a3b8', fontWeight:'500'}}>{currentProfile.name}</p>
-                    </div>
                         
-                        {/* ─── Stats Summary Cards ─── */}
-                        <div style={{padding:'16px', background:'white', marginBottom:'8px'}}>
-                            {/* Stok mati */}
-                            <div style={{marginBottom:'20px'}}>
-                                <div style={{display:'flex', alignItems:'center', gap:'6px', marginBottom:'4px'}}>
-                                    <span style={{fontWeight:'700', fontSize:'13px', color:'#334155', borderBottom:'1.5px dashed #94a3b8'}}>Stok mati</span>
-                                    <span style={{width:'18px',height:'18px',borderRadius:'50%',background:'#f1f5f9',color:'#64748b',fontSize:'10px',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:'900',cursor:'help',flexShrink:0}} title="Barang dengan jumlah stok 0">?</span>
-                                </div>
-                                <p style={{fontSize:'30px', fontWeight:'900', color:'#0f172a', lineHeight:1.1}}>{deadStockItems.length} <span style={{fontSize:'18px',fontWeight:'600',color:'#475569'}}>barang</span></p>
-                                <button onClick={() => { setShowOnlyLowStock(false); setSearchQuery(''); }} style={{marginTop:'6px',display:'flex',alignItems:'center',gap:'4px',color:'#0b8b7a',fontSize:'13px',fontWeight:'600',background:'none',border:'none',cursor:'pointer',padding:0}}>
-                                    Lihat detail <span style={{fontSize:'16px'}}>→</span>
+                        {/* Row Tombol - Responsive Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:flex-wrap gap-2">
+                            {(isOwner || settings.enableCopyWA !== false) && (
+                            <button onClick={handleCopyToWA} className="py-2.5 px-3.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-2 transition-all bg-[#25D366] hover:bg-[#128C7E] text-white shadow-md active:scale-95 whitespace-nowrap">
+                                <Icon name="whatsapp" type="brands" className="text-sm" />
+                                Salin WhatsApp
+                            </button>
+                            )}
+                            
+                            {(isOwner || settings.enableExportExcel !== false) && (
+                            <button onClick={handleExportExcel} className="py-2.5 px-3.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-2 transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 whitespace-nowrap">
+                                <Icon name="file-excel" className="text-sm" />
+                                Export Excel
+                            </button>
+                            )}
+                            
+                            <button onClick={() => setShowOnlyLowStock(!showOnlyLowStock)} className={`py-2.5 px-3.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-2 transition-all border shadow-sm whitespace-nowrap ${showOnlyLowStock ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                <Icon name="filter" className="text-sm" />
+                                {showOnlyLowStock ? 'Reset Filter' : 'Stok Menipis'}
+                            </button>
+                            
+                            <div className="relative min-w-0" ref={dropdownRef}>
+                                <button onClick={() => setIsRackDropdownOpen(!isRackDropdownOpen)} className={`w-full py-2.5 px-3.5 rounded-xl border border-slate-200 bg-white text-[10px] sm:text-xs font-bold text-slate-700 shadow-sm flex items-center justify-between transition-all hover:bg-slate-50 ${isRackDropdownOpen ? 'ring-2 ring-sky-400' : ''}`}>
+                                    <span className="truncate flex-1 text-left">{getRackLabel()}</span>
+                                    <Icon name="chevron-down" className={`text-xs text-slate-400 ml-2 transition-transform flex-shrink-0 ${isRackDropdownOpen ? 'rotate-180' : ''}`} />
                                 </button>
+                                {isRackDropdownOpen && (<div className="absolute top-full left-0 sm:right-0 sm:left-auto mt-2 w-full sm:w-[280px] md:w-72 bg-white rounded-xl shadow-2xl border border-slate-100 z-[60] overflow-hidden fade-in origin-top"><div className="p-3 border-b border-slate-50 sticky top-0 bg-white z-10"><div className="relative mb-2"><input autoFocus type="text" placeholder="Cari rak..." className="w-full pl-8 pr-8 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-sky-100 focus:border-sky-400 outline-none transition-all" value={rackSearch} onChange={(e) => setRackSearch(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400" />{rackSearch && (<button onClick={() => setRackSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"><Icon name="xmark" className="text-[10px]" /></button>)}</div><button onClick={() => setSelectedRacks([])} className="w-full py-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors">Reset (Tampilkan Semua)</button></div><div className="max-h-[240px] overflow-y-auto custom-scrollbar p-1.5 space-y-0.5">{filteredRacks.map(rack => { const isSelected = selectedRacks.includes(rack.name); return (<div key={rack.name} onClick={() => toggleRack(rack.name)} className={`group w-full text-left px-3 py-2.5 rounded-lg text-xs font-medium hover:bg-slate-50 transition-colors flex items-center justify-between cursor-pointer ${isSelected ? 'bg-sky-50/60' : ''}`}><div className="flex items-center gap-3 truncate flex-1"><div className="relative w-4 h-4 flex-shrink-0"><input type="checkbox" checked={isSelected} readOnly className="peer appearance-none w-4 h-4 border-2 border-slate-300 rounded checked:bg-sky-500 checked:border-sky-500 transition-all cursor-pointer" /><Icon name="check" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" /></div><span className="truncate flex-1">{rack.name}</span></div><div className="flex items-center gap-2">{rack.hasNew && (<span className="flex-shrink-0 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm animate-pulse">NEW</span>)}<button onClick={(e) => { e.stopPropagation(); onDeleteRack(rack.name); }} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100" title="Hapus Rak"><Icon name="trash-can" /></button></div></div>); })}{filteredRacks.length === 0 && (<div className="flex flex-col items-center justify-center py-6 text-slate-400"><Icon name="box-open" className="text-xl mb-1 opacity-50" /><p className="text-[10px]">Rak tidak ditemukan</p></div>)}</div></div>)}
                             </div>
-
-                            {/* Total nilai konsinyasi */}
-                            {totalKonsinyasiValue > 0 && (
-                                <div>
-                                    <p style={{fontWeight:'700', fontSize:'13px', color:'#334155', marginBottom:'4px'}}>Total nilai stok konsinyasi</p>
-                                    <p style={{fontSize:'26px', fontWeight:'900', color:'#0f172a', lineHeight:1.1}}>{formatRupiah(totalKonsinyasiValue)}</p>
-                                    <button style={{marginTop:'6px',display:'flex',alignItems:'center',gap:'4px',color:'#0b8b7a',fontSize:'13px',fontWeight:'600',background:'none',border:'none',cursor:'pointer',padding:0}}>
-                                        Lihat detail <span style={{fontSize:'16px'}}>→</span>
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Stok menipis quick stat */}
-                            {lowStockItems.length > 0 && (
-                                <div style={{marginTop: totalKonsinyasiValue > 0 ? '20px' : '0'}}>
-                                    <p style={{fontWeight:'700', fontSize:'13px', color:'#334155', marginBottom:'4px'}}>Stok menipis</p>
-                                    <p style={{fontSize:'30px', fontWeight:'900', color:'#f59e0b', lineHeight:1.1}}>{lowStockItems.length} <span style={{fontSize:'18px',fontWeight:'600',color:'#92400e'}}>barang</span></p>
-                                    <button onClick={() => setShowOnlyLowStock(true)} style={{marginTop:'6px',display:'flex',alignItems:'center',gap:'4px',color:'#0b8b7a',fontSize:'13px',fontWeight:'600',background:'none',border:'none',cursor:'pointer',padding:0}}>
-                                        Lihat detail <span style={{fontSize:'16px'}}>→</span>
-                                    </button>
-                                </div>
+                            
+                            {selectedRacks.length > 0 && (
+                                <button onClick={() => setSelectedRacks([])} className="col-span-2 sm:col-span-1 py-2.5 px-3.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 whitespace-nowrap shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2">
+                                    <Icon name="xmark" className="text-sm" />
+                                    Reset Rak
+                                </button>
                             )}
                         </div>
+                    </header>
+                    <div className="relative group z-10"><input type="text" placeholder="Cari nama barang..." className="w-full pl-9 pr-3 py-3 rounded-xl border-0 bg-white/90 backdrop-blur-sm shadow-soft ring-1 ring-slate-100 outline-none transition-all placeholder:text-slate-400 font-medium text-sm focus:ring-2 focus:ring-sky-500" defaultValue={searchQuery} onChange={e => debouncedSetSearchQuery(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm transition-colors group-focus-within:text-slate-600" /></div>
+                    <div className="flex-1 overflow-y-auto pb-32 pr-1 custom-scrollbar">
+                        {loading ? (<div className="flex flex-col items-center justify-center py-20"><div className="typing-dot bg-sky-500"></div><p className="text-xs text-slate-400 mt-2">Menghubungkan Database...</p></div>) : filteredItems.length === 0 ? (<div className="flex flex-col items-center justify-center py-20 opacity-40"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="box-open" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500 text-center text-sm">Tidak ada data</p></div>) : (<><div className="space-y-2">{displayedItems.map((item, index) => { const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold; const isLow = safeNumber(item.qty) < threshold; const isNew = isNewItem(item.createdAt); const animDelay = `${index * 50}ms`; const nameClass = searchQuery ? "type-effect-wrapper" : ""; const daysLeft = getDaysRemaining(item.exp); const isExpired = daysLeft !== null && daysLeft < 0; const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired; const expColor = isExpired ? 'text-red-600' : (isNearExp ? 'text-amber-600' : 'text-slate-400'); const expIcon = isExpired ? 'triangle-exclamation' : 'calendar-days'; return (<div key={item.id + searchQuery} style={{ animationDelay: animDelay }} className={`slide-up bg-white/90 backdrop-blur-sm rounded-xl p-3 border shadow-sm transition-all card-hover group flex items-center justify-between gap-3 ${isLow ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100 hover:border-slate-300'}`}><div className="flex items-center gap-3 flex-1 min-w-0"><div className={`w-9 h-9 flex-shrink-0 rounded-lg flex items-center justify-center text-sm shadow-sm ${isLow ? 'bg-amber-100 text-amber-600' : 'bg-sky-50 text-sky-600'}`}><Icon name={isLow ? 'triangle-exclamation' : 'pills'} /></div><div className="min-w-0"><div className="flex items-start gap-2"><h4 className={`font-bold text-slate-800 text-xs leading-snug whitespace-normal break-words ${nameClass}`}>{item.name}</h4>{isNew && <span className="bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm animate-pulse shadow-sm flex-shrink-0 mt-0.5">NEW</span>}{item.isKonsinyasi && <span className="bg-fuchsia-100 text-fuchsia-700 text-[8px] font-black px-1.5 py-0.5 rounded-sm flex-shrink-0 mt-0.5 border border-fuchsia-200">konsinyasi</span>}</div><div className="mt-1 flex flex-col gap-0.5"><span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400"><Icon name="location-dot" className="text-[8px]" /> {item.rack || '-'}</span>{item.exp && (<span className={`inline-flex items-center gap-1 text-[9px] font-bold ${expColor}`}><Icon name={expIcon} className="text-[8px]" /> {formatDateIndo(item.exp)}</span>)}
+                            {/* Rincian Stok Gabungan - Tampilan Baru Berbaris (Fixed for Truncate issue) */}
+                            {currentProfile.id === 'all_stores' && item._breakdown && item._breakdown.length > 0 && (
+                                <div className="mt-2 flex flex-col gap-1 w-full">
+                                    {item._breakdown.map((info, idx) => {
+                                        // Handle splitting carefully in case name has colon, though assuming safe split for now based on generation logic
+                                        const separatorIndex = info.lastIndexOf(':');
+                                        const storeName = info.substring(0, separatorIndex).trim();
+                                        const storeQty = info.substring(separatorIndex + 1).trim();
+                                        const isZero = parseInt(storeQty) === 0;
 
-                        {/* ─── Search Bar ─── */}
-                        <div style={{padding:'12px 16px 0', background:'white'}}>
-                            <div style={{display:'flex', gap:'8px', marginBottom:'10px'}}>
-                                <div style={{flex:1, position:'relative'}}>
-                                    <Icon name="magnifying-glass" style={{position:'absolute',left:'12px',top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:'14px'}} />
-                                    <input
-                                        type="text"
-                                        placeholder="Cari barang"
-                                        defaultValue={searchQuery}
-                                        onChange={e => debouncedSetSearchQuery(e.target.value)}
-                                        style={{width:'100%',paddingLeft:'36px',paddingRight:'12px',paddingTop:'12px',paddingBottom:'12px',borderRadius:'12px',border:'1.5px solid #e2e8f0',fontSize:'13px',fontWeight:'500',color:'#334155',outline:'none',background:'#f8fafc',boxSizing:'border-box'}}
-                                    />
-                                </div>
-                                <button
-                                    onClick={() => {}}
-                                    style={{padding:'12px 18px',borderRadius:'12px',border:'1.5px solid #0b8b7a',background:'white',color:'#0b8b7a',fontSize:'13px',fontWeight:'700',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}
-                                >Cari</button>
-                            </div>
-
-                            {/* ─── Filter + Sort row ─── */}
-                            <div style={{display:'flex',gap:'8px',marginBottom:'12px', position:'relative'}}>
-                                {/* Filter button */}
-                                <div style={{flex:1, position:'relative'}} ref={dropdownRef}>
-                                    <button
-                                        onClick={() => setIsRackDropdownOpen(!isRackDropdownOpen)}
-                                        style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',padding:'11px 14px',borderRadius:'12px',border:'1.5px solid #e2e8f0',background:'white',color:selectedRacks.length > 0 || showOnlyLowStock ? '#0b8b7a':'#334155',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}
-                                    >
-                                        <Icon name="sliders" style={{fontSize:'13px'}} />
-                                        {selectedRacks.length > 0 ? getRackLabel() : showOnlyLowStock ? 'Menipis' : 'Filter'}
-                                        {(selectedRacks.length > 0 || showOnlyLowStock) && (
-                                            <span style={{width:'18px',height:'18px',borderRadius:'50%',background:'#0b8b7a',color:'white',fontSize:'9px',fontWeight:'900',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                                {selectedRacks.length + (showOnlyLowStock ? 1 : 0)}
-                                            </span>
-                                        )}
-                                    </button>
-                                    {/* Filter dropdown */}
-                                    {isRackDropdownOpen && (
-                                        <div style={{position:'absolute',top:'calc(100% + 6px)',left:0,width:'280px',background:'white',borderRadius:'16px',boxShadow:'0 8px 32px rgba(0,0,0,0.12)',border:'1px solid #e2e8f0',zIndex:60,overflow:'hidden'}}>
-                                            <div style={{padding:'12px',borderBottom:'1px solid #f1f5f9'}}>
-                                                <p style={{fontSize:'11px',fontWeight:'700',color:'#64748b',marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>Filter Cepat</p>
-                                                <button
-                                                    onClick={() => { setShowOnlyLowStock(!showOnlyLowStock); setIsRackDropdownOpen(false); }}
-                                                    style={{width:'100%',padding:'8px 12px',borderRadius:'8px',border:`1.5px solid ${showOnlyLowStock?'#f59e0b':'#e2e8f0'}`,background:showOnlyLowStock?'#fffbeb':'white',color:showOnlyLowStock?'#92400e':'#334155',fontSize:'12px',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'}}
-                                                >
-                                                    <Icon name="triangle-exclamation" style={{color:'#f59e0b'}} />
-                                                    Stok Menipis {showOnlyLowStock ? '✓' : ''}
-                                                </button>
-                                            </div>
-                                            <div style={{padding:'12px'}}>
-                                                <p style={{fontSize:'11px',fontWeight:'700',color:'#64748b',marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>Filter Rak</p>
-                                                <div style={{position:'relative',marginBottom:'8px'}}>
-                                                    <input autoFocus type="text" placeholder="Cari rak..." value={rackSearch} onChange={e => setRackSearch(e.target.value)}
-                                                        style={{width:'100%',padding:'8px 10px 8px 32px',borderRadius:'8px',border:'1.5px solid #e2e8f0',fontSize:'12px',outline:'none',boxSizing:'border-box'}} />
-                                                    <Icon name="magnifying-glass" style={{position:'absolute',left:'10px',top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:'11px'}} />
-                                                </div>
-                                                <div style={{maxHeight:'180px',overflowY:'auto'}}>
-                                                    {filteredRacks.map(rack => {
-                                                        const isSel = selectedRacks.includes(rack.name);
-                                                        return (
-                                                            <div key={rack.name} onClick={() => toggleRack(rack.name)}
-                                                                style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 10px',borderRadius:'8px',cursor:'pointer',background:isSel?'#f0fdf4':'transparent',marginBottom:'2px'}}>
-                                                                <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                                                                    <div style={{width:'16px',height:'16px',borderRadius:'4px',border:`2px solid ${isSel?'#0b8b7a':'#cbd5e1'}`,background:isSel?'#0b8b7a':'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                                                        {isSel && <Icon name="check" style={{fontSize:'9px',color:'white'}} />}
-                                                                    </div>
-                                                                    <span style={{fontSize:'12px',fontWeight:'500',color:'#334155'}}>{rack.name}</span>
-                                                                </div>
-                                                                <button onClick={e=>{e.stopPropagation();onDeleteRack(rack.name);}} style={{width:'22px',height:'22px',borderRadius:'6px',border:'none',background:'#fee2e2',color:'#ef4444',cursor:'pointer',fontSize:'10px',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                                                                    <Icon name="trash" />
-                                                                </button>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                    {filteredRacks.length === 0 && <p style={{textAlign:'center',fontSize:'11px',color:'#94a3b8',padding:'12px'}}>Rak tidak ditemukan</p>}
-                                                </div>
-                                                {selectedRacks.length > 0 && (
-                                                    <button onClick={()=>setSelectedRacks([])} style={{width:'100%',marginTop:'8px',padding:'8px',borderRadius:'8px',border:'none',background:'#f1f5f9',color:'#64748b',fontSize:'12px',fontWeight:'600',cursor:'pointer'}}>Reset Rak</button>
-                                                )}
-                                            </div>
-                                            {(isOwner || settings.enableCopyWA !== false) && (
-                                                <div style={{padding:'10px 12px',borderTop:'1px solid #f1f5f9'}}>
-                                                    <button onClick={()=>{handleCopyToWA();setIsRackDropdownOpen(false);}} style={{width:'100%',padding:'9px',borderRadius:'8px',border:'none',background:'#dcfce7',color:'#166534',fontSize:'12px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
-                                                        <Icon name="whatsapp" type="brands" />
-                                                        Salin ke WhatsApp
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Sort button */}
-                                <div style={{flex:1, position:'relative'}}>
-                                    <button
-                                        onClick={() => setShowSortDropdown(p=>!p)}
-                                        style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 14px',borderRadius:'12px',border:'1.5px solid #e2e8f0',background:'white',color:'#334155',fontSize:'13px',fontWeight:'600',cursor:'pointer'}}
-                                    >
-                                        <span style={{display:'flex',alignItems:'center',gap:'6px'}}>
-                                            <Icon name="arrow-up-wide-short" style={{fontSize:'13px',color:'#94a3b8'}} />
-                                            {sortLabels[sortMode]}
-                                        </span>
-                                        <Icon name="chevron-down" style={{fontSize:'11px',color:'#94a3b8',transform:showSortDropdown?'rotate(180deg)':'none',transition:'transform 0.2s'}} />
-                                    </button>
-                                    {showSortDropdown && (
-                                        <div style={{position:'absolute',top:'calc(100% + 6px)',right:0,width:'200px',background:'white',borderRadius:'14px',boxShadow:'0 8px 32px rgba(0,0,0,0.12)',border:'1px solid #e2e8f0',zIndex:60,overflow:'hidden',padding:'6px'}}>
-                                            {Object.entries(sortLabels).map(([key, label]) => (
-                                                <button key={key} onClick={()=>{setSortMode(key);setShowSortDropdown(false);}}
-                                                    style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'none',background:sortMode===key?'#f0fdf9':'transparent',color:sortMode===key?'#0b8b7a':'#334155',fontSize:'13px',fontWeight:sortMode===key?'700':'500',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                                                    {label}
-                                                    {sortMode===key && <Icon name="check" style={{color:'#0b8b7a',fontSize:'12px'}} />}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ─── Table Header ─── */}
-                        <div style={{background:'white',display:'flex',alignItems:'center',padding:'10px 16px',borderTop:'1px solid #f1f5f9',borderBottom:'2px solid #e2e8f0',position:'sticky',top:0,zIndex:10}}>
-                            <div style={{width:'20px',height:'20px',borderRadius:'5px',border:'2px solid #cbd5e1',background:'white',flexShrink:0,marginRight:'12px'}} />
-                            <span style={{flex:1,fontSize:'12px',fontWeight:'800',color:'#475569',textTransform:'uppercase',letterSpacing:'0.05em'}}>Barang</span>
-                            <span style={{fontSize:'12px',fontWeight:'800',color:'#475569',textTransform:'uppercase',letterSpacing:'0.05em'}}>Stok</span>
-                        </div>
-
-                        {/* ─── Items List ─── */}
-                        {loading ? (
-                            <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 0'}}>
-                                <div className="typing-dot" style={{background:'#0b8b7a'}}></div>
-                                <p style={{fontSize:'12px',color:'#94a3b8',marginTop:'10px'}}>Menghubungkan Database...</p>
-                            </div>
-                        ) : filteredItems.length === 0 ? (
-                            <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 0',opacity:0.5}}>
-                                <div style={{width:'56px',height:'56px',borderRadius:'50%',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px',fontSize:'24px'}}>📦</div>
-                                <p style={{fontSize:'13px',fontWeight:'600',color:'#64748b'}}>Tidak ada data</p>
-                            </div>
-                        ) : (
-                            <div style={{background:'white'}}>
-                                {sortedDisplayedItems.map((item, index) => {
-                                    const qty = safeNumber(item.qty);
-                                    const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold;
-                                    const isEmpty = qty === 0;
-                                    const isLow = qty > 0 && qty < threshold;
-                                    const isNew = isNewItem(item.createdAt);
-                                    const daysLeft = getDaysRemaining(item.exp);
-                                    const isExpired = daysLeft !== null && daysLeft < 0;
-                                    const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired;
-
-                                    // Priority badge logic
-                                    let priorityNode;
-                                    if (isEmpty) {
-                                        priorityNode = (
-                                            <div style={{display:'flex',alignItems:'center',gap:'5px'}}>
-                                                <span style={{width:'20px',height:'20px',borderRadius:'50%',border:'2px solid #94a3b8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>💀</span>
-                                                <span style={{fontSize:'11px',color:'#64748b',fontWeight:'500'}}>Stok mati</span>
+                                        return (
+                                            <div key={idx} className="flex justify-between items-center text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded">
+                                                <span className="text-slate-500 font-medium mr-2 text-left">{storeName}</span>
+                                                <span className={`font-bold px-1.5 rounded border ${isZero ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-white text-slate-800 border-slate-100'}`}>{storeQty}</span>
                                             </div>
                                         );
-                                    } else if (isLow) {
-                                        priorityNode = (
-                                            <div style={{display:'flex',alignItems:'center',gap:'5px'}}>
-                                                <span style={{width:'20px',height:'20px',borderRadius:'50%',border:'2.5px solid #f59e0b',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:'900',color:'#d97706'}}>B</span>
-                                                <span style={{fontSize:'11px',color:'#92400e',fontWeight:'600'}}>Sedang</span>
-                                            </div>
-                                        );
-                                    } else if (isNearExp || isExpired) {
-                                        priorityNode = (
-                                            <div style={{display:'flex',alignItems:'center',gap:'5px'}}>
-                                                <span style={{width:'20px',height:'20px',borderRadius:'50%',border:'2.5px solid #ef4444',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:'900',color:'#dc2626'}}>A</span>
-                                                <span style={{fontSize:'11px',color:'#b91c1c',fontWeight:'600'}}>Tinggi</span>
-                                            </div>
-                                        );
-                                    } else {
-                                        priorityNode = (
-                                            <div style={{display:'flex',alignItems:'center',gap:'5px'}}>
-                                                <span style={{width:'20px',height:'20px',borderRadius:'50%',border:'2.5px solid #0b8b7a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:'900',color:'#0b8b7a'}}>C</span>
-                                                <span style={{fontSize:'11px',color:'#065f46',fontWeight:'600'}}>Rendah</span>
-                                            </div>
-                                        );
-                                    }
-
-                                    return (
-                                        <div key={item.id + searchQuery}
-                                            style={{display:'flex',alignItems:'flex-start',padding:'14px 16px',borderBottom:'1px solid #f1f5f9',transition:'background 0.15s',background:isEmpty?'#fafafa':'white'}}
-                                            onMouseEnter={e => e.currentTarget.style.background='#f8fffe'}
-                                            onMouseLeave={e => e.currentTarget.style.background=isEmpty?'#fafafa':'white'}
-                                        >
-                                            {/* Checkbox */}
-                                            <div style={{width:'20px',height:'20px',borderRadius:'5px',border:'2px solid #cbd5e1',background:'white',flexShrink:0,marginRight:'12px',marginTop:'2px'}} />
-
-                                            {/* Number */}
-                                            <span style={{fontSize:'13px',color:'#94a3b8',fontWeight:'500',width:'22px',flexShrink:0,marginTop:'1px',textAlign:'center'}}>{index + 1}</span>
-
-                                            {/* Item content */}
-                                            <div style={{flex:1,minWidth:0,marginLeft:'4px'}}>
-                                                {/* Name row */}
-                                                <div style={{display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap',marginBottom:'6px'}}>
-                                                    <span style={{fontSize:'13px',fontWeight:'700',color:'#0b8b7a',lineHeight:'1.3',wordBreak:'break-word'}}>{item.name}</span>
-                                                    {isNew && <span style={{background:'#ef4444',color:'white',fontSize:'8px',fontWeight:'900',padding:'2px 6px',borderRadius:'3px'}}>NEW</span>}
-                                                    {item.isKonsinyasi && <span style={{background:'#fdf4ff',color:'#a21caf',fontSize:'8px',fontWeight:'700',padding:'2px 6px',borderRadius:'3px',border:'1px solid #e879f9'}}>konsinyasi</span>}
-                                                </div>
-
-                                                {/* Meta row: expiry + priority */}
-                                                <div style={{display:'flex',gap:'20px',flexWrap:'wrap'}}>
-                                                    <div>
-                                                        <p style={{fontSize:'10px',fontWeight:'700',color:'#94a3b8',marginBottom:'2px',textTransform:'uppercase',letterSpacing:'0.04em'}}>ED terdekat</p>
-                                                        <p style={{fontSize:'11px',fontWeight:'600',color: isExpired?'#dc2626' : isNearExp?'#d97706' : '#475569'}}>
-                                                            {item.exp ? formatDateFarma(item.exp) : '-'}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p style={{fontSize:'10px',fontWeight:'700',color:'#94a3b8',marginBottom:'2px',textTransform:'uppercase',letterSpacing:'0.04em'}}>Prioritas</p>
-                                                        {priorityNode}
-                                                    </div>
-                                                    {item.rack && item.rack !== '-' && (
-                                                        <div>
-                                                            <p style={{fontSize:'10px',fontWeight:'700',color:'#94a3b8',marginBottom:'2px',textTransform:'uppercase',letterSpacing:'0.04em'}}>Rak</p>
-                                                            <p style={{fontSize:'11px',fontWeight:'600',color:'#475569'}}>{item.rack}</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* All-store breakdown */}
-                                                {currentProfile.id === 'all_stores' && item._breakdown && item._breakdown.length > 0 && (
-                                                    <div style={{marginTop:'8px',display:'flex',flexDirection:'column',gap:'4px'}}>
-                                                        {item._breakdown.map((info, idx) => {
-                                                            const sepIdx = info.lastIndexOf(':');
-                                                            const storeName = info.substring(0, sepIdx).trim();
-                                                            const storeQty = info.substring(sepIdx + 1).trim();
-                                                            const isZero = parseInt(storeQty) === 0;
-                                                            return (
-                                                                <div key={idx} style={{display:'flex',justifyContent:'space-between',alignItems:'center',background:'#f8fafc',border:'1px solid #e2e8f0',padding:'4px 8px',borderRadius:'6px',fontSize:'11px'}}>
-                                                                    <span style={{color:'#64748b',fontWeight:'500'}}>{storeName}</span>
-                                                                    <span style={{fontWeight:'700',color:isZero?'#94a3b8':'#1e293b'}}>{storeQty}</span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-
-                                                {/* Action buttons */}
-                                                {(!readOnly || settings?.showNoteButton !== false) && (
-                                                    <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
-                                                        {settings?.showNoteButton !== false && (
-                                                            <button onClick={()=>setNoteModalItem(item)} title={item.itemNote?"Lihat catatan":"Tambah catatan"}
-                                                                style={{padding:'5px 10px',borderRadius:'8px',border:`1px solid ${item.itemNote?'#bae6fd':'#e2e8f0'}`,background:item.itemNote?'#f0f9ff':'#f8fafc',color:item.itemNote?'#0ea5e9':'#94a3b8',fontSize:'10px',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
-                                                                <Icon name="circle-info" style={{fontSize:'10px'}} />
-                                                                {item.itemNote ? 'Catatan' : 'Tambah Catatan'}
-                                                            </button>
-                                                        )}
-                                                        {!readOnly && (
-                                                            <>
-                                                                <button onClick={()=>onEdit(item)}
-                                                                    style={{padding:'5px 10px',borderRadius:'8px',border:'1px solid #e2e8f0',background:'#f8fafc',color:'#64748b',fontSize:'10px',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
-                                                                    <Icon name="pen" style={{fontSize:'10px'}} /> Edit
-                                                                </button>
-                                                                <button onClick={()=>onDelete(item)}
-                                                                    style={{padding:'5px 10px',borderRadius:'8px',border:'1px solid #fecaca',background:'#fff5f5',color:'#ef4444',fontSize:'10px',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
-                                                                    <Icon name="trash" style={{fontSize:'10px'}} /> Hapus
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Stock count (right side) */}
-                                            <div style={{flexShrink:0,marginLeft:'12px',textAlign:'right',paddingTop:'2px'}}>
-                                                {isEmpty ? (
-                                                    <span style={{background:'#ef4444',color:'white',fontSize:'11px',fontWeight:'800',padding:'4px 10px',borderRadius:'6px'}}>Kosong</span>
-                                                ) : (
-                                                    <div style={{display:'flex',alignItems:'center',gap:'4px'}}>
-                                                        <span style={{fontSize:'16px',fontWeight:'900',color:isLow?'#374151':'#1e293b'}}>{item.qty}</span>
-                                                        {isLow && (
-                                                            <span style={{color:'#f59e0b',fontSize:'14px'}}>⚠️</span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {item.price > 0 && (
-                                                    <div style={{fontSize:'10px',color:'#10b981',fontWeight:'700',marginTop:'4px',background:'#ecfdf5',padding:'2px 6px',borderRadius:'5px'}}>
-                                                        {formatRupiah(item.price)}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-
-                                {/* Loader / end marker */}
-                                <div ref={loaderRef} style={{height:'48px',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                                    {displayedLimit < filteredItems.length ? (
-                                        <div style={{display:'flex',alignItems:'center',gap:'8px',color:'#94a3b8',fontSize:'12px'}}>
-                                            <div style={{width:'16px',height:'16px',border:'2px solid #e2e8f0',borderTop:'2px solid #0b8b7a',borderRadius:'50%'}} className="animate-spin"></div>
-                                            Memuat lebih banyak...
-                                        </div>
-                                    ) : filteredItems.length > 0 ? (
-                                        <span style={{fontSize:'10px',color:'#cbd5e1'}}>Semua {filteredItems.length} barang ditampilkan</span>
-                                    ) : null}
+                                    })}
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div></div></div><div className="flex items-center gap-4 md:gap-8 flex-shrink-0"><div className="text-right"><p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Stok</p><div className="flex items-baseline justify-end gap-1"><span className={`text-sm font-black ${isLow ? 'text-amber-600' : 'text-slate-800'}`}>{item.qty}</span><span className="text-[9px] font-semibold text-slate-500">{item.unit || 'Pcs'}</span></div>
+                            {/* Display Price */}
+                            {item.price > 0 && <div className="text-[10px] text-green-600 font-bold mt-0.5 bg-green-50 px-1.5 rounded-md inline-block">{formatRupiah(item.price)}</div>}</div></div><div className="flex gap-1.5 flex-shrink-0 pl-2 border-l border-slate-100 ml-1">{settings?.showNoteButton !== false && <button onClick={() => setNoteModalItem(item)} title={item.itemNote ? "Lihat catatan" : "Tambah catatan"} className={`w-7 h-7 rounded-lg text-[10px] border transition-colors flex items-center justify-center ${item.itemNote ? 'bg-sky-50 text-sky-500 hover:bg-sky-100 border-sky-200' : 'bg-white text-slate-300 hover:bg-slate-50 hover:text-sky-400 border-slate-200'}`}><Icon name="circle-info" /></button>}{!readOnly && <button onClick={() => onEdit(item)} className="w-7 h-7 rounded-lg text-[10px] bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-slate-200 transition-colors flex items-center justify-center"><Icon name="pen" /></button>}{!readOnly && <button onClick={() => onDelete(item)} className="w-7 h-7 rounded-lg text-[10px] bg-white text-slate-400 hover:bg-red-50 hover:text-red-500 border border-slate-200 hover:border-red-200 transition-colors flex items-center justify-center"><Icon name="trash" /></button>}</div></div>); })}</div><div ref={loaderRef} className="h-10 flex items-center justify-center w-full mt-4 pb-20 md:pb-0">{displayedLimit < filteredItems.length ? (<div className="flex items-center gap-2 text-slate-400 text-xs"><div className="w-4 h-4 border-2 border-slate-300 border-t-sky-500 rounded-full animate-spin"></div><span>Memuat...</span></div>) : filteredItems.length > 0 && ( <span className="text-[10px] text-slate-300">Semua data ditampilkan</span> )}</div></>)}
                     </div>
                     {noteModalItem && <ItemNoteModal item={noteModalItem} onClose={() => setNoteModalItem(null)} canEdit={settings?.noteEditAccess !== 'owner_only' || isOwner} />}
                 </div>
@@ -11660,6 +11348,8 @@
             }, []);
 
             const initializedSessionRef = React.useRef(null);
+            // Menyimpan snapshot stok sistem sebelumnya untuk mendeteksi perubahan akibat transaksi
+            const prevItemQtyRef = React.useRef({});
 
             useEffect(() => {
                 const active = sessions.find(s => s.status === 'open' && s.profileId === profileId);
@@ -11673,14 +11363,56 @@
                         const counts = {};
                         (active.entries || []).forEach(e => { counts[e.itemId] = e.physicalQty; });
                         setPhysicalCounts(counts);
+                        // Inisialisasi snapshot stok sistem
+                        const snapshot = {};
+                        items.forEach(i => { snapshot[i.id] = Number(i.qty || 0); });
+                        prevItemQtyRef.current = snapshot;
                     }
                 } else {
                     initializedSessionRef.current = null;
                     setActiveSession(null);
                     setSessionId(null);
                     setPhysicalCounts({});
+                    prevItemQtyRef.current = {};
                 }
             }, [sessions, profileId]);
+
+            // Sinkronisasi stok fisik saat stok sistem berkurang akibat transaksi
+            useEffect(() => {
+                // Hanya jalankan jika ada sesi aktif
+                if (!initializedSessionRef.current) return;
+                const prevQty = prevItemQtyRef.current;
+                // Jika snapshot belum terisi, skip
+                if (Object.keys(prevQty).length === 0) return;
+
+                const changed = {};
+                items.forEach(item => {
+                    const prev = prevQty[item.id];
+                    const curr = Number(item.qty || 0);
+                    if (prev !== undefined && curr !== prev) {
+                        changed[item.id] = curr - prev; // negatif = berkurang karena terjual
+                    }
+                });
+
+                if (Object.keys(changed).length > 0) {
+                    setPhysicalCounts(prevCounts => {
+                        const next = { ...prevCounts };
+                        Object.entries(changed).forEach(([itemId, delta]) => {
+                            if (next[itemId] !== undefined) {
+                                // Kurangi stok fisik sebesar delta (ikut transaksi)
+                                const newVal = Math.max(0, Number(next[itemId]) + delta);
+                                next[itemId] = newVal;
+                            }
+                        });
+                        return next;
+                    });
+                }
+
+                // Update snapshot stok sistem
+                const newSnapshot = {};
+                items.forEach(i => { newSnapshot[i.id] = Number(i.qty || 0); });
+                prevItemQtyRef.current = newSnapshot;
+            }, [items]);
 
             const filteredItems = useMemo(() => {
                 let list = items.filter(item => !currentProfile?.id || item.storeId === currentProfile.id || !item.storeId);
