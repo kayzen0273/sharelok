@@ -11348,10 +11348,9 @@
             }, []);
 
             const initializedSessionRef = React.useRef(null);
-            // Snapshot stok sistem: { itemId: qty } — untuk mendeteksi perubahan akibat transaksi
-            const prevItemQtyRef = React.useRef({});
-            // True setelah snapshot pertama kali diisi untuk sesi aktif
-            const snapshotReadyRef = React.useRef(false);
+            // systemQtyRef: { itemId: systemQty } — stok sistem saat entri terakhir disimpan ke Firestore
+            // Ini adalah "patokan" untuk menghitung berapa yang sudah terjual sejak opname berjalan
+            const systemQtyRef = React.useRef({});
 
             useEffect(() => {
                 const active = sessions.find(s => s.status === 'open' && s.profileId === profileId);
@@ -11360,47 +11359,41 @@
                     setSessionId(active.id);
                     if (initializedSessionRef.current !== active.id) {
                         initializedSessionRef.current = active.id;
-                        snapshotReadyRef.current = false; // snapshot akan diisi oleh useEffect [items]
+                        // Load physicalCounts dari Firestore entries
                         const counts = {};
-                        (active.entries || []).forEach(e => { counts[e.itemId] = e.physicalQty; });
+                        const sysQty = {};
+                        (active.entries || []).forEach(e => {
+                            counts[e.itemId] = e.physicalQty;
+                            // systemQty di entries = stok sistem saat entry terakhir disimpan
+                            sysQty[e.itemId] = Number(e.systemQty);
+                        });
                         setPhysicalCounts(counts);
+                        systemQtyRef.current = sysQty;
                     }
                 } else {
                     initializedSessionRef.current = null;
-                    snapshotReadyRef.current = false;
                     setActiveSession(null);
                     setSessionId(null);
                     setPhysicalCounts({});
-                    prevItemQtyRef.current = {};
+                    systemQtyRef.current = {};
                 }
             }, [sessions, profileId]);
 
             // Sinkronisasi stok fisik saat stok sistem berubah akibat transaksi
+            // Cara kerja: bandingkan systemQty yang tersimpan vs item.qty saat ini
+            // Jika item.qty berkurang → ada transaksi → kurangi physicalCount juga
             useEffect(() => {
-                if (!initializedSessionRef.current) {
-                    // Tidak ada sesi aktif, reset snapshot
-                    prevItemQtyRef.current = {};
-                    snapshotReadyRef.current = false;
-                    return;
-                }
+                if (!initializedSessionRef.current) return;
+                const sysQty = systemQtyRef.current;
+                if (Object.keys(sysQty).length === 0) return;
 
-                if (!snapshotReadyRef.current) {
-                    // Sesi baru dimulai — simpan snapshot awal, jangan ubah physicalCounts
-                    const snapshot = {};
-                    items.forEach(i => { snapshot[i.id] = Number(i.qty || 0); });
-                    prevItemQtyRef.current = snapshot;
-                    snapshotReadyRef.current = true;
-                    return;
-                }
-
-                // Snapshot sudah ada — bandingkan dengan kondisi items saat ini
-                const prevQty = prevItemQtyRef.current;
                 const changed = {};
                 items.forEach(item => {
-                    const prev = prevQty[item.id];
-                    const curr = Number(item.qty || 0);
-                    if (prev !== undefined && curr !== prev) {
-                        changed[item.id] = curr - prev; // negatif = berkurang karena transaksi
+                    const savedSys = sysQty[item.id];
+                    if (savedSys === undefined) return; // item belum diinput fisiknya, skip
+                    const currSys = Number(item.qty || 0);
+                    if (currSys !== savedSys) {
+                        changed[item.id] = currSys - savedSys; // negatif = terjual
                     }
                 });
 
@@ -11409,19 +11402,21 @@
                         const next = { ...prevCounts };
                         Object.entries(changed).forEach(([itemId, delta]) => {
                             if (next[itemId] !== undefined) {
-                                // Ikuti perubahan stok sistem
                                 const newVal = Math.max(0, Number(next[itemId]) + delta);
                                 next[itemId] = newVal;
                             }
                         });
                         return next;
                     });
+                    // Update patokan systemQty ke nilai terkini
+                    const updatedSysQty = { ...sysQty };
+                    items.forEach(i => {
+                        if (updatedSysQty[i.id] !== undefined) {
+                            updatedSysQty[i.id] = Number(i.qty || 0);
+                        }
+                    });
+                    systemQtyRef.current = updatedSysQty;
                 }
-
-                // Perbarui snapshot ke kondisi terbaru
-                const newSnapshot = {};
-                items.forEach(i => { newSnapshot[i.id] = Number(i.qty || 0); });
-                prevItemQtyRef.current = newSnapshot;
             }, [items]);
 
             const filteredItems = useMemo(() => {
@@ -11469,6 +11464,11 @@
                     });
                 try {
                     await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', sid), { entries, updatedAt: window.serverTimestamp() });
+                    // Perbarui patokan systemQty setelah berhasil disimpan
+                    // supaya useEffect [items] punya referensi yang akurat untuk deteksi transaksi berikutnya
+                    const newSysQty = { ...systemQtyRef.current };
+                    entries.forEach(e => { newSysQty[e.itemId] = e.systemQty; });
+                    systemQtyRef.current = newSysQty;
                 } catch (e) { console.error('Auto-save SO error', e); }
             }, [items]);
 
