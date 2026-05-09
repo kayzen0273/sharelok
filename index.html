@@ -11348,9 +11348,9 @@
             }, []);
 
             const initializedSessionRef = React.useRef(null);
-            // systemQtyRef: { itemId: systemQty } — stok sistem saat entri terakhir disimpan ke Firestore
-            // Ini adalah "patokan" untuk menghitung berapa yang sudah terjual sejak opname berjalan
-            const systemQtyRef = React.useRef({});
+            // baseQtyRef: { itemId: qty } — stok sistem SAAT user menginput stok fisik item itu
+            // Dipakai sebagai patokan untuk mendeteksi transaksi yang terjadi sesudahnya
+            const baseQtyRef = React.useRef({});
 
             useEffect(() => {
                 const active = sessions.find(s => s.status === 'open' && s.profileId === profileId);
@@ -11359,63 +11359,60 @@
                     setSessionId(active.id);
                     if (initializedSessionRef.current !== active.id) {
                         initializedSessionRef.current = active.id;
-                        // Load physicalCounts dari Firestore entries
                         const counts = {};
-                        const sysQty = {};
+                        const base = {};
                         (active.entries || []).forEach(e => {
                             counts[e.itemId] = e.physicalQty;
-                            // systemQty di entries = stok sistem saat entry terakhir disimpan
-                            sysQty[e.itemId] = Number(e.systemQty);
+                            // systemQty di entry = stok sistem saat user terakhir menginput item ini
+                            base[e.itemId] = Number(e.systemQty);
                         });
                         setPhysicalCounts(counts);
-                        systemQtyRef.current = sysQty;
+                        baseQtyRef.current = base;
                     }
                 } else {
                     initializedSessionRef.current = null;
                     setActiveSession(null);
                     setSessionId(null);
                     setPhysicalCounts({});
-                    systemQtyRef.current = {};
+                    baseQtyRef.current = {};
                 }
             }, [sessions, profileId]);
 
-            // Sinkronisasi stok fisik saat stok sistem berubah akibat transaksi
-            // Cara kerja: bandingkan systemQty yang tersimpan vs item.qty saat ini
-            // Jika item.qty berkurang → ada transaksi → kurangi physicalCount juga
+            // Sinkronisasi: setiap kali items berubah (transaksi terjadi),
+            // cek apakah stok sistem item yang sudah diinput fisiknya berkurang.
+            // Jika iya → kurangi physicalCount sebesar yang sama.
             useEffect(() => {
                 if (!initializedSessionRef.current) return;
-                const sysQty = systemQtyRef.current;
-                if (Object.keys(sysQty).length === 0) return;
+                const base = baseQtyRef.current;
+                if (Object.keys(base).length === 0) return;
 
-                const changed = {};
+                let hasChange = false;
+                const newBase = { ...base };
+                const physicalUpdates = {};
+
                 items.forEach(item => {
-                    const savedSys = sysQty[item.id];
-                    if (savedSys === undefined) return; // item belum diinput fisiknya, skip
-                    const currSys = Number(item.qty || 0);
-                    if (currSys !== savedSys) {
-                        changed[item.id] = currSys - savedSys; // negatif = terjual
+                    if (!(item.id in base)) return; // belum diinput fisik, skip
+                    const baseQty = base[item.id];
+                    const currQty = Number(item.qty || 0);
+                    if (currQty !== baseQty) {
+                        const delta = currQty - baseQty; // negatif jika terjual
+                        physicalUpdates[item.id] = delta;
+                        newBase[item.id] = currQty; // update patokan ke nilai terbaru
+                        hasChange = true;
                     }
                 });
 
-                if (Object.keys(changed).length > 0) {
-                    setPhysicalCounts(prevCounts => {
-                        const next = { ...prevCounts };
-                        Object.entries(changed).forEach(([itemId, delta]) => {
+                if (hasChange) {
+                    baseQtyRef.current = newBase;
+                    setPhysicalCounts(prev => {
+                        const next = { ...prev };
+                        Object.entries(physicalUpdates).forEach(([itemId, delta]) => {
                             if (next[itemId] !== undefined) {
-                                const newVal = Math.max(0, Number(next[itemId]) + delta);
-                                next[itemId] = newVal;
+                                next[itemId] = Math.max(0, Number(next[itemId]) + delta);
                             }
                         });
                         return next;
                     });
-                    // Update patokan systemQty ke nilai terkini
-                    const updatedSysQty = { ...sysQty };
-                    items.forEach(i => {
-                        if (updatedSysQty[i.id] !== undefined) {
-                            updatedSysQty[i.id] = Number(i.qty || 0);
-                        }
-                    });
-                    systemQtyRef.current = updatedSysQty;
                 }
             }, [items]);
 
@@ -11450,7 +11447,15 @@
                 setSaving(false);
             };
 
+            // Saat user input stok fisik, catat juga stok sistem saat itu sebagai patokan
             const handleCountChange = (itemId, val) => {
+                if (val !== '' && val !== undefined) {
+                    // Cari qty item saat ini dari items prop
+                    const item = items.find(i => i.id === itemId);
+                    if (item) {
+                        baseQtyRef.current = { ...baseQtyRef.current, [itemId]: Number(item.qty || 0) };
+                    }
+                }
                 setPhysicalCounts(prev => ({ ...prev, [itemId]: val === '' ? undefined : val }));
             };
 
@@ -11460,22 +11465,21 @@
                     .filter(([, v]) => v !== undefined)
                     .map(([itemId, physicalQty]) => {
                         const item = items.find(i => i.id === itemId);
-                        return { itemId, name: item?.name || '?', systemQty: Number(item?.qty || 0), physicalQty: Number(physicalQty), selisih: Number(physicalQty) - Number(item?.qty || 0), price: Number(item?.price || 0) };
+                        // systemQty = stok sistem saat user menginput (dari baseQtyRef), bukan saat ini
+                        const systemQty = baseQtyRef.current[itemId] !== undefined
+                            ? baseQtyRef.current[itemId]
+                            : Number(item?.qty || 0);
+                        return { itemId, name: item?.name || '?', systemQty, physicalQty: Number(physicalQty), selisih: Number(physicalQty) - systemQty, price: Number(item?.price || 0) };
                     });
                 try {
                     await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', sid), { entries, updatedAt: window.serverTimestamp() });
-                    // Perbarui patokan systemQty setelah berhasil disimpan
-                    // supaya useEffect [items] punya referensi yang akurat untuk deteksi transaksi berikutnya
-                    const newSysQty = { ...systemQtyRef.current };
-                    entries.forEach(e => { newSysQty[e.itemId] = e.systemQty; });
-                    systemQtyRef.current = newSysQty;
                 } catch (e) { console.error('Auto-save SO error', e); }
             }, [items]);
 
-            // Auto-save dengan debounce 1.5 detik setiap physicalCounts berubah
+            // Auto-save dengan debounce setiap physicalCounts berubah
             useEffect(() => {
                 if (!sessionId || Object.keys(physicalCounts).length === 0) return;
-                const timer = setTimeout(() => { saveProgress(physicalCounts, sessionId); }, 0);
+                const timer = setTimeout(() => { saveProgress(physicalCounts, sessionId); }, 800);
                 return () => clearTimeout(timer);
             }, [physicalCounts, sessionId]);
 
