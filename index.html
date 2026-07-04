@@ -1,1239 +1,1314 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Panel – Sistem Kasir Husna</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NebulaHeart 3D - Web Gesture Controller (FINAL FIX)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: black;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 2;
+            pointer-events: none;
+        }
+        #camera-feed {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 240px;
+            height: 180px;
+            z-index: 2;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            transform: scaleX(-1); /* Mirror camera */
+            background-color: #222;
+        }
+        .status-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00;
+            text-shadow: 2px 2px 4px #000;
+            margin-bottom: 5px;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            font-size: 20px;
+            text-align: center;
+        }
+        .falling-heart {
+            position: absolute;
+            top: -30px;
+            font-size: 18px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 3;
+            animation-name: fall;
+            animation-timing-function: linear;
+            animation-fill-mode: forwards;
+        }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.9; }
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+        }
+        .love-caption {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffb3d9;
+            text-shadow: 2px 2px 6px #000;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+            text-align: center;
+            max-width: 90vw;
+        }
+        .love-caption.show {
+            opacity: 1;
+        }
+    </style>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc,
-         writeBatch, getDocs, serverTimestamp, query, orderBy, where }
-  from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-const FC = {
-  apiKey:"AIzaSyAKhe3ILdMTN7Dn9Ao3MqlzW3s5hHUDB_c",
-  authDomain:"toko-husna-c6415.firebaseapp.com",
-  projectId:"toko-husna-c6415",
-  storageBucket:"toko-husna-c6415.firebasestorage.app",
-  messagingSenderId:"171239564619",
-  appId:"1:171239564619:web:29972d886bd39f1559f4ce"
-};
-const AID = 'default-app-id';
-const P   = (...s) => ['artifacts', AID, 'public', 'data', ...s];
-
-const app  = initializeApp(FC);
-const db   = getFirestore(app);
-const auth = getAuth(app);
-await signInAnonymously(auth).catch(()=>{});
-
-// ── Expose helpers ──
-const W = window;
-W._db = db;
-W._doc    = (...p) => doc(db, ...p);
-W._coll   = (...p) => collection(db, ...p);
-W._set    = (ref, d, o) => setDoc(ref, d, o||{});
-W._del    = (ref) => deleteDoc(ref);
-W._batch  = () => writeBatch(db);
-W._get    = (ref) => getDocs(ref);
-W._ts     = () => serverTimestamp();
-W._snap   = (ref, cb, err) => onSnapshot(ref, cb, err||(() => {}));
-W._query  = (ref, ...c) => query(ref, ...c);
-W._order  = (f, d) => orderBy(f, d||'asc');
-W._P      = P;
-
-// ── SEED changelog if empty ──
-const DEFAULT_CL = [
-  {id:'v47_10',position:0,version:'v47.10',date:'06 Mar 2025',title:'Sidebar Dipadatkan & Scrollable',tag:'Perbaikan UI',icon:'sidebar',items:['Sidebar lebih padat','Nav menu bisa di-scroll','Tombol Logout selalu terlihat']},
-  {id:'v47_9', position:1,version:'v47.9', date:'01 Mar 2025',title:'Lonceng Notifikasi Update',       tag:'Fitur Baru',  icon:'bell',         items:['Tambah ikon lonceng di header','Panel update sistem','Badge angka belum dibaca']},
-  {id:'v47_8', position:2,version:'v47.8', date:'20 Feb 2025',title:'Faktur Pembelian Per Toko',        tag:'Fitur Baru',  icon:'file-invoice', items:['Faktur per toko','Filter toko','Export ke Excel']},
-  {id:'v47_7', position:3,version:'v47.7', date:'10 Feb 2025',title:'Perbaikan Sinkronisasi Firebase',  tag:'Bug Fix',     icon:'rotate',       items:['Fix sinkronisasi multi-user','Optimasi Firestore','Fix error offline']},
-  {id:'v47_6', position:4,version:'v47.6', date:'01 Feb 2025',title:'Rekam Medis & Catatan',            tag:'Fitur Baru',  icon:'notes-medical',items:['Modul Rekam Medis','Papan Catatan','Kontrol akses per pengguna']},
-];
-// ── Seed changelog if empty, then start listeners ──
-// NOTE: module scripts run AFTER DOMContentLoaded, so we call everything directly here.
-try {
-  const snap = await getDocs(W._coll(...P('changelog')));
-  if (snap.empty) {
-    const b = W._batch();
-    DEFAULT_CL.forEach(n => b.set(W._doc(...P('changelog', n.id)), n));
-    await b.commit().catch(()=>{});
-  }
-} catch(e) { console.warn('Seed error:', e); }
-
-// ── Helper: mapping tag → tagColor untuk sistem kasir ──
-const TAG_COLOR_MAP = {
-  'Fitur Baru'   : 'bg-green-100 text-green-700',
-  'Bug Fix'      : 'bg-amber-100 text-amber-700',
-  'Perbaikan UI' : 'bg-sky-100 text-sky-700',
-  'Info'         : 'bg-purple-100 text-purple-700',
-};
-
-// ── Sync changelog ke localStorage agar sistem kasir baca otomatis ──
-W._syncChangelogToKasir = function(data) {
-  try {
-    const mapped = data.map(n => ({
-      ...n,
-      tagColor: TAG_COLOR_MAP[n.tag] || 'bg-gray-100 text-gray-700',
-    }));
-    localStorage.setItem('husna_changelog_data', JSON.stringify(mapped));
-    // Trigger storage event agar tab kasir yang sudah buka di browser yang sama ikut update
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'husna_changelog_data',
-      newValue: JSON.stringify(mapped),
-    }));
-    // Update indikator sync di UI
-    if (typeof W._updateSyncBadge === 'function') W._updateSyncBadge(true);
-  } catch(e) {
-    console.warn('Sync localStorage error:', e);
-    if (typeof W._updateSyncBadge === 'function') W._updateSyncBadge(false);
-  }
-};
-
-// ── Start real-time listeners ──
-// Changelog (with orderBy fallback if index not ready)
-const clQ = W._query(W._coll(...P('changelog')), W._order('position'));
-onSnapshot(clQ, snap => {
-  W._cl = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  W._syncChangelogToKasir(W._cl);
-  if (typeof W.renderNotif === 'function') W.renderNotif();
-}, () => {
-  // Fallback: no orderBy index needed
-  onSnapshot(W._coll(...P('changelog')), snap => {
-    W._cl = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => (a.position ?? 99) - (b.position ?? 99));
-    W._syncChangelogToKasir(W._cl);
-    if (typeof W.renderNotif === 'function') W.renderNotif();
-  });
-});
-
-// Presence
-onSnapshot(W._coll(...P('presence')), snap => {
-  const now = Date.now();
-  const WINDOW_MS = 8 * 60 * 60 * 1000; // tampilkan sampai 8 jam terakhir
-
-  // Semua entri dalam window waktu (online maupun offline)
-  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .filter(p => p.lastSeen?.toMillis ? (now - p.lastSeen.toMillis() < WINDOW_MS) : true);
-
-  // Group by accountId: ambil sesi yang paling baru per akun
-  const byAccount = {};
-  all.forEach(p => {
-    const aid = p.accountId || p.id;
-    const ts  = p.lastSeen?.toMillis ? p.lastSeen.toMillis() : 0;
-    if (!byAccount[aid] || ts > (byAccount[aid].lastSeen?.toMillis?.() || 0)) {
-      byAccount[aid] = p;
-    }
-  });
-
-  W._presence = Object.values(byAccount)
-    .sort((a, b) => (b.lastSeen?.toMillis?.() || 0) - (a.lastSeen?.toMillis?.() || 0));
-
-  // Hitung hanya yang benar-benar online (lastSeen < 60 detik & online !== false)
-  const onlineCount = W._presence.filter(p =>
-    p.online !== false && p.lastSeen?.toMillis && (now - p.lastSeen.toMillis() < 60000)
-  ).length;
-
-  const el = document.getElementById('onlineCount');
-  if (el) el.textContent = onlineCount || '0';
-  if (W._activeTab === 'online' && typeof W.renderOnline === 'function') W.renderOnline();
-});
-
-// Feedback / Pesan
-onSnapshot(W._coll(...P('feedback')), snap => {
-  W._feedback = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => ((b.lastTime || '') > (a.lastTime || '') ? -1 : 1));
-  if (W._activeTab === 'pesan' && typeof W.renderPesan === 'function') W.renderPesan();
-  const totalUnread = W._feedback.reduce((s, f) =>
-    s + (f.messages || []).filter(m => m.role === 'user' && !m.readByAdmin).length, 0);
-  const badge = document.getElementById('pesanBadge');
-  if (badge) { badge.textContent = totalUnread || ''; badge.style.display = totalUnread ? 'flex' : 'none'; }
-});
-
-// ── Update status indicator ──
-const statusDot = document.getElementById('statusDot');
-const statusTxt = document.getElementById('statusText');
-const loadBar   = document.getElementById('loadingBar');
-if (statusDot) statusDot.className = 'tb-dot dot-on';
-if (statusTxt) statusTxt.textContent = 'Terhubung ke Firebase';
-if (loadBar)   loadBar.classList.add('hidden');
-
-// Also expose setStatus for use from non-module code
-W._setStatus = function(txt, ok) {
-  const d = document.getElementById('statusDot');
-  const t = document.getElementById('statusText');
-  const l = document.getElementById('loadingBar');
-  if (d) d.className = 'tb-dot ' + (ok ? 'dot-on' : 'dot-off');
-  if (t) t.textContent = txt;
-  if (l) l.classList.toggle('hidden', ok);
-};
-</script>
-
-<style>
-:root{
-  --sky:#0ea5e9;--sky-dk:#0284c7;--sky-lt:#e0f2fe;
-  --sl:#334155;--sl-lt:#f8fafc;--sl-bd:#e2e8f0;
-  --red:#ef4444;--green:#22c55e;--amber:#f59e0b;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Nunito',sans-serif;background:#f0f9ff;color:var(--sl);min-height:100vh;display:flex;flex-direction:column}
-
-/* TOPBAR */
-.topbar{background:linear-gradient(135deg,#0284c7,#0ea5e9 55%,#38bdf8);padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(2,132,199,.25);position:sticky;top:0;z-index:100;flex-shrink:0}
-.tb-l{display:flex;align-items:center;gap:10px}
-.tb-ico{width:34px;height:34px;background:rgba(255,255,255,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px}
-.tb-t{color:#fff;font-size:14px;font-weight:900;line-height:1.1}
-.tb-s{color:rgba(255,255,255,.7);font-size:11px;font-weight:600}
-.tb-r{display:flex;align-items:center;gap:8px}
-.tb-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px;border:1px solid rgba(255,255,255,.3)}
-.tb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.dot-on{background:#4ade80;animation:pulse 1.5s infinite}
-.dot-off{background:#f87171}
-.tb-online{background:rgba(74,222,128,.25);border:1px solid rgba(74,222,128,.4);color:#fff;font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px;display:flex;align-items:center;gap:5px}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
-
-/* TABS NAV */
-.tab-nav{display:flex;background:#fff;border-bottom:2px solid var(--sl-bd);flex-shrink:0;position:sticky;top:60px;z-index:90;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-.tab-btn{flex:1;padding:12px 8px;font-family:inherit;font-size:12px;font-weight:800;color:#94a3b8;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
-.tab-btn.active{color:var(--sky-dk);border-bottom-color:var(--sky);background:#f0f9ff}
-.tab-btn:hover:not(.active){color:var(--sl);background:#f8fafc}
-.tab-badge{background:var(--red);color:#fff;font-size:9px;font-weight:900;width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1}
-
-/* CONTENT */
-.content{flex:1;overflow-y:auto}
-.wrap{max-width:820px;margin:0 auto;padding:20px 16px 60px}
-
-.loading-bar{height:3px;background:linear-gradient(90deg,var(--sky),#38bdf8,var(--sky));background-size:200%;animation:lb 1.2s linear infinite;border-radius:3px;margin-bottom:14px}
-.loading-bar.hidden{display:none}
-@keyframes lb{from{background-position:200% 0}to{background-position:-200% 0}}
-
-.infobox{background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:11px 14px;display:flex;gap:9px;align-items:flex-start;margin-bottom:18px}
-.infobox i{color:#d97706;margin-top:2px;flex-shrink:0;font-size:13px}
-.infobox p{font-size:12px;font-weight:600;color:#92400e;line-height:1.5}
-.infobox strong{font-weight:900}
-
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:10px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;border:none;transition:all .15s}
-.btn:active{transform:scale(.96)}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.btn-primary{background:var(--sky);color:#fff;box-shadow:0 2px 8px rgba(14,165,233,.3)}
-.btn-primary:hover:not(:disabled){background:var(--sky-dk)}
-.btn-danger{background:#fee2e2;color:var(--red)}
-.btn-danger:hover:not(:disabled){background:#fecaca}
-.btn-ghost{background:transparent;color:#64748b;border:1.5px solid var(--sl-bd)}
-.btn-ghost:hover{background:#f1f5f9}
-.btn-sm{padding:5px 10px;font-size:11px;border-radius:8px}
-.btn-red{background:var(--red);color:#fff}
-.btn-red:hover:not(:disabled){background:#dc2626}
-
-.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:9px}
-.lbl{font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:7px}
-.count-pill{background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800}
-
-/* ── NOTIF CARDS ── */
-.cards{display:flex;flex-direction:column;gap:8px}
-.card{background:#fff;border-radius:13px;border:1.5px solid var(--sl-bd);box-shadow:0 3px 18px rgba(14,165,233,.07);overflow:hidden;transition:all .2s}
-.card.dragging{opacity:.4;border:1.5px dashed var(--sky)}
-.card.drag-over{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,.2)}
-.card-h{display:flex;align-items:center;gap:9px;padding:10px 13px;background:var(--sl-lt);border-bottom:1px solid var(--sl-bd)}
-.grip{color:#cbd5e1;font-size:12px;cursor:grab;padding:2px 4px;border-radius:5px;transition:all .15s;line-height:1}
-.grip:hover{color:var(--sky);background:var(--sky-lt)}
-.grip:active{cursor:grabbing}
-.pos{width:20px;height:20px;background:var(--sky-lt);color:var(--sky-dk);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;flex-shrink:0}
-.tag{font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px}
-.t-new{background:#dcfce7;color:#15803d}
-.t-fix{background:#fef9c3;color:#a16207}
-.t-ui{background:#e0f2fe;color:#0369a1}
-.t-info{background:#ede9fe;color:#7c3aed}
-.label-new{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:900;padding:2px 7px;border-radius:20px;background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;letter-spacing:.5px;text-transform:uppercase;box-shadow:0 1px 4px rgba(239,68,68,.35);animation:pulse-new 2s ease-in-out infinite}
-@keyframes pulse-new{0%,100%{box-shadow:0 1px 4px rgba(239,68,68,.35)}50%{box-shadow:0 2px 10px rgba(239,68,68,.65)}}
-.toggle-new{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;cursor:pointer;transition:all .15s}
-.toggle-new:hover{background:#ffedd5}
-.toggle-new input[type=checkbox]{width:16px;height:16px;accent-color:#f97316;cursor:pointer;flex-shrink:0}
-.toggle-new span{font-size:11px;font-weight:800;color:#c2410c;line-height:1.3}
-.v{font-size:10px;font-weight:700;color:#94a3b8;margin-left:auto}
-.d{font-size:10px;color:#94a3b8}
-.acts{display:flex;gap:4px}
-.card-b{padding:11px 13px}
-.card-ttl{font-size:13px;font-weight:900;color:#0f172a;margin-bottom:5px}
-.card-items{list-style:none;display:flex;flex-direction:column;gap:3px}
-.card-items li{display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#475569}
-.card-items li::before{content:'•';color:var(--sky);font-weight:900;flex-shrink:0;margin-top:1px}
-
-/* ── ONLINE ── */
-.online-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-.online-card{background:#fff;border-radius:13px;border:1.5px solid var(--sl-bd);padding:14px;display:flex;align-items:center;gap:12px;box-shadow:0 3px 12px rgba(0,0,0,.05)}
-.avatar{width:40px;height:40px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff}
-.oc-info{flex:1;min-width:0}
-.oc-name{font-size:13px;font-weight:900;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.oc-user{font-size:10px;color:#94a3b8;font-weight:600}
-.oc-role{font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px}
-.r-owner{background:#fef9c3;color:#a16207}
-.r-kasir{background:#dcfce7;color:#15803d}
-.r-staff{background:#e0f2fe;color:#0369a1}
-.r-viewer{background:#f1f5f9;color:#64748b}
-.online-dot{width:9px;height:9px;background:#22c55e;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px #dcfce7;animation:pulse 1.5s infinite}
-.online-time{font-size:9px;color:#94a3b8;margin-top:2px;font-weight:600}
-.empty-online{text-align:center;padding:50px 20px;color:#94a3b8}
-.empty-online i{font-size:40px;margin-bottom:12px;display:block;opacity:.3}
-.empty-online p{font-size:13px;font-weight:700}
-
-/* ── FEEDBACK / PESAN ── */
-.thread-list{display:flex;flex-direction:column;gap:8px}
-.thread-card{background:#fff;border-radius:13px;border:1.5px solid var(--sl-bd);padding:13px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 3px 12px rgba(0,0,0,.05);transition:all .2s}
-.thread-card:hover{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,.1)}
-.thread-card.has-unread{border-color:#fde68a;background:#fffdf0}
-.thread-av{width:38px;height:38px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff}
-.thread-info{flex:1;min-width:0}
-.thread-name{font-size:13px;font-weight:900;color:#0f172a}
-.thread-preview{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;margin-top:2px}
-.thread-meta{text-align:right;flex-shrink:0}
-.thread-time{font-size:10px;color:#94a3b8;font-weight:600}
-.thread-unread{background:var(--red);color:#fff;font-size:9px;font-weight:900;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;margin-top:3px}
-
-/* ── CHAT VIEW ── */
-.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 140px);min-height:400px;background:#fff;border-radius:16px;border:1.5px solid var(--sl-bd);overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)}
-.chat-header{background:linear-gradient(135deg,#0284c7,#38bdf8);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
-.chat-back{background:rgba(255,255,255,.2);border:none;width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;font-size:13px;transition:background .15s;flex-shrink:0}
-.chat-back:hover{background:rgba(255,255,255,.3)}
-.chat-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0}
-.chat-h-name{color:#fff;font-size:14px;font-weight:900;line-height:1.1}
-.chat-h-sub{color:rgba(255,255,255,.75);font-size:10px;font-weight:600}
-.chat-actions{margin-left:auto;display:flex;gap:6px}
-.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:#f8fafc}
-.msg-row{display:flex;align-items:flex-end;gap:6px}
-.msg-row.user{flex-direction:row-reverse}
-.msg-bubble{max-width:75%;border-radius:16px;padding:9px 12px;line-height:1.45}
-.msg-bubble.user{background:var(--sky);color:#fff;border-bottom-right-radius:4px}
-.msg-bubble.admin{background:#fff;border:1.5px solid var(--sl-bd);color:var(--sl);border-bottom-left-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.msg-type{font-size:9px;font-weight:900;margin-bottom:2px}
-.msg-type.bug{color:#fca5a5}
-.msg-type.masukkan{color:#a5f3fc}
-.msg-type.request{color:#fde68a}
-.msg-type.admin-lbl{color:var(--sky);font-size:9px;font-weight:900;margin-bottom:2px}
-.msg-text{font-size:12px;font-weight:600}
-.msg-time{font-size:9px;margin-top:3px;opacity:.65;text-align:right}
-.msg-photo{max-width:100%;max-height:180px;width:100%;object-fit:cover;border-radius:10px;margin-bottom:5px;cursor:zoom-in;transition:opacity .15s}
-.msg-photo:hover{opacity:.88}
-.lightbox-ov{position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
-.lightbox-inner{position:relative;max-width:95vw;max-height:90vh}
-.lightbox-inner img{max-width:92vw;max-height:85vh;border-radius:14px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6)}
-.lightbox-close{position:absolute;top:-12px;right:-12px;width:30px;height:30px;background:#ef4444;border:none;border-radius:50%;color:#fff;font-weight:900;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.msg-av{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0}
-.chat-input{border-top:1px solid var(--sl-bd);padding:12px 14px;background:#fff;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
-.chat-input textarea{flex:1;border:1.5px solid var(--sl-bd);border-radius:12px;padding:9px 12px;font-family:inherit;font-size:12px;font-weight:600;resize:none;outline:none;color:var(--sl);transition:border-color .15s;min-height:38px;max-height:90px}
-.chat-input textarea:focus{border-color:var(--sky)}
-.send-btn{width:38px;height:38px;background:var(--sky);color:#fff;border:none;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
-.send-btn:hover{background:var(--sky-dk)}
-.send-btn:disabled{opacity:.4;cursor:not-allowed}
-.cam-btn{width:38px;height:38px;background:#f8fafc;border:1.5px solid var(--sl-bd);color:#94a3b8;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
-.cam-btn:hover{border-color:var(--sky);color:var(--sky);background:#f0f9ff}
-.reply-photo-preview{padding:8px 14px 0;background:#fff;flex-shrink:0}
-.reply-photo-preview .preview-wrap{position:relative;display:inline-block}
-.reply-photo-preview img{height:80px;max-width:160px;object-fit:cover;border-radius:10px;border:1.5px solid var(--sl-bd);cursor:zoom-in}
-.reply-photo-preview .remove-photo{position:absolute;top:-7px;right:-7px;width:20px;height:20px;background:#ef4444;border:none;border-radius:50%;color:#fff;font-size:10px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3)}
-.empty-chat{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:#94a3b8;padding:30px}
-.empty-chat i{font-size:40px;margin-bottom:12px;opacity:.3}
-.empty-chat p{font-size:13px;font-weight:700;text-align:center;line-height:1.6}
-
-/* MODAL */
-.ov{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:18px;animation:fi .18s}
-@keyframes fi{from{opacity:0}to{opacity:1}}
-.modal{background:#fff;border-radius:20px;width:100%;max-width:500px;box-shadow:0 24px 64px rgba(0,0,0,.18);animation:su .2s cubic-bezier(.34,1.4,.64,1);overflow:hidden}
-@keyframes su{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:none}}
-.modal-hd{background:linear-gradient(135deg,#0284c7,#38bdf8);padding:15px 19px;display:flex;align-items:center;justify-content:space-between}
-.modal-ttl{color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;gap:7px}
-.modal-x{width:27px;height:27px;border-radius:7px;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
-.modal-x:hover{background:rgba(255,255,255,.3)}
-.modal-bd{padding:18px;max-height:65vh;overflow-y:auto}
-.modal-ft{padding:12px 18px;background:#f8fafc;border-top:1px solid var(--sl-bd);display:flex;justify-content:flex-end;gap:8px}
-.fg{margin-bottom:13px}
-.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-label{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:4px}
-input,select{width:100%;padding:8px 11px;border:1.5px solid var(--sl-bd);border-radius:9px;font-family:inherit;font-size:12px;font-weight:600;color:var(--sl);outline:none;transition:border-color .15s,box-shadow .15s}
-input:focus,select:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,.15)}
-.item-row{display:flex;gap:6px;margin-bottom:6px}
-.item-row input{flex:1}
-.item-del{width:30px;height:34px;border-radius:7px;background:#fee2e2;color:var(--red);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;transition:background .15s}
-.item-del:hover{background:#fecaca}
-.add-item-btn{display:flex;align-items:center;gap:5px;padding:6px 11px;background:#f0f9ff;color:var(--sky-dk);font-family:inherit;font-size:11px;font-weight:800;border:1.5px dashed #7dd3fc;border-radius:8px;cursor:pointer;transition:background .15s;width:100%}
-.add-item-btn:hover{background:#e0f2fe}
-
-/* ICON PICKER */
-.icon-picker-wrap{border:1.5px solid var(--sl-bd);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-.icon-top-bar{display:flex;align-items:stretch;gap:10px;padding:10px 12px;background:#f8fafc;border-bottom:1px solid var(--sl-bd)}
-.icon-preview-box{width:52px;height:52px;background:linear-gradient(135deg,#0284c7,#38bdf8);border-radius:11px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;flex-shrink:0;box-shadow:0 3px 12px rgba(14,165,233,.35);transition:all .2s}
-.icon-top-fields{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
-.icon-name-row{display:flex;align-items:center;gap:8px}
-.icon-name-row input{flex:1;margin:0;padding:6px 10px;font-size:12px}
-.icon-search-row{display:flex;align-items:center;gap:7px;background:#fff;border:1.5px solid var(--sl-bd);border-radius:8px;padding:5px 10px;transition:border-color .15s,box-shadow .15s}
-.icon-search-row:focus-within{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,.12)}
-.icon-search-row input{border:none;outline:none;font-size:11px;font-weight:600;font-family:inherit;color:#334155;flex:1;padding:0;width:100%;background:transparent}
-.icon-cats{display:flex;gap:5px;padding:8px 10px;border-bottom:1px solid var(--sl-bd);background:#f8fafc;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
-.icon-cats::-webkit-scrollbar{display:none}
-.icon-cat-btn{flex-shrink:0;padding:4px 11px;background:#e0f2fe;color:#0369a1;border:none;border-radius:20px;font-family:inherit;font-size:10px;font-weight:800;cursor:pointer;transition:all .15s;white-space:nowrap}
-.icon-cat-btn.active{background:var(--sky);color:#fff;box-shadow:0 2px 8px rgba(14,165,233,.3)}
-.icon-cat-btn:hover:not(.active){background:#bae6fd}
-.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:5px;padding:10px;max-height:220px;overflow-y:auto;background:#fff}
-.icon-grid::-webkit-scrollbar{width:4px}
-.icon-grid::-webkit-scrollbar-track{background:transparent}
-.icon-grid::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
-.icon-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:54px;border:1.5px solid transparent;border-radius:10px;background:#f8fafc;cursor:pointer;transition:all .15s;padding:4px 2px}
-.icon-btn:hover{background:#e0f2fe;border-color:#7dd3fc;transform:translateY(-1px);box-shadow:0 3px 8px rgba(14,165,233,.15)}
-.icon-btn.selected{background:linear-gradient(135deg,#0284c7,#38bdf8);border-color:transparent;box-shadow:0 4px 12px rgba(14,165,233,.4);transform:translateY(-1px)}
-.icon-btn i{font-size:17px;color:#475569;pointer-events:none;line-height:1}
-.icon-btn.selected i{color:#fff!important}
-.icon-btn span{font-size:7.5px;color:#94a3b8;font-weight:700;pointer-events:none;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1}
-.icon-btn.selected span{color:rgba(255,255,255,.75)}
-.icon-empty-msg{grid-column:1/-1;text-align:center;padding:22px 10px;font-size:12px;color:#94a3b8;font-weight:700}
-.empty{text-align:center;padding:50px 20px;color:#94a3b8}
-.empty i{font-size:40px;margin-bottom:12px;display:block;opacity:.3}
-.empty p{font-size:13px;font-weight:700;line-height:1.7}
-
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:9px 18px;border-radius:50px;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:999;display:flex;align-items:center;gap:7px;transition:opacity .3s;white-space:nowrap}
-.toast.hide{opacity:0;pointer-events:none}
-</style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* ===== Overlay Galaksi Cinta (dibuka/ditutup dengan gestur 👌) ===== */
+        #galaxilove-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: black;
+        }
+        #galaxilove-overlay .webgl { position: fixed; top: 0; left: 0; outline: none; }
+        #gl-titulo-corazon {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd7ef;
+            font-family: Arial, sans-serif;
+            font-size: clamp(1.2rem, 2.8vw, 2rem);
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff3ea5, 0 0 24px #ff3ea5;
+            z-index: 20;
+            pointer-events: none;
+        }
+        #gl-hint {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd7ef;
+            font-family: Arial, sans-serif;
+            font-size: 15px;
+            text-shadow: 0 0 8px #ff3ea5;
+            z-index: 20;
+            pointer-events: none;
+            text-align: center;
+        }
+        #gl-close-btn {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 25;
+            background: rgba(255, 77, 166, 0.85);
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            width: 38px;
+            height: 38px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #gl-modal-carta {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(3px);
+            z-index: 30;
+        }
+        #gl-modal-carta.visible { display: flex; }
+        #gl-modal-carta .carta {
+            width: min(86vw, 420px);
+            background: linear-gradient(160deg, #fff8fb 0%, #ffe9f4 100%);
+            border: 2px solid #ffc7e4;
+            border-radius: 18px;
+            padding: 22px 20px 16px;
+            box-shadow: 0 12px 36px rgba(255, 20, 147, 0.4);
+            color: #8a235f;
+            font-family: 'Georgia', serif;
+            text-align: center;
+            position: relative;
+            animation: cartaAparece 0.28s ease-out;
+        }
+        #gl-modal-carta .carta h3 { font-size: 1.15rem; margin-bottom: 10px; }
+        #gl-mensaje-romantico {
+            font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+            line-height: 1.5;
+            color: #b01867;
+            text-shadow: 0 0 10px rgba(255, 70, 150, 0.2);
+        }
+        #gl-cerrar-carta {
+            margin-top: 14px;
+            border: none;
+            border-radius: 999px;
+            background: #ff4da6;
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: bold;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        @keyframes cartaAparece {
+            from { opacity: 0; transform: scale(0.9) translateY(12px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        #gl-modal-wishlist {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(3px);
+            z-index: 30;
+        }
+        #gl-modal-wishlist.visible { display: flex; }
+        #gl-wishlist-list {
+            list-style: none;
+            padding: 0;
+            margin: 12px 0;
+            max-height: 220px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        #gl-wishlist-list li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 4px;
+            border-bottom: 1px dashed #ffc7e4;
+            font-size: 0.95rem;
+        }
+        #gl-wishlist-list li.done span { text-decoration: line-through; opacity: 0.55; }
+        #gl-wishlist-list li input[type="checkbox"] {
+            width: 18px; height: 18px; accent-color: #ff4da6; cursor: pointer; flex-shrink: 0;
+        }
+        #gl-wishlist-list li span { flex: 1; word-break: break-word; }
+        #gl-wishlist-list li .gl-wishlist-remove {
+            background: none; border: none; color: #c2447e; font-size: 1rem; cursor: pointer; padding: 0 4px;
+        }
+        #gl-wishlist-list li .gl-wishlist-send {
+            background: none; border: none; font-size: 1rem; cursor: pointer; padding: 0 4px;
+            opacity: 0.85; transition: transform 0.15s ease;
+        }
+        #gl-wishlist-list li .gl-wishlist-send:hover { transform: scale(1.15); }
+        #gl-wishlist-list li .gl-wishlist-send:disabled { opacity: 0.5; cursor: default; transform: none; }
+        .gl-wishlist-add-row { display: flex; gap: 6px; margin-top: 4px; }
+        #gl-wishlist-input {
+            flex: 1;
+            padding: 9px 10px;
+            border-radius: 10px;
+            border: 1px solid #ffc7e4;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        #gl-wishlist-add-btn {
+            border: none;
+            border-radius: 10px;
+            background: #ff4da6;
+            color: #fff;
+            font-weight: bold;
+            padding: 0 16px;
+            cursor: pointer;
+            font-size: 1.15rem;
+        }
+    </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
-<div class="topbar">
-  <div class="tb-l">
-    <div class="tb-ico"><i class="fa-solid fa-shield-halved"></i></div>
-    <div><div class="tb-t">Admin Panel</div><div class="tb-s">Sistem Kasir Toko Husna</div></div>
-  </div>
-  <div class="tb-r">
-    <div class="tb-online"><i class="fa-solid fa-circle" style="color:#4ade80;font-size:8px;animation:pulse 1.5s infinite"></i> <span id="onlineCount">0</span> Online</div>
-    <div class="tb-pill"><div class="tb-dot dot-off" id="statusDot"></div><span id="statusText">Menghubungkan…</span></div>
-  </div>
-</div>
+    <div class="loading" id="loading-screen">
+        <h2>Mempersiapkan NebulaHeart 3D...</h2>
+        <p>Mohon izinkan akses Kamera saat diminta.</p>
+    </div>
 
-<!-- TAB NAV -->
-<div class="tab-nav">
-  <button class="tab-btn active" id="tab-notif" onclick="switchTab('notif')">
-    <i class="fa-solid fa-bell"></i> Notifikasi
-  </button>
-  <button class="tab-btn" id="tab-online" onclick="switchTab('online')">
-    <i class="fa-solid fa-circle-dot" style="color:#22c55e"></i> Online
-  </button>
-  <button class="tab-btn" id="tab-pesan" onclick="switchTab('pesan')">
-    <i class="fa-solid fa-comments"></i> Pesan Masuk
-    <span class="tab-badge" id="pesanBadge" style="display:none"></span>
-  </button>
-</div>
+    <div id="ui-layer" style="display: none;">
+        <div class="status-text" id="mode-text">MODE: MENCARI TANGAN...</div>
+    </div>
+    
+    <video id="camera-feed" autoplay playsinline style="display: none;"></video>
+    <div id="canvas-container"></div>
+    <div id="love-caption" class="love-caption"></div>
 
-<!-- CONTENT -->
-<div class="content">
-  <!-- ── TAB: NOTIFIKASI ── -->
-  <div id="view-notif" class="wrap">
-    <div class="loading-bar hidden" id="loadingBar"></div>
-    <div class="infobox">
-      <i class="fa-solid fa-bolt"></i>
-      <p>Notifikasi di sini akan muncul real-time di lonceng kasir dari <strong>browser manapun</strong>. Drag &amp; drop untuk atur urutan.<br>
-      <span id="syncBadge" style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:11px;font-weight:800;color:#15803d">
-        <i class="fa-solid fa-circle-check"></i> Tersinkron ke Sistem Kasir
-      </span></p>
-    </div>
-    <div class="toolbar">
-      <span class="lbl"><i class="fa-solid fa-list-ul"></i> Notifikasi <span class="count-pill" id="clCount">0</span></span>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="doReset()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
-        <button class="btn btn-primary btn-sm" onclick="openModal()"><i class="fa-solid fa-plus"></i> Tambah</button>
-      </div>
-    </div>
-    <div class="cards" id="cardList"></div>
-    <div class="empty" id="emptyNotif" style="display:none"><i class="fa-regular fa-bell-slash"></i><p>Belum ada notifikasi</p></div>
-  </div>
-
-  <!-- ── TAB: ONLINE ── -->
-  <div id="view-online" class="wrap" style="display:none">
-    <div class="toolbar">
-      <span class="lbl">
-        <i class="fa-solid fa-users"></i> Riwayat Aktivitas
-        <span class="count-pill" id="onlineCountBig">0</span>
-        <span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800;margin-left:2px">
-          <i class="fa-solid fa-circle" style="font-size:7px;animation:pulse 1.5s infinite"></i>
-          <span id="liveOnlineCount">0</span> online
-        </span>
-      </span>
-      <span style="font-size:11px;color:#94a3b8;font-weight:600">Tampil s/d 8 jam terakhir</span>
-    </div>
-    <div class="online-grid" id="onlineGrid"></div>
-    <div class="empty-online" id="emptyOnline" style="display:none">
-      <i class="fa-solid fa-users-slash"></i>
-      <p>Belum ada aktivitas<br><span style="font-size:12px;font-weight:600;color:#cbd5e1">Pengguna yang membuka sistem kasir akan muncul di sini</span></p>
-    </div>
-  </div>
-
-  <!-- ── TAB: PESAN MASUK ── -->
-  <div id="view-pesan" class="wrap" style="display:none">
-    <!-- Thread list view -->
-    <div id="thread-list-view">
-      <div class="toolbar">
-        <span class="lbl"><i class="fa-solid fa-inbox"></i> Pesan Masuk <span class="count-pill" id="pesanCount">0</span></span>
-      </div>
-      <div class="thread-list" id="threadList"></div>
-      <div class="empty" id="emptyPesan" style="display:none"><i class="fa-regular fa-comments"></i><p>Belum ada pesan masuk</p></div>
-    </div>
-    <!-- Chat detail view -->
-    <div id="chat-detail-view" style="display:none">
-      <div class="chat-wrap">
-        <div class="chat-header">
-          <button class="chat-back" onclick="backToList()"><i class="fa-solid fa-arrow-left"></i></button>
-          <div class="chat-av" id="chatAv" style="background:#0ea5e9">H</div>
-          <div>
-            <div class="chat-h-name" id="chatName">-</div>
-            <div class="chat-h-sub" id="chatSub">-</div>
-          </div>
-          <div class="chat-actions">
-            <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="clearChat()" title="Hapus semua chat">
-              <i class="fa-solid fa-broom"></i> Bersihkan
-            </button>
-          </div>
-        </div>
-        <div class="chat-messages" id="chatMessages"></div>
-        <!-- Preview foto sebelum kirim -->
-        <div class="reply-photo-preview" id="replyPhotoPreview" style="display:none">
-          <div class="preview-wrap">
-            <img id="replyPhotoImg" src="" alt="preview" onclick="openLightbox(this.src)" />
-            <button class="remove-photo" onclick="clearReplyPhoto()" title="Hapus foto">✕</button>
-          </div>
-        </div>
-        <div class="chat-input">
-          <input type="file" id="replyPhotoInput" accept="image/*" style="display:none" onchange="handleReplyPhoto(this)" />
-          <button class="cam-btn" onclick="document.getElementById('replyPhotoInput').click()" title="Lampirkan foto"><i class="fa-solid fa-camera" style="font-size:13px"></i></button>
-          <textarea id="replyInput" rows="1" placeholder="Ketik balasan…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"></textarea>
-          <button class="send-btn" onclick="sendReply()" id="replyBtn"><i class="fa-solid fa-paper-plane" style="font-size:13px"></i></button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Tambah/Edit Notifikasi -->
-<div class="ov" id="modalOv" style="display:none" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="modal-hd">
-      <div class="modal-ttl"><i class="fa-solid fa-pen-to-square"></i><span id="modalTitleText">Tambah Notifikasi</span></div>
-      <button class="modal-x" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-bd">
-      <div class="fr">
-        <div class="fg"><label>Versi</label><input id="fVer" placeholder="cth: v47.11"></div>
-        <div class="fg"><label>Tanggal</label><input id="fDate" placeholder="cth: 06 Mar 2025"></div>
-      </div>
-      <div class="fg"><label>Judul Update</label><input id="fTitle" placeholder="Judul singkat update ini"></div>
-      <div class="fr">
-        <div class="fg"><label>Kategori</label>
-          <select id="fTag"><option>Fitur Baru</option><option>Bug Fix</option><option>Perbaikan UI</option><option>Info</option></select>
-        </div>
-        <div class="fg"><label>Versi tampilkan</label>
-          <div style="height:34px;display:flex;align-items:center;padding:0 11px;background:#f8fafc;border:1.5px solid var(--sl-bd);border-radius:9px;font-size:11px;font-weight:700;color:#94a3b8;gap:6px">
-            <i class="fa-solid fa-circle-info" style="color:#7dd3fc"></i> Ikon terpilih di bawah
-          </div>
-        </div>
-      </div>
-      <!-- ICON PICKER - full width -->
-      <div class="fg">
-        <label>Pilih Ikon Font Awesome</label>
-        <div class="icon-picker-wrap">
-          <!-- Top bar: preview + input + search -->
-          <div class="icon-top-bar">
-            <div class="icon-preview-box" id="iconPreviewBox">
-              <i class="fa-solid fa-bell" id="iconPreviewEl"></i>
+    <!-- ===== Overlay Galaksi Cinta - dibuka/ditutup dengan gestur OK Sign 👌 ===== -->
+    <div id="galaxilove-overlay">
+        <canvas class="webgl" id="gl-canvas"></canvas>
+        <div id="gl-titulo-corazon">Tekan hatinya</div>
+        <div id="gl-hint">Buat gestur 👌 lagi untuk kembali</div>
+        <button id="gl-close-btn" title="Tutup">✕</button>
+        <div id="gl-modal-carta">
+            <div class="carta">
+                <h3>Untukmu</h3>
+                <p id="gl-mensaje-romantico"></p>
+                <button id="gl-cerrar-carta">Tutup</button>
             </div>
-            <div class="icon-top-fields">
-              <div class="icon-name-row">
-                <span style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">Nama Ikon</span>
-                <input id="fIcon" placeholder="bell, star, fire…" oninput="onIconInput(this.value)" autocomplete="off">
-              </div>
-              <div class="icon-search-row">
-                <i class="fa-solid fa-magnifying-glass" style="color:#94a3b8;font-size:11px;flex-shrink:0"></i>
-                <input id="iconSearch" placeholder="Cari dari 180+ ikon…" oninput="filterIcons(this.value)" autocomplete="off">
-              </div>
+        </div>
+        <div id="gl-modal-wishlist">
+            <div class="carta">
+                <h3>Wishlist Kita 📝</h3>
+                <ul id="gl-wishlist-list"></ul>
+                <div class="gl-wishlist-add-row">
+                    <input type="text" id="gl-wishlist-input" placeholder="Tambah wishlist..." maxlength="70">
+                    <button id="gl-wishlist-add-btn" title="Tambah">+</button>
+                </div>
+                <button id="gl-cerrar-wishlist">Tutup</button>
             </div>
-          </div>
-          <!-- Category tabs -->
-          <div class="icon-cats" id="iconCats"></div>
-          <!-- Icon grid -->
-          <div class="icon-grid" id="iconGrid"></div>
         </div>
-      </div>
-      <div class="fg">
-        <label for="fIsNew" style="margin-bottom:0">Label NEW</label>
-        <label class="toggle-new" for="fIsNew">
-          <input type="checkbox" id="fIsNew">
-          <span>Tampilkan badge <span style="background:linear-gradient(135deg,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900">⚡ NEW</span> pada notifikasi ini — centang untuk mengaktifkan, hapus centang untuk menonaktifkan</span>
-        </label>
-      </div>
-      <div class="fg">
-        <label>Poin-poin Update</label>
-        <div id="itemsList"></div>
-        <button class="add-item-btn" onclick="addItemField()"><i class="fa-solid fa-plus"></i> Tambah Poin</button>
-      </div>
+        <audio id="gl-musica-fondo" loop>
+            <source src="cintanya akuu.mp3" type="audio/mpeg">
+        </audio>
     </div>
-    <div class="modal-ft">
-      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
-      <button class="btn btn-primary" id="saveBtn" onclick="saveNotif()"><i class="fa-solid fa-floppy-disk"></i> Simpan</button>
-    </div>
-  </div>
-</div>
 
-<!-- Confirm Delete -->
-<div class="ov" id="delOv" style="display:none" onclick="if(event.target===this)closeDel()">
-  <div class="modal" style="max-width:360px">
-    <div class="modal-hd" style="background:linear-gradient(135deg,#dc2626,#f87171)">
-      <div class="modal-ttl"><i class="fa-solid fa-trash"></i> Hapus Notifikasi?</div>
-      <button class="modal-x" onclick="closeDel()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-bd" style="padding:18px">
-      <p style="font-size:13px;font-weight:700;color:#334155;line-height:1.7">Hapus "<strong id="delTitle"></strong>"? Tidak dapat dikembalikan.</p>
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-ghost" onclick="closeDel()">Batal</button>
-      <button class="btn btn-red" onclick="confirmDel()"><i class="fa-solid fa-trash"></i> Hapus</button>
-    </div>
-  </div>
-</div>
+    <script>
+        // ==========================================
+        // KONFIGURASI & INISIALISASI
+        // ==========================================
+        const NUM_PARTICLES = 1500;
+        let currentMode = 1; 
+        
+        let handTarget = { x: 0, y: 0, z: 0 };
+        let handCurrent = { x: 0, y: 0, z: -12 };
+        let rotationAngle = 0;
 
-<!-- Confirm Clear Chat -->
-<div class="ov" id="clearOv" style="display:none" onclick="if(event.target===this)clearOv.style.display='none'">
-  <div class="modal" style="max-width:360px">
-    <div class="modal-hd" style="background:linear-gradient(135deg,#dc2626,#f87171)">
-      <div class="modal-ttl"><i class="fa-solid fa-broom"></i> Bersihkan Chat?</div>
-      <button class="modal-x" onclick="document.getElementById('clearOv').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-bd" style="padding:18px">
-      <p style="font-size:13px;font-weight:700;color:#334155;line-height:1.7">Semua pesan dari <strong id="clearName"></strong> akan dihapus permanen. Pengguna tidak bisa mengembalikannya.</p>
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-ghost" onclick="document.getElementById('clearOv').style.display='none'">Batal</button>
-      <button class="btn btn-red" onclick="confirmClear()"><i class="fa-solid fa-broom"></i> Bersihkan</button>
-    </div>
-  </div>
-</div>
+        // Teks Label Mode
+        const modeLabels = {
+            1: "ROTASI KOSMOS (Semua Jari Buka)",
+            2: "GALAKSI SPIRAL 🌌 (1 Jari Telunjuk)",
+            3: "TEKS I LOVE YOU (2 Jari / Peace)",
+            4: "BENTUK HATI (Tangan Mengepal)",
+            5: "SELY 🫰 (Finger Heart)",
+            7: "DNA HELIX 🧬 (Rock Sign)",
+            9: "ZEN & CINTA 🤟 (I Love You Sign)"
+        };
 
-<div class="toast hide" id="toastEl"><i id="toastIco" class="fa-solid fa-check-circle" style="color:#4ade80"></i><span id="toastMsg"></span></div>
+        // Gestur OK Sign 👌 sekarang dipakai untuk toggle overlay "Galaksi Cinta"
+        let lastOkSignActive = false;
+        let lastOkToggleTime = 0;
+        const OK_TOGGLE_COOLDOWN = 1500; // ms, biar tidak toggle berkali-kali per detik
 
-<script>
-const TAG_CLASS={'Fitur Baru':'t-new','Bug Fix':'t-fix','Perbaikan UI':'t-ui','Info':'t-info'};
-const AVATAR_COLORS=['#0ea5e9','#6366f1','#f59e0b','#22c55e','#ef4444','#8b5cf6','#ec4899'];
-const avatarColor = str => AVATAR_COLORS[(str||'').charCodeAt(0)%AVATAR_COLORS.length];
+        // ==========================================
+        // SETUP THREE.JS (RENDERER 3D)
+        // ==========================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50);
+        camera.position.z = 0; 
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
 
-// ── Sync badge updater ──
-window._updateSyncBadge = function(ok) {
-  const el = document.getElementById('syncBadge');
-  if (!el) return;
-  if (ok) {
-    const now = new Date().toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    el.style.color = '#15803d';
-    el.innerHTML = `<i class="fa-solid fa-circle-check"></i> Tersinkron ke Sistem Kasir <span style="font-weight:600;opacity:.7">(${now})</span>`;
-  } else {
-    el.style.color = '#b45309';
-    el.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Gagal sync localStorage`;
-  }
-};
+        // Render manual (autoClear = false) supaya bisa bikin efek "jejak komet" (trail)
+        renderer.autoClear = false;
+        const trailScene = new THREE.Scene();
+        const trailCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+        const trailPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(2, 2),
+            new THREE.MeshBasicMaterial({
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.15,
+                depthWrite: false,
+                depthTest: false
+            })
+        );
+        trailScene.add(trailPlane);
 
-let _editId=null, _delId=null, _dragIdx=null;
-let _activeThread=null, _activeMessages=[];
+        // Latar bintang statis (Starfield) biar suasana makin "angkasa"
+        const NUM_STARS = 600;
+        const starGeometry = new THREE.BufferGeometry();
+        const starPositions = new Float32Array(NUM_STARS * 3);
+        for (let i = 0; i < NUM_STARS; i++) {
+            starPositions[i * 3]     = (Math.random() - 0.5) * 60;
+            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 60;
+            starPositions[i * 3 + 2] = -15 - Math.random() * 25;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starMaterial = new THREE.PointsMaterial({
+            size: 0.08,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.5,
+            sizeAttenuation: true
+        });
+        const starField = new THREE.Points(starGeometry, starMaterial);
+        scene.add(starField);
 
-// ── Tab state ──
-window._activeTab = 'notif';
-window._cl = [];
-window._presence = [];
-window._feedback = [];
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(NUM_PARTICLES * 3);
+        const colors = new Float32Array(NUM_PARTICLES * 3);
+        const currentPositions = new Float32Array(NUM_PARTICLES * 3);
+        
+        const posSpace = new Float32Array(NUM_PARTICLES * 3);
+        const posText = new Float32Array(NUM_PARTICLES * 3);
+        const posHeart = new Float32Array(NUM_PARTICLES * 3);
+        const posSely = new Float32Array(NUM_PARTICLES * 3);
+        const posGalaxy = new Float32Array(NUM_PARTICLES * 3);
+        const posDNA = new Float32Array(NUM_PARTICLES * 3);
+        const posPray = new Float32Array(NUM_PARTICLES * 3); // Mode 9: ZEN + HATI + SELY (vertikal)
+        const PRAY_ZEN_COUNT = Math.floor(NUM_PARTICLES * 0.34);
+        const PRAY_HEART_COUNT = Math.floor(NUM_PARTICLES * 0.33);
 
-function switchTab(tab) {
-  window._activeTab = tab;
-  ['notif','online','pesan'].forEach(t => {
-    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
-    document.getElementById('view-'+t).style.display = t===tab ? 'block' : 'none';
-  });
-  if(tab==='notif')  window.renderNotif();
-  if(tab==='online') window.renderOnline();
-  if(tab==='pesan')  window.renderPesan();
-}
+        generateShapes();
 
-// ── Status ──
-window._setStatus = function(txt, ok) {
-  document.getElementById('statusText').textContent = txt;
-  const dot = document.getElementById('statusDot');
-  dot.className = 'tb-dot '+(ok?'dot-on':'dot-off');
-  document.getElementById('loadingBar').classList.toggle('hidden', ok);
-};
+        for(let i = 0; i < NUM_PARTICLES * 3; i++) {
+            currentPositions[i] = posSpace[i];
+            positions[i] = posSpace[i];
+        }
 
-// ─────────────────────────────────────────
-// ── RENDER NOTIF ──
-// ─────────────────────────────────────────
-window.renderNotif = function() {
-  const data = window._cl||[];
-  document.getElementById('clCount').textContent = data.length;
-  const list  = document.getElementById('cardList');
-  const empty = document.getElementById('emptyNotif');
-  if(!data.length){list.innerHTML='';empty.style.display='block';return;}
-  empty.style.display='none';
-  list.innerHTML = data.map((n,i)=>`
-    <div class="card" draggable="true" data-id="${n.id}"
-      ondragstart="dstart(event,${i})" ondragover="dover(event,${i})"
-      ondragleave="dleave(event)"      ondrop="ddrop(event,${i})"
-      ondragend="dend()">
-      <div class="card-h">
-        <span class="grip"><i class="fa-solid fa-grip-vertical"></i></span>
-        <span class="pos">${i+1}</span>
-        <span class="tag ${TAG_CLASS[n.tag]||'t-info'}">${n.tag||'Info'}</span>
-        ${n.isNew ? '<span class="label-new"><i class="fa-solid fa-bolt" style="font-size:7px"></i> NEW</span>' : ''}
-        <span class="v">${n.version||''}</span>
-        <span class="d">${n.date||''}</span>
-        <div class="acts">
-          <button class="btn btn-ghost btn-sm" onclick="openModal('${n.id}')"><i class="fa-solid fa-pen"></i></button>
-          <button class="btn btn-danger btn-sm" onclick="openDel('${n.id}')"><i class="fa-solid fa-trash"></i></button>
-        </div>
-      </div>
-      <div class="card-b">
-        <div class="card-ttl"><i class="fa-solid fa-${n.icon||'bell'}" style="color:#0ea5e9;font-size:11px;margin-right:5px"></i>${n.title||''}</div>
-        <ul class="card-items">${(n.items||[]).map(it=>`<li>${it}</li>`).join('')}</ul>
-      </div>
-    </div>`).join('');
-};
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-// ─────────────────────────────────────────
-// ── RENDER ONLINE ──
-// ─────────────────────────────────────────
-window.renderOnline = function() {
-  const now  = Date.now();
-  const data = window._presence||[];
-  const onlineCount = data.filter(p =>
-    p.online !== false && p.lastSeen?.toMillis && (now - p.lastSeen.toMillis() < 60000)
-  ).length;
-  document.getElementById('onlineCountBig').textContent = data.length;
-  const liveEl = document.getElementById('liveOnlineCount');
-  if (liveEl) liveEl.textContent = onlineCount;
-  const grid  = document.getElementById('onlineGrid');
-  const empty = document.getElementById('emptyOnline');
-  if(!data.length){grid.innerHTML='';empty.style.display='block';return;}
-  empty.style.display='none';
-  const roleLabel = {'owner':'Owner','kasir':'Kasir','staff':'Staff','viewer':'Viewer','admin':'Admin'};
-  const roleClass = {'owner':'r-owner','kasir':'r-kasir','staff':'r-staff','viewer':'r-viewer','admin':'r-owner'};
-  grid.innerHTML = data.map(p => {
-    const name      = p.namaLengkap||p.username||'Tamu';
-    const init      = name.charAt(0).toUpperCase();
-    const color     = avatarColor(name);
-    const ts        = p.lastSeen?.toMillis ? new Date(p.lastSeen.toMillis()) : null;
-    const secAgo    = ts ? Math.floor((now - ts.getTime()) / 1000) : 999;
-    const isOnline  = p.online !== false && secAgo < 60;
-    const timeAgo   = ts ? formatAgo(ts) : 'baru saja';
-    const accountId = p.accountId || null;
-    const statusHtml = isOnline
-      ? `<span style="display:inline-flex;align-items:center;gap:4px;color:#16a34a;font-weight:800;font-size:10px">
-           <i class="fa-solid fa-circle" style="font-size:7px;animation:pulse 1.5s infinite"></i>Online
-         </span>`
-      : `<span style="display:inline-flex;align-items:center;gap:3px;color:#94a3b8;font-size:10px;font-weight:600">
-           <i class="fa-solid fa-clock" style="font-size:8px"></i>${timeAgo}
-         </span>`;
-    const dotHtml = isOnline
-      ? `<div class="online-dot"></div>`
-      : `<div style="width:9px;height:9px;background:#cbd5e1;border-radius:50%;flex-shrink:0"></div>`;
-    const cardStyle = isOnline ? '' : 'opacity:0.75';
-    return `
-    <div class="online-card" style="${cardStyle}">
-      <div class="avatar" style="background:${color};${isOnline?'':'filter:grayscale(30%)'}">${init}</div>
-      <div class="oc-info">
-        <div class="oc-name">${name}</div>
-        <div class="oc-user">@${p.username||'-'}</div>
-        <div class="online-time">${statusHtml}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <div style="display:flex;align-items:center;gap:5px">
-          ${dotHtml}
-          <div class="oc-role ${roleClass[p.role]||'r-viewer'}">${roleLabel[p.role]||p.role||'User'}</div>
-        </div>
-        ${accountId ? `
-        <button onclick="chatFromOnline('${accountId}','${name.replace(/'/g,"\'")}','${p.username||''}','${p.role||''}')"
-          class="btn btn-primary btn-sm" style="font-size:10px;padding:4px 9px;border-radius:8px">
-          <i class="fa-solid fa-comment"></i> Chat
-        </button>` : `<span style="font-size:9px;color:#cbd5e1">Tamu</span>`}
-      </div>
-    </div>`;
-  }).join('');
-};
+        const material = new THREE.PointsMaterial({
+            size: 0.15,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.8,
+            depthWrite: false
+        });
 
-function formatAgo(d) {
-  const sec = Math.floor((Date.now()-d)/1000);
-  if(sec<5)  return 'online';
-  if(sec<60) return sec+' detik lalu';
-  const min = Math.floor(sec/60);
-  return min+' mnt lalu';
-}
+        const particleSystem = new THREE.Points(geometry, material);
+        scene.add(particleSystem);
 
-// Auto-refresh label waktu di tab Online setiap 30 detik
-setInterval(() => {
-  if (window._activeTab === 'online' && typeof window.renderOnline === 'function') {
-    window.renderOnline();
-  }
-}, 30000);
+        function createTextParticles(text, targetArray, scaleX, scaleY, offsetX, offsetY) {
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = 800; offCanvas.height = 200;
+            const ctx = offCanvas.getContext('2d');
+            ctx.fillStyle = "black"; ctx.fillRect(0, 0, 800, 200);
+            ctx.fillStyle = "white"; ctx.font = "bold 130px sans-serif";
+            ctx.fillText(text, offsetX, offsetY);
+            
+            const imgData = ctx.getImageData(0, 0, 800, 200).data;
+            const textPoints = [];
+            for (let y = 0; y < 200; y += 2) {
+                for (let x = 0; x < 800; x += 2) {
+                    let alpha = imgData[((y * 800) + x) * 4 + 0]; 
+                    if (alpha > 128) {
+                        textPoints.push({
+                            x: (x - 400) / scaleX,
+                            y: -(y - 100) / scaleY,
+                            z: (Math.random() * 0.2) - 0.1
+                        });
+                    }
+                }
+            }
+            for(let i=0; i < NUM_PARTICLES; i++) {
+                let p = textPoints[Math.floor(Math.random() * textPoints.length)];
+                targetArray[i*3] = p.x;
+                targetArray[i*3+1] = p.y;
+                targetArray[i*3+2] = p.z;
+            }
+        }
 
-// Buka chat langsung dari kartu Online
-async function chatFromOnline(accountId, namaLengkap, username, role) {
-  if (!window._db) { showToast('Firebase belum siap','err'); return; }
+        function generateShapes() {
+            for(let i=0; i < NUM_PARTICLES; i++) {
+                posSpace[i*3] = (Math.random() * 8) - 4.0;
+                posSpace[i*3+1] = (Math.random() * 8) - 4.0;
+                posSpace[i*3+2] = (Math.random() * 8) - 4.0;
+            }
 
-  // Cari thread yang sudah ada
-  let f = (window._feedback||[]).find(x => x.id === accountId);
+            createTextParticles("I LOVE YOU", posText, 70.0, 70.0, 20, 140);
+            createTextParticles("SELY", posSely, 70.0, 70.0, 230, 140);
 
-  if (!f) {
-    // Buat dokumen baru, tapi JANGAN sisipkan ke _feedback manual (akan masuk lewat onSnapshot)
-    try {
-      const ref = window._doc(...window._P('feedback', accountId));
-      await window._set(ref, {
-        accountId, namaLengkap, username, role,
-        messages: [], lastMessage: '', lastTime: new Date().toISOString(),
-        adminUnread: 0, userUnread: 0, initiatedByAdmin: true,
-      }, { merge: true });
-    } catch(e) { showToast('Gagal: '+e.message,'err'); return; }
-    // Buat objek lokal untuk langsung dibuka — TANPA masuk ke _feedback
-    f = { id: accountId, accountId, namaLengkap, username, role, messages: [] };
-  }
+            for(let i=0; i < NUM_PARTICLES; i++) {
+                let t = (Math.random() * 2 * Math.PI) - Math.PI;
+                let p = (Math.random() * 2 * Math.PI) - Math.PI;
+                let x = 2.0 * Math.pow(Math.sin(t), 3);
+                let y = 2.0 * Math.cos(t) - 0.7 * Math.cos(2*t) - 0.3 * Math.cos(3*t) - 0.1 * Math.cos(4*t);
+                let z = Math.sin(p) * 0.4;
+                
+                posHeart[i*3] = x * 0.85;
+                posHeart[i*3+1] = (y * 0.85) + 0.5;
+                posHeart[i*3+2] = z;
+            }
 
-  // Pindah tab Pesan, lalu buka chat langsung dari objek lokal (tanpa lookup ulang)
-  switchTab('pesan');
-  openChatDirect(f);
-}
+            // GALAKSI SPIRAL (Mode 6)
+            const numArms = 3;
+            const galaxyRadius = 2.6;
+            for (let i = 0; i < NUM_PARTICLES; i++) {
+                let arm = i % numArms;
+                let t = Math.random();
+                let angle = t * Math.PI * 4 + (arm * (2 * Math.PI / numArms));
+                angle += (Math.random() - 0.5) * 0.45;
+                let radius = t * galaxyRadius + (Math.random() - 0.5) * 0.15;
+                posGalaxy[i*3]   = radius * Math.cos(angle);
+                posGalaxy[i*3+1] = (Math.random() - 0.5) * 0.18 * (1 - t * 0.5);
+                posGalaxy[i*3+2] = radius * Math.sin(angle);
+            }
 
-// ─────────────────────────────────────────
-// ── RENDER PESAN ──
-// ─────────────────────────────────────────
-window.renderPesan = function() {
-  const data = window._feedback||[];
-  document.getElementById('pesanCount').textContent = data.length;
-  const list  = document.getElementById('threadList');
-  const empty = document.getElementById('emptyPesan');
-  if(!data.length){list.innerHTML='';empty.style.display='block';return;}
-  empty.style.display='none';
-  const roleLabel = {'owner':'Owner','kasir':'Kasir','staff':'Staff','viewer':'Viewer'};
-  const roleClass = {'owner':'r-owner','kasir':'r-kasir','staff':'r-staff','viewer':'r-viewer'};
-  list.innerHTML = data.map(f => {
-    const name   = f.namaLengkap||f.username||'Tamu';
-    const init   = name.charAt(0).toUpperCase();
-    const color  = avatarColor(name);
-    const msgs   = f.messages||[];
-    const unread = msgs.filter(m=>m.role==='user'&&!m.readByAdmin).length;
-    const last   = msgs[msgs.length-1];
-    const typeIcon = last?.type==='bug'?'🐛':last?.type==='request'?'✨':last?.type==='masukkan'?'💡':'';
-    const prev   = last ? (last.role==='admin'?'[Admin] ': typeIcon+' ')+last.text : 'Belum ada pesan';
-    const ts     = f.lastTime ? new Date(f.lastTime).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-    const roleC  = roleClass[f.role]||'r-viewer';
-    const roleL  = roleLabel[f.role]||f.role||'User';
-    // f.id = authSession.id (permanen per akun)
-    return `
-    <div class="thread-card${unread?' has-unread':''}" onclick="openChat('${f.id}')">
-      <div class="thread-av" style="background:${color}">${init}</div>
-      <div class="thread-info">
-        <div class="thread-name" style="display:flex;align-items:center;gap:6px">
-          <span>${name}</span>
-          <span class="oc-role ${roleC}" style="font-size:9px">${roleL}</span>
-        </div>
-        <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:2px">@${f.username||'-'}</div>
-        <div class="thread-preview">${prev}</div>
-      </div>
-      <div class="thread-meta">
-        <div class="thread-time">${ts}</div>
-        ${unread?`<div class="thread-unread">${unread}</div>`:''}
-        <div style="font-size:9px;color:#cbd5e1;margin-top:3px">${msgs.length} pesan</div>
-      </div>
-    </div>`;
-  }).join('');
-};
+            // DNA HELIX (Mode 7)
+            const dnaHeight = 3.6;
+            const dnaRadius = 0.9;
+            const dnaTurns = 3;
+            for (let i = 0; i < NUM_PARTICLES; i++) {
+                if (i % 10 === 0) {
+                    // Partikel "anak tangga" yang menghubungkan dua untai DNA
+                    let tt = (Math.floor(i / 10) / (NUM_PARTICLES / 10)) * dnaHeight - dnaHeight / 2;
+                    let angle = (tt / dnaHeight) * dnaTurns * Math.PI * 2;
+                    let frac = Math.random();
+                    let rx1 = dnaRadius * Math.cos(angle);
+                    let rz1 = dnaRadius * Math.sin(angle);
+                    let rx2 = dnaRadius * Math.cos(angle + Math.PI);
+                    let rz2 = dnaRadius * Math.sin(angle + Math.PI);
+                    posDNA[i*3]   = rx1 + (rx2 - rx1) * frac;
+                    posDNA[i*3+1] = tt;
+                    posDNA[i*3+2] = rz1 + (rz2 - rz1) * frac;
+                } else {
+                    let strand = i % 2;
+                    let tt = (i / NUM_PARTICLES) * dnaHeight - dnaHeight / 2;
+                    let angle = (tt / dnaHeight) * dnaTurns * Math.PI * 2 + (strand === 1 ? Math.PI : 0);
+                    posDNA[i*3]   = dnaRadius * Math.cos(angle) + (Math.random() - 0.5) * 0.05;
+                    posDNA[i*3+1] = tt;
+                    posDNA[i*3+2] = dnaRadius * Math.sin(angle) + (Math.random() - 0.5) * 0.05;
+                }
+            }
 
-// ─────────────────────────────────────────
-// ── CHAT DETAIL ──
-// ─────────────────────────────────────────
-function openChat(uid) {
-  const f = (window._feedback||[]).find(x => x.id === uid);
-  if (!f) return;
-  openChatDirect(f);
-}
+            // ZEN + HATI + SELY (Mode 9) - disusun VERTIKAL: teks "ZEN" (atas),
+            // bentuk hati (tengah), lalu teks "SELY" (bawah)
+            const zenTextPoints = [];
+            {
+                const offCanvas3 = document.createElement('canvas');
+                offCanvas3.width = 800; offCanvas3.height = 200;
+                const ctx3 = offCanvas3.getContext('2d');
+                ctx3.fillStyle = "black"; ctx3.fillRect(0, 0, 800, 200);
+                ctx3.fillStyle = "white"; ctx3.font = "bold 130px sans-serif";
+                const zenWidth = ctx3.measureText("ZEN").width;
+                ctx3.fillText("ZEN", (800 - zenWidth) / 2, 140);
+                const imgData3 = ctx3.getImageData(0, 0, 800, 200).data;
+                for (let y = 0; y < 200; y += 2) {
+                    for (let x = 0; x < 800; x += 2) {
+                        let alpha = imgData3[((y * 800) + x) * 4 + 0];
+                        if (alpha > 128) {
+                            zenTextPoints.push({
+                                x: (x - 400) / 90.0,
+                                y: -(y - 100) / 90.0,
+                                z: (Math.random() * 0.2) - 0.1
+                            });
+                        }
+                    }
+                }
+            }
 
-function renderChatMessages(msgs) {
-  _activeMessages = msgs;
-  const box = document.getElementById('chatMessages');
-  if(!msgs.length){
-    box.innerHTML='<div class="empty-chat"><i class="fa-regular fa-comments"></i><p>Belum ada pesan dari pengguna ini</p></div>';
-    return;
-  }
-  const typeLabel={'bug':'🐛 Lapor Bug','masukkan':'💡 Masukkan','request':'✨ Request Fitur'};
-  box.innerHTML = msgs.map(m=>`
-    <div class="msg-row ${m.role}">
-      ${m.role==='admin'?`<div class="msg-av" style="background:#0ea5e9"><i class="fa-solid fa-headset" style="color:#fff;font-size:10px"></i></div>`:''}
-      <div class="msg-bubble ${m.role}">
-        ${m.role==='user'&&m.type?`<div class="msg-type ${m.type}">${typeLabel[m.type]||m.type}</div>`:''}
-        ${m.role==='admin'?`<div class="msg-type admin-lbl">👨‍💻 Admin</div>`:''}
-        ${m.photo?`<img src="${m.photo}" alt="foto" onclick="openLightbox(this.src)" class="msg-photo" />` : ''}
-        ${m.text?`<div class="msg-text">${m.text}</div>`:''}
-        <div class="msg-time">${m.time?new Date(m.time).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}</div>
-      </div>
-    </div>`).join('');
-  setTimeout(()=>{ box.scrollTop = box.scrollHeight; }, 50);
-}
+            const selyTextPoints = [];
+            {
+                const offCanvas2 = document.createElement('canvas');
+                offCanvas2.width = 800; offCanvas2.height = 200;
+                const ctx2 = offCanvas2.getContext('2d');
+                ctx2.fillStyle = "black"; ctx2.fillRect(0, 0, 800, 200);
+                ctx2.fillStyle = "white"; ctx2.font = "bold 130px sans-serif";
+                ctx2.fillText("SELY", 230, 140);
+                const imgData2 = ctx2.getImageData(0, 0, 800, 200).data;
+                for (let y = 0; y < 200; y += 2) {
+                    for (let x = 0; x < 800; x += 2) {
+                        let alpha = imgData2[((y * 800) + x) * 4 + 0];
+                        if (alpha > 128) {
+                            selyTextPoints.push({
+                                x: (x - 400) / 90.0,
+                                y: -(y - 100) / 90.0,
+                                z: (Math.random() * 0.2) - 0.1
+                            });
+                        }
+                    }
+                }
+            }
 
-// ── openChatDirect: buka chat dari objek langsung tanpa lookup _feedback ──
-function openChatDirect(f) {
-  _activeThread = f;
-  const name  = f.namaLengkap||f.username||'Tamu';
-  const color = avatarColor(name);
-  document.getElementById('chatAv').textContent       = name.charAt(0).toUpperCase();
-  document.getElementById('chatAv').style.background  = color;
-  document.getElementById('chatName').textContent     = name;
-  document.getElementById('chatSub').textContent      = '@'+(f.username||'-')+' · '+(f.role||'User');
-  document.getElementById('clearName').textContent    = name;
-  document.getElementById('thread-list-view').style.display = 'none';
-  document.getElementById('chat-detail-view').style.display = 'block';
-  renderChatMessages(f.messages||[]);
-  markAdminRead(f.id, f.messages||[]);
-  clearReplyPhoto();
-}
+            for (let i = 0; i < NUM_PARTICLES; i++) {
+                if (i < PRAY_ZEN_COUNT) {
+                    // Teks "ZEN" di ATAS
+                    let p = zenTextPoints[Math.floor(Math.random() * zenTextPoints.length)];
+                    posPray[i*3]   = p.x;
+                    posPray[i*3+1] = p.y + 2.3; // posisi ATAS
+                    posPray[i*3+2] = p.z;
+                } else if (i < PRAY_ZEN_COUNT + PRAY_HEART_COUNT) {
+                    // Bentuk hati kecil di TENGAH
+                    let t = (Math.random() * 2 * Math.PI) - Math.PI;
+                    let x = 2.0 * Math.pow(Math.sin(t), 3);
+                    let y = 2.0 * Math.cos(t) - 0.7 * Math.cos(2*t) - 0.3 * Math.cos(3*t) - 0.1 * Math.cos(4*t);
+                    posPray[i*3]   = x * 0.45;
+                    posPray[i*3+1] = (y * 0.45) + 0.1; // posisi TENGAH
+                    posPray[i*3+2] = (Math.random() - 0.5) * 0.3;
+                } else {
+                    // Teks "SELY" di BAWAH
+                    let p = selyTextPoints[Math.floor(Math.random() * selyTextPoints.length)];
+                    posPray[i*3]   = p.x;
+                    posPray[i*3+1] = p.y - 2.4; // posisi BAWAH
+                    posPray[i*3+2] = p.z;
+                }
+            }
+        }
 
-// ── renderPesan juga handles live-sync saat chat terbuka (tidak pakai wrapper) ──
-// Logika: render list thread, dan jika ada chat aktif → sync pesannya
-const _renderPesanBase = window.renderPesan;
-window.renderPesan = function() {
-  _renderPesanBase();
-  if (!_activeThread) return;
-  const updated = (window._feedback||[]).find(f => f.id === _activeThread.id);
-  if (updated) {
-    _activeThread = updated;
-    renderChatMessages(updated.messages||[]);
-  } else {
-    // Thread dihapus (dibersihkan) → balik ke list
-    backToList();
-  }
-};
+        // ==========================================
+        // LOGIKA DETEKSI GESTUR - URUTAN DIPERBAIKI
+        // ==========================================
+        function calculateGestureMode(landmarks) {
+            const tips = [8, 12, 16, 20];
+            const pips = [6, 10, 14, 18];
+            
+            // Cek status masing-masing 4 jari (Telunjuk, Tengah, Manis, Kelingking)
+            let fingersUp = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
 
-async function markAdminRead(uid, msgs) {
-  const hasUnread = msgs.some(m=>m.role==='user'&&!m.readByAdmin);
-  if(!hasUnread || !window._db) return;
-  const updated = msgs.map(m=>m.role==='user'?{...m,readByAdmin:true}:m);
-  const ref = window._doc(...window._P('feedback',uid));
-  await window._set(ref, {messages:updated, adminUnread:0}, {merge:true}).catch(()=>{});
-}
+            // 1. Cek Mode SELY 🫰 (Prioritas Pertama)
+            const thumbTip = landmarks[4];
+            const indexTip = landmarks[8];
+            const dxHeart = thumbTip.x - indexTip.x;
+            const dyHeart = thumbTip.y - indexTip.y;
+            const distHeart = Math.sqrt(dxHeart*dxHeart + dyHeart*dyHeart);
+            
+            // Jika Jempol & Telunjuk berdekatan, dan 3 jari lainnya menekuk
+            if (distHeart < 0.08 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 5; 
+            }
 
-let _replyPhoto = null;
+            // 2. Cek Mode OK Sign 👌 (Jempol & Telunjuk berdekatan, 3 jari lain berdiri)
+            //    Dipakai untuk toggle overlay "Galaksi Cinta" (buka/tutup dengan gestur yang sama)
+            if (distHeart < 0.08 && fingersUp[1] && fingersUp[2] && fingersUp[3]) {
+                if (!lastOkSignActive && (Date.now() - lastOkToggleTime > OK_TOGGLE_COOLDOWN)) {
+                    if (typeof toggleGalaxiloveOverlay === 'function') toggleGalaxiloveOverlay();
+                    lastOkToggleTime = Date.now();
+                }
+                lastOkSignActive = true;
+                return 1;
+            }
+            lastOkSignActive = false;
 
-function handleReplyPhoto(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    _replyPhoto = ev.target.result;
-    document.getElementById('replyPhotoImg').src = _replyPhoto;
-    document.getElementById('replyPhotoPreview').style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-  input.value = '';
-}
+            // 3. Cek Mode ZEN & CINTA 🤟 (Sign ILY: Jempol + Telunjuk + Kelingking berdiri,
+            //    Tengah & Manis menekuk, dan jempol terentang keluar dari telapak)
+            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
+                const thumbMcp = landmarks[2];
+                const pinkyMcp = landmarks[17];
+                const dxThumbTip = thumbTip.x - pinkyMcp.x;
+                const dyThumbTip = thumbTip.y - pinkyMcp.y;
+                const distThumbTipPinky = Math.sqrt(dxThumbTip*dxThumbTip + dyThumbTip*dyThumbTip);
+                const dxThumbMcp = thumbMcp.x - pinkyMcp.x;
+                const dyThumbMcp = thumbMcp.y - pinkyMcp.y;
+                const distThumbMcpPinky = Math.sqrt(dxThumbMcp*dxThumbMcp + dyThumbMcp*dyThumbMcp);
 
-function clearReplyPhoto() {
-  _replyPhoto = null;
-  document.getElementById('replyPhotoImg').src = '';
-  document.getElementById('replyPhotoPreview').style.display = 'none';
-}
+                // Jempol terentang menjauh dari telapak (bukan terlipat) -> gestur 🤟
+                if (distThumbTipPinky > distThumbMcpPinky * 1.1) {
+                    return 9;
+                }
+            }
 
-async function sendReply() {
-  const txt = document.getElementById('replyInput').value.trim();
-  if((!txt && !_replyPhoto) || !_activeThread || !window._db) return;
-  const btn = document.getElementById('replyBtn');
-  btn.disabled=true;
-  const newMsg = {
-    id:'msg_'+Date.now(),
-    role:'admin',
-    text: txt,
-    ...(_replyPhoto ? { photo: _replyPhoto } : {}),
-    time:new Date().toISOString(),
-    readByUser:false
-  };
-  const updMsgs = [...(_activeThread.messages||[]), newMsg];
-  try {
-    const ref = window._doc(...window._P('feedback',_activeThread.id));
-    await window._set(ref, {
-      messages: updMsgs,
-      lastMessage: _replyPhoto ? ('[Admin] ' + (txt || '📷 Foto')) : '[Admin] '+txt,
-      lastTime: new Date().toISOString(),
-      userUnread: ((_activeThread.messages||[]).filter(m=>m.role==='admin'&&!m.readByUser).length)+1,
-    }, {merge:true});
-    document.getElementById('replyInput').value='';
-    document.getElementById('replyInput').style.height='auto';
-    clearReplyPhoto();
-  } catch(e){ showToast('Gagal kirim: '+e.message,'err'); }
-  btn.disabled=false;
-}
+            // 4. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri, jempol terlipat)
+            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
+                return 7;
+            }
 
-function backToList() {
-  _activeThread=null;
-  document.getElementById('thread-list-view').style.display='block';
-  document.getElementById('chat-detail-view').style.display='none';
-}
+            // 5. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
+            if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 3;
+            }
 
-function clearChat() {
-  if(!_activeThread) return;
-  document.getElementById('clearOv').style.display='flex';
-}
-async function confirmClear() {
-  if(!_activeThread||!window._db) return;
-  try {
-    const ref = window._doc(...window._P('feedback', _activeThread.id));
-    // Hapus dokumen sepenuhnya → nama langsung hilang dari list pesan masuk
-    await window._del(ref);
-    document.getElementById('clearOv').style.display='none';
-    showToast('Chat berhasil dibersihkan');
-    backToList();
-  } catch(e){ showToast('Gagal: '+e.message,'err'); }
-}
+            // 6. Cek Mode GALAKSI SPIRAL 🌌 (Hanya 1 Jari Telunjuk berdiri)
+            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 2;
+            }
 
-// ─────────────────────────────────────────
-// ── DRAG & DROP NOTIF ──
-// ─────────────────────────────────────────
-function dstart(e,i){ _dragIdx=i; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
-function dover(e,i) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
-function dleave(e)  { e.currentTarget.classList.remove('drag-over'); }
-async function ddrop(e,i){
-  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
-  if(_dragIdx===null||_dragIdx===i) return;
-  const d=[...window._cl]; const [m]=d.splice(_dragIdx,1); d.splice(i,0,m);
-  window._cl=d; window.renderNotif();
-  try {
-    const b=window._batch();
-    d.forEach((x,idx)=>b.set(window._doc(...window._P('changelog',x.id)),{position:idx},{merge:true}));
-    await b.commit(); showToast('Urutan disimpan');
-  } catch(e){ showToast('Gagal urutan','err'); }
-}
-function dend(){ _dragIdx=null; document.querySelectorAll('.card').forEach(c=>c.classList.remove('dragging','drag-over')); }
+            // 7. Cek Mode KEPAL (Semua ke-4 jari menekuk)
+            if (!fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 4;
+            }
 
-// ─────────────────────────────────────────
-// ── MODAL TAMBAH/EDIT ──
-// ─────────────────────────────────────────
-function openModal(id=null){
-  _editId=id;
-  document.getElementById('modalTitleText').textContent=id?'Edit Notifikasi':'Tambah Notifikasi';
-  const n=id?(window._cl||[]).find(d=>d.id===id):null;
-  document.getElementById('fVer').value  =n?.version||'';
-  document.getElementById('fDate').value =n?.date||'';
-  document.getElementById('fTitle').value=n?.title||'';
-  document.getElementById('fIcon').value =n?.icon||'bell';
-  document.getElementById('fTag').value  =n?.tag||'Fitur Baru';
-  document.getElementById('fIsNew').checked = n?.isNew === true;
-  renderItemFields(n?.items||['']);
-  document.getElementById('modalOv').style.display='flex';
-}
-function closeModal(){ document.getElementById('modalOv').style.display='none'; _editId=null; }
+            // 8. Default: KOSMOS (Semua jari terbuka bebas)
+            return 1; 
+        }
 
-function renderItemFields(items){
-  document.getElementById('itemsList').innerHTML=items.map((v,i)=>`
-    <div class="item-row">
-      <input type="text" value="${(v||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" placeholder="Poin ke-${i+1}">
-      <button class="item-del" onclick="remItem(${i})"><i class="fa-solid fa-xmark"></i></button>
-    </div>`).join('');
-}
-function getItems(){ return [...document.querySelectorAll('#itemsList .item-row input')].map(el=>el.value.trim()); }
-function addItemField(){ const v=getItems(); v.push(''); renderItemFields(v); const ins=document.querySelectorAll('#itemsList .item-row input'); ins[ins.length-1]?.focus(); }
-function remItem(i){ const v=getItems(); v.splice(i,1); if(!v.length)v.push(''); renderItemFields(v); }
+        const videoElement = document.getElementById('camera-feed');
+        const captionEl = document.getElementById('love-caption');
+        const loveCaptions = {
+            4: "Untuk kamu, dengan sepenuh hati 💖",
+            5: "Kamu spesial banget buat aku 🫰",
+            9: "aku mau kamu jadi milik ku selamanya 🤟"
+        };
+        function updateCaption(mode) {
+            if (loveCaptions[mode]) {
+                captionEl.innerText = loveCaptions[mode];
+                captionEl.classList.add('show');
+            } else {
+                captionEl.classList.remove('show');
+            }
+        }
+        const hands = new Hands({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+        }});
 
-async function saveNotif(){
-  const version=document.getElementById('fVer').value.trim();
-  const title  =document.getElementById('fTitle').value.trim();
-  const date   =document.getElementById('fDate').value.trim();
-  const icon   =document.getElementById('fIcon').value.trim()||'bell';
-  const tag    =document.getElementById('fTag').value;
-  const isNew  =document.getElementById('fIsNew').checked;
-  const items  =getItems().filter(Boolean);
-  if(!version||!title){alert('Versi dan Judul wajib diisi!');return;}
-  const btn=document.getElementById('saveBtn');
-  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan…';
-  try {
-    const data=window._cl||[];
-    if(_editId){
-      await window._set(window._doc(...window._P('changelog',_editId)),{version,date,title,icon,tag,isNew,items},{merge:true});
-      showToast('Diperbarui ✓');
-    } else {
-      const id='notif_'+Date.now();
-      const b=window._batch();
-      data.forEach((x,i)=>b.set(window._doc(...window._P('changelog',x.id)),{position:i+1},{merge:true}));
-      b.set(window._doc(...window._P('changelog',id)),{id,position:0,version,date,title,icon,tag,isNew,items,createdAt:window._ts()});
-      await b.commit();
-      showToast('Notifikasi ditambahkan ✓');
-    }
-    closeModal();
-  } catch(e){ showToast('Gagal: '+e.message,'err'); }
-  btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-floppy-disk"></i> Simpan';
-}
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
 
-// ─────────────────────────────────────────
-// ── DELETE NOTIF ──
-// ─────────────────────────────────────────
-function openDel(id){ _delId=id; document.getElementById('delTitle').textContent=(window._cl||[]).find(d=>d.id===id)?.title||''; document.getElementById('delOv').style.display='flex'; }
-function closeDel(){ document.getElementById('delOv').style.display='none'; _delId=null; }
-async function confirmDel(){
-  if(!window._db) return;
-  try{ await window._del(window._doc(...window._P('changelog',_delId))); showToast('Dihapus'); closeDel(); }
-  catch(e){ showToast('Gagal: '+e.message,'err'); }
-}
+        hands.onResults((results) => {
+            document.getElementById('loading-screen').style.display = 'none';
 
-// ─────────────────────────────────────────
-// ── RESET ──
-// ─────────────────────────────────────────
-async function doReset(){
-  if(!confirm('Reset ke data bawaan?')) return;
-  document.getElementById('loadingBar').classList.remove('hidden');
-  try{
-    const snap=await window._get(window._coll(...window._P('changelog')));
-    const b=window._batch();
-    snap.docs.forEach(d=>b.delete(window._doc(...window._P('changelog',d.id))));
-    const DEF=[
-      {id:'v47_10',position:0,version:'v47.10',date:'06 Mar 2025',title:'Sidebar Dipadatkan & Scrollable',tag:'Perbaikan UI',icon:'sidebar',items:['Sidebar lebih padat','Nav bisa di-scroll','Logout selalu terlihat']},
-      {id:'v47_9', position:1,version:'v47.9', date:'01 Mar 2025',title:'Lonceng Notifikasi',             tag:'Fitur Baru', icon:'bell',        items:['Ikon lonceng mobile','Panel update sistem','Badge belum dibaca']},
-      {id:'v47_8', position:2,version:'v47.8', date:'20 Feb 2025',title:'Faktur Pembelian Per Toko',       tag:'Fitur Baru', icon:'file-invoice',items:['Faktur per toko','Filter toko','Export Excel']},
-      {id:'v47_7', position:3,version:'v47.7', date:'10 Feb 2025',title:'Perbaikan Sinkronisasi Firebase', tag:'Bug Fix',    icon:'rotate',      items:['Fix multi-user','Optimasi Firestore','Fix offline']},
-      {id:'v47_6', position:4,version:'v47.6', date:'01 Feb 2025',title:'Rekam Medis & Catatan',           tag:'Fitur Baru', icon:'notes-medical',items:['Rekam Medis','Papan Catatan','Kontrol akses']},
-    ];
-    DEF.forEach(n=>b.set(window._doc(...window._P('changelog',n.id)),n));
-    await b.commit(); showToast('Reset selesai');
-  }catch(e){ showToast('Gagal: '+e.message,'err'); }
-  document.getElementById('loadingBar').classList.add('hidden');
-}
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                currentMode = calculateGestureMode(landmarks);
+                document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
+                updateCaption(currentMode);
 
-// ─────────────────────────────────────────
-// ── ICON PICKER ──
-// ─────────────────────────────────────────
-const ICON_CATS = {
-  '⭐ Populer':    ['bell','star','fire','bolt','rocket','crown','gem','heart','thumbs-up','face-laugh','party-horn','trophy','gift','magic-wand-sparkles','sparkles'],
-  '📦 Produk':    ['box','boxes-stacked','basket-shopping','cart-shopping','store','tag','tags','barcode','qrcode','receipt','money-bill','coins','wallet','cash-register','percent'],
-  '📋 Dokumen':   ['file-invoice','file-lines','file-contract','file-export','clipboard-list','book-open','bookmark','folder-open','note-sticky','pen-to-square','pencil','highlighter','paperclip','print','stamp'],
-  '🔔 Notif':     ['bell','bell-ring','comment-dots','comments','message','envelope','envelope-open-text','bullhorn','megaphone','rss','satellite-dish','signal','wifi','paper-plane'],
-  '⚙️ Sistem':    ['gear','gears','rotate','rotate-left','wrench','screwdriver-wrench','code','terminal','database','server','cloud','cloud-arrow-up','cloud-arrow-down','plug','shield-halved'],
-  '😂 Fun':       ['face-laugh','face-grin-stars','face-grin-squint','face-kiss-wink-heart','face-smile-beam','face-rolling-eyes','face-meh','thumbs-up','thumbs-down','hand-point-right','hand-peace','hands-clapping','cat','dog','dragon'],
-  '🎉 Acara':     ['party-horn','champagne-glasses','cake-candles','gift','balloon','confetti','star','medal','award','trophy','ribbon','flag','tent','umbrella-beach','music'],
-  '📊 Analitik':  ['chart-line','chart-bar','chart-pie','chart-simple','table-columns','arrow-trend-up','arrow-trend-down','filter','magnifying-glass-chart','calculator','square-root-variable','sigma','percent','hashtag','at'],
-  '🏥 Medis':     ['notes-medical','heart-pulse','kit-medical','syringe','pills','stethoscope','hospital','user-doctor','tooth','eye','brain','lungs','dna','virus','shield-virus'],
-  '🚗 Transport': ['car','truck','motorcycle','bicycle','bus','train','plane','ship','helicopter','rocket','location-dot','map','map-pin','road','traffic-light'],
-  '🌟 UI/UX':     ['sidebar','layout','grip-vertical','sliders','toggle-on','toggle-off','eye','eye-slash','lock','unlock','key','link','pen','paintbrush','palette'],
-  '👤 Pengguna':  ['user','users','user-plus','user-check','user-shield','person','people-group','id-card','address-book','user-tie','graduation-cap','baby','child','person-running','handshake'],
-};
+                const wrist = landmarks[0];
+                handTarget.x = -((wrist.x - 0.5) * 15.0); 
+                handTarget.y = -((wrist.y - 0.5) * 10.0);
+                
+                const pinkyMcp = landmarks[17];
+                const dxDist = wrist.x - pinkyMcp.x;
+                const dyDist = wrist.y - pinkyMcp.y;
+                const distance = Math.sqrt(dxDist*dxDist + dyDist*dyDist);
+                handTarget.z = -10.0 - (1.0 / (distance + 0.01)) * 0.2;
+            } else {
+                currentMode = 1;
+                document.getElementById('mode-text').innerText = "MODE: ROTASI KOSMOS (Tidak ada tangan)";
+                handTarget = { x: 0, y: 0, z: -12 };
+                updateCaption(1);
+            }
+        });
 
-let _iconActiveCat = '⭐ Populer';
-let _iconSearch    = '';
+        const cameraFeed = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({image: videoElement});
+            },
+            width: 480,
+            height: 360
+        });
+        cameraFeed.start();
 
-function buildIconPicker() {
-  // Categories
-  const catsEl = document.getElementById('iconCats');
-  if (!catsEl) return;
-  catsEl.innerHTML = Object.keys(ICON_CATS).map(cat => `
-    <button class="icon-cat-btn${cat===_iconActiveCat?' active':''}" onclick="setIconCat('${cat}')">${cat}</button>
-  `).join('');
-  renderIconGrid();
-}
+        // ==========================================
+        // HUJAN HATI & KELOPAK BUNGA (Nuansa Romantis)
+        // ==========================================
+        const romanticEmojis = ['💗', '🌸', '💕', '✨'];
+        function spawnFallingHeart() {
+            const heart = document.createElement('div');
+            heart.className = 'falling-heart';
+            heart.innerText = romanticEmojis[Math.floor(Math.random() * romanticEmojis.length)];
+            heart.style.left = (Math.random() * 100) + 'vw';
+            const duration = 7 + Math.random() * 6;
+            heart.style.animationDuration = duration + 's';
+            heart.style.fontSize = (14 + Math.random() * 16) + 'px';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), duration * 1000);
+        }
+        setInterval(spawnFallingHeart, 750);
 
-function setIconCat(cat) {
-  _iconActiveCat = cat;
-  document.querySelectorAll('.icon-cat-btn').forEach(b => b.classList.toggle('active', b.textContent===cat));
-  renderIconGrid();
-}
+        // ==========================================
+        // LOOP ANIMASI RENDERING 3D
+        // ==========================================
+        function animate() {
+            requestAnimationFrame(animate);
 
-function filterIcons(q) {
-  _iconSearch = q.trim().toLowerCase();
-  renderIconGrid();
-}
+            handCurrent.x += (handTarget.x - handCurrent.x) * 0.15;
+            handCurrent.y += (handTarget.y - handCurrent.y) * 0.15;
+            handCurrent.z += (handTarget.z - handCurrent.z) * 0.15;
 
-function renderIconGrid() {
-  const grid = document.getElementById('iconGrid');
-  if (!grid) return;
-  let icons;
-  if (_iconSearch) {
-    // Search across all cats
-    const all = [...new Set(Object.values(ICON_CATS).flat())];
-    icons = all.filter(ic => ic.includes(_iconSearch));
-  } else {
-    icons = ICON_CATS[_iconActiveCat] || [];
-  }
-  const cur = (document.getElementById('fIcon')||{}).value?.trim() || 'bell';
-  if (!icons.length) {
-    grid.innerHTML = `<div class="icon-empty-msg">Ikon tidak ditemukan 🔍</div>`;
-    return;
-  }
-  grid.innerHTML = icons.map(ic => `
-    <button class="icon-btn${ic===cur?' selected':''}" onclick="pickIcon('${ic}')" title="${ic}">
-      <i class="fa-solid fa-${ic}"></i>
-      <span>${ic}</span>
-    </button>`).join('');
-}
+            let targetPosArray;
+            if (currentMode === 1) { targetPosArray = posSpace; rotationAngle += 0.005; }
+            else if (currentMode === 2) { targetPosArray = posGalaxy; rotationAngle += 0.006; }
+            else if (currentMode === 3) { targetPosArray = posText; rotationAngle = 0; }
+            else if (currentMode === 4) { targetPosArray = posHeart; rotationAngle += 0.015; }
+            else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; }
+            else if (currentMode === 7) { targetPosArray = posDNA; rotationAngle += 0.02; }
+            else if (currentMode === 9) { targetPosArray = posPray; rotationAngle = 0; }
 
-function pickIcon(ic) {
-  const inp = document.getElementById('fIcon');
-  if (inp) { inp.value = ic; }
-  updateIconPreview(ic);
-  // Update grid highlight
-  document.querySelectorAll('.icon-btn').forEach(b => {
-    b.classList.toggle('selected', b.title === ic);
-  });
-}
+            const posAttr = geometry.attributes.position.array;
+            const colAttr = geometry.attributes.color.array;
 
-function onIconInput(val) {
-  updateIconPreview(val.trim() || 'bell');
-  renderIconGrid();
-}
+            for (let i = 0; i < NUM_PARTICLES; i++) {
+                currentPositions[i*3] += (targetPosArray[i*3] - currentPositions[i*3]) * 0.15;
+                currentPositions[i*3+1] += (targetPosArray[i*3+1] - currentPositions[i*3+1]) * 0.15;
+                currentPositions[i*3+2] += (targetPosArray[i*3+2] - currentPositions[i*3+2]) * 0.15;
 
-function updateIconPreview(ic) {
-  const el = document.getElementById('iconPreviewEl');
-  if (el) el.className = `fa-solid fa-${ic||'bell'}`;
-}
+                posAttr[i*3] = currentPositions[i*3];
+                posAttr[i*3+1] = currentPositions[i*3+1];
+                posAttr[i*3+2] = currentPositions[i*3+2];
 
-// Patch openModal to init picker
-const _origOpenModal = openModal;
-openModal = function(id=null) {
-  _origOpenModal(id);
-  setTimeout(()=>{
-    buildIconPicker();
-    const ic = (document.getElementById('fIcon')||{}).value || 'bell';
-    updateIconPreview(ic);
-    // Reset search
-    const srch = document.getElementById('iconSearch');
-    if (srch) srch.value='';
-    _iconSearch='';
-    _iconActiveCat='⭐ Populer';
-    buildIconPicker();
-  }, 30);
-};
+                if (currentMode === 3) { // Cyan
+                    colAttr[i*3] = 0.0; colAttr[i*3+1] = 0.8; colAttr[i*3+2] = 1.0;
+                } else if (currentMode === 4) { // Pink/Red
+                    colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.1; colAttr[i*3+2] = 0.4;
+                } else if (currentMode === 5) { // Ungu Sely
+                    colAttr[i*3] = 0.8; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0;
+                } else if (currentMode === 7) { // DNA - untai cyan & magenta, anak tangga putih
+                    if (i % 10 === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 1.0; }
+                    else if (i % 2 === 0) { colAttr[i*3] = 0.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 0.9; }
+                    else { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.0; colAttr[i*3+2] = 0.6; }
+                } else if (currentMode === 9) { // ZEN (emas lembut) + HATI (pink) + SELY (putih keunguan)
+                    if (i < PRAY_ZEN_COUNT) {
+                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.55;
+                    } else if (i < PRAY_ZEN_COUNT + PRAY_HEART_COUNT) {
+                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.15; colAttr[i*3+2] = 0.45;
+                    } else {
+                        colAttr[i*3] = 0.85; colAttr[i*3+1] = 0.75; colAttr[i*3+2] = 1.0;
+                    }
+                } else if (currentMode === 2) { // Galaksi - 3 lengan gradasi emas/ungu/biru
+                    let arm = i % 3;
+                    if (arm === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.4; }
+                    else if (arm === 1) { colAttr[i*3] = 0.6; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0; }
+                    else { colAttr[i*3] = 0.2; colAttr[i*3+1] = 0.6; colAttr[i*3+2] = 1.0; }
+                } else { // Biru Angcosmos
+                    colAttr[i*3] = 0.1; colAttr[i*3+1] = 0.5; colAttr[i*3+2] = 1.0;
+                }
+            }
 
-let _tt;
-function showToast(msg,type='ok'){
-  const el=document.getElementById('toastEl');
-  document.getElementById('toastMsg').textContent=msg;
-  const ico=document.getElementById('toastIco');
-  ico.className=type==='err'?'fa-solid fa-triangle-exclamation':'fa-solid fa-check-circle';
-  ico.style.color=type==='err'?'#f87171':'#4ade80';
-  el.classList.remove('hide'); clearTimeout(_tt); _tt=setTimeout(()=>el.classList.add('hide'),2600);
-}
-</script>
-<!-- Lightbox Foto -->
-<div class="lightbox-ov" id="lightboxOv" style="display:none" onclick="closeLightbox()">
-  <div class="lightbox-inner" onclick="event.stopPropagation()">
-    <img id="lightboxImg" src="" alt="foto besar" />
-    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
-  </div>
-</div>
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
 
-<script>
-function openLightbox(src) {
-  document.getElementById('lightboxImg').src = src;
-  document.getElementById('lightboxOv').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-function closeLightbox() {
-  document.getElementById('lightboxOv').style.display = 'none';
-  document.getElementById('lightboxImg').src = '';
-  document.body.style.overflow = '';
-}
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeLightbox(); });
-</script>
+            if ([2, 3, 4, 5, 7, 9].includes(currentMode)) {
+                particleSystem.position.set(handCurrent.x, handCurrent.y, handCurrent.z);
+                if (currentMode === 2) {
+                    particleSystem.rotation.set(0.3, rotationAngle, 0); // sedikit miring seperti galaksi asli
+                } else {
+                    particleSystem.rotation.set(0, rotationAngle, 0);
+                }
+            } else {
+                particleSystem.position.set(0, 0, -12);
+                particleSystem.rotation.set(0, rotationAngle, 0);
+            }
 
+            // Bintang latar berkelip pelan + rotasi sangat lambat
+            starMaterial.opacity = 0.35 + Math.sin(Date.now() * 0.001) * 0.15;
+            starField.rotation.y += 0.0002;
+
+            // Render dengan efek jejak (trail) lalu gambar scene utama di atasnya
+            renderer.render(trailScene, trailCamera);
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+
+    <!-- ============================================================
+         GALAKSI CINTA - overlay yang dibuka/ditutup dengan gestur 👌
+         Dibungkus IIFE supaya variabel (scene, camera, dll) tidak
+         bentrok dengan script NebulaHeart 3D di atas.
+    ============================================================ -->
+    <script>
+    (function() {
+        let initialized = false;
+        let active = false;
+        let animationId = null;
+
+        let glScene, glCamera, glRenderer, glControls, glClock;
+        let galaxy, heart, heartModel;
+        let textoSprites = [], fotoSprites = [];
+        let raycaster, mouse;
+
+        const overlay = document.getElementById('galaxilove-overlay');
+        const canvasEl = document.getElementById('gl-canvas');
+        const modalCarta = document.getElementById('gl-modal-carta');
+        const mensajeRomantico = document.getElementById('gl-mensaje-romantico');
+        const cerrarCarta = document.getElementById('gl-cerrar-carta');
+        const closeBtn = document.getElementById('gl-close-btn');
+        const musica = document.getElementById('gl-musica-fondo');
+
+        const modalWishlist = document.getElementById('gl-modal-wishlist');
+        const wishlistList = document.getElementById('gl-wishlist-list');
+        const wishlistInput = document.getElementById('gl-wishlist-input');
+        const wishlistAddBtn = document.getElementById('gl-wishlist-add-btn');
+        const cerrarWishlist = document.getElementById('gl-cerrar-wishlist');
+
+        // ===== Supabase (database wishlist, tersimpan online & sinkron di semua device) =====
+        const SUPABASE_URL = 'https://cadtlaamaarorzrjnddl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZHRsYWFtYWFyb3J6cmpuZGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMTU1MTIsImV4cCI6MjA5ODY5MTUxMn0.O7HU78QkBdy8jh7HlIedeqfzHzb084PCjLeKmstR1uw';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const WISHLIST_TABLE = 'wishlist';
+        const WISHLIST_MESSAGES_TABLE = 'wishlist_messages';
+
+        let wishlistItems = [];
+        let wishlistLoading = false;
+
+        async function loadWishlist() {
+            wishlistLoading = true;
+            renderWishlist();
+            const { data, error } = await supabaseClient
+                .from(WISHLIST_TABLE)
+                .select('*')
+                .order('created_at', { ascending: true });
+            wishlistLoading = false;
+            if (error) {
+                console.error('Gagal memuat wishlist:', error.message);
+                wishlistItems = [];
+                renderWishlist(true);
+                return;
+            }
+            wishlistItems = data || [];
+            renderWishlist();
+        }
+
+        function renderWishlist(loadError) {
+            wishlistList.innerHTML = '';
+
+            if (wishlistLoading) {
+                const li = document.createElement('li');
+                li.textContent = 'Memuat wishlist...';
+                li.style.opacity = '0.6';
+                wishlistList.appendChild(li);
+                return;
+            }
+            if (loadError) {
+                const li = document.createElement('li');
+                li.textContent = 'Gagal memuat wishlist. Cek koneksi / setup Supabase.';
+                li.style.color = '#c2447e';
+                wishlistList.appendChild(li);
+                return;
+            }
+
+            wishlistItems.forEach((item, idx) => {
+                const li = document.createElement('li');
+                if (item.done) li.classList.add('done');
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = item.done;
+                checkbox.addEventListener('change', async () => {
+                    const newDone = checkbox.checked;
+                    li.classList.toggle('done', newDone);
+                    const { error } = await supabaseClient
+                        .from(WISHLIST_TABLE)
+                        .update({ done: newDone })
+                        .eq('id', item.id);
+                    if (error) {
+                        console.error('Gagal update wishlist:', error.message);
+                        checkbox.checked = !newDone;
+                        li.classList.toggle('done', !newDone);
+                    } else {
+                        item.done = newDone;
+                    }
+                });
+
+                const span = document.createElement('span');
+                span.textContent = item.text;
+
+                const sendBtn = document.createElement('button');
+                sendBtn.className = 'gl-wishlist-send';
+                sendBtn.textContent = '📨';
+                sendBtn.title = 'Kirim ke Admin';
+                sendBtn.addEventListener('click', async () => {
+                    sendBtn.disabled = true;
+                    const { error } = await supabaseClient
+                        .from(WISHLIST_MESSAGES_TABLE)
+                        .insert({ text: item.text, status: 'baru' });
+                    if (error) {
+                        console.error('Gagal mengirim wishlist:', error.message);
+                        sendBtn.disabled = false;
+                        return;
+                    }
+                    sendBtn.textContent = '✅';
+                    setTimeout(() => {
+                        sendBtn.textContent = '📨';
+                        sendBtn.disabled = false;
+                    }, 1500);
+                });
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'gl-wishlist-remove';
+                removeBtn.textContent = '✕';
+                removeBtn.title = 'Hapus';
+                removeBtn.addEventListener('click', async () => {
+                    const { error } = await supabaseClient
+                        .from(WISHLIST_TABLE)
+                        .delete()
+                        .eq('id', item.id);
+                    if (!error) {
+                        wishlistItems.splice(idx, 1);
+                        renderWishlist();
+                    } else {
+                        console.error('Gagal hapus wishlist:', error.message);
+                    }
+                });
+
+                li.appendChild(checkbox);
+                li.appendChild(span);
+                li.appendChild(sendBtn);
+                li.appendChild(removeBtn);
+                wishlistList.appendChild(li);
+            });
+        }
+
+        async function addWishlistItem() {
+            const text = wishlistInput.value.trim();
+            if (!text) return;
+            wishlistInput.disabled = true;
+            const { data, error } = await supabaseClient
+                .from(WISHLIST_TABLE)
+                .insert({ text, done: false })
+                .select();
+            wishlistInput.disabled = false;
+            if (error) {
+                console.error('Gagal menambah wishlist:', error.message);
+                return;
+            }
+            if (data && data[0]) wishlistItems.push(data[0]);
+            renderWishlist();
+            wishlistInput.value = '';
+            wishlistInput.focus();
+        }
+
+        const ORBIT_SYNC_SPEED = 0.003;
+
+
+        function crearEstrellasFondo() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 5000;
+            const positions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 500;
+            }
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            glScene.add(stars);
+        }
+
+        function generateGalaxy() {
+            const parameters = {
+                count: 80000, size: 0.01, radius: 6, branches: 4, spin: 1,
+                randomness: 0.2, randomnessPower: 3,
+                insideColor: "#ff1b6b", outsideColor: "#3000ff"
+            };
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(parameters.count * 3);
+            const colors = new Float32Array(parameters.count * 3);
+            const colorInside = new THREE.Color(parameters.insideColor);
+            const colorOutside = new THREE.Color(parameters.outsideColor);
+
+            for (let i = 0; i < parameters.count; i++) {
+                const i3 = i * 3;
+                const radius = Math.random() * parameters.radius;
+                const spinAngle = radius * parameters.spin;
+                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
+                const randomX = (Math.random() - 0.5) * parameters.randomness * radius;
+                const randomY = (Math.random() - 0.5) * parameters.randomness * radius;
+                const randomZ = (Math.random() - 0.5) * parameters.randomness * radius;
+
+                positions[i3]     = Math.cos(branchAngle + spinAngle) * radius + randomX;
+                positions[i3 + 1] = randomY;
+                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+                const mixed = colorInside.clone().lerp(colorOutside, radius / parameters.radius);
+                colors[i3] = mixed.r; colors[i3 + 1] = mixed.g; colors[i3 + 2] = mixed.b;
+            }
+
+            geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: parameters.size, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false
+            });
+
+            galaxy = new THREE.Points(geometry, material);
+            glScene.add(galaxy);
+        }
+
+        function generateHeart() {
+            const heartGeometry = new THREE.BufferGeometry();
+            const hPos = [], hCol = [];
+            for (let i = 0; i < 3500; i++) {
+                const t = Math.random() * Math.PI * 2;
+                const s = Math.random() * 0.6 + 0.4;
+                let x = 17 * Math.pow(Math.sin(t), 3);
+                let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+                let z = (Math.random() - 0.5) * 1;
+                x *= s * 0.15; y *= s * 0.15; z *= s * 0.15;
+                hPos.push(x, y + 2.2, z);
+                let c = new THREE.Color();
+                c.setHSL(0.95 + Math.random() * 0.05, 1, 0.65);
+                hCol.push(c.r, c.g, c.b);
+            }
+            heartGeometry.setAttribute("position", new THREE.Float32BufferAttribute(hPos, 3));
+            heartGeometry.setAttribute("color", new THREE.Float32BufferAttribute(hCol, 3));
+            const heartMaterial = new THREE.PointsMaterial({ size: 0.12, vertexColors: true });
+            heart = new THREE.Points(heartGeometry, heartMaterial);
+            glScene.add(heart);
+        }
+
+        function loadHeartModel() {
+            const gltfLoader = new THREE.GLTFLoader();
+            const matcapLoader = new THREE.TextureLoader();
+            gltfLoader.load(
+                'https://assets.codepen.io/74321/heart.glb',
+                (gltf) => {
+                    heartModel = gltf.scene;
+                    heartModel.position.set(0, 3.2, 0);
+                    heartModel.scale.set(1.2, 1.2, 1.2);
+                    const matcap = matcapLoader.load('https://assets.codepen.io/74321/3.png');
+                    heartModel.traverse((child) => {
+                        if (child.isMesh) {
+                            child.material = new THREE.MeshMatcapMaterial({ matcap, color: new THREE.Color('#ff3366') });
+                        }
+                    });
+                    glScene.add(heartModel);
+                },
+                undefined,
+                () => { /* Jika model gagal dimuat, scene tetap berjalan */ }
+            );
+        }
+
+        const frases = [
+            "Aku cinta kamu 💖", "Aku sayang kamu 💘", "Kamu segalanya bagiku ", "Sayangku ", "Cintaku 💞",
+            "Aku memujamu ", "Aku rindu kamu ", "Segalanya bagiku 💫", "Ratuku 👑", "Semestaku ",
+            "Cantik 😍", "Jelita ", "Manis 💕", "Tuan Putri "
+        ];
+
+        function crearTexto(msg, size = 1.8) {
+            const canvas = document.createElement("canvas");
+            canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext("2d");
+            ctx.font = "bold 50px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ff1493";
+            ctx.fillText(msg, canvas.width / 2, canvas.height / 2);
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(size * 4, size, 1);
+            return sprite;
+        }
+
+        function generateTexts() {
+            for (let i = 0; i < 90; i++) {
+                let t = crearTexto(frases[Math.floor(Math.random() * frases.length)], 1 + Math.random());
+                let x = (Math.random() - 0.5) * 40;
+                let y = (Math.random() - 0.5) * 25;
+                let z = (Math.random() - 0.5) * 40;
+                if (Math.abs(x) < 5 && Math.abs(y) < 5) y += 7;
+                t.position.set(x, y, z);
+                t.userData = {
+                    baseY: y,
+                    orbitRadius: Math.sqrt(x * x + z * z),
+                    orbitAngle: Math.atan2(z, x),
+                    orbitSpeed: ORBIT_SYNC_SPEED,
+                    floatAmp: Math.random() * 0.6 + 0.2,
+                    floatSpeed: Math.random() * 0.8 + 0.6,
+                    phase: Math.random() * Math.PI * 2,
+                    baseSize: 1 + Math.random()
+                };
+                t.scale.set(t.userData.baseSize * 4, t.userData.baseSize, 1);
+                glScene.add(t);
+                textoSprites.push(t);
+            }
+        }
+
+        function generatePhotos() {
+            const photoTextureLoader = new THREE.TextureLoader();
+            const urls = [
+                "foto1.jpg",
+                "foto2.jpg",
+                "foto3.jpg"
+            ];
+            for (let i = 0; i < 30; i++) {
+                const texture = photoTextureLoader.load(urls[i % urls.length]);
+                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                const sprite = new THREE.Sprite(material);
+                const scale = 1 + Math.random();
+                sprite.scale.set(scale, scale, 1);
+                let x = (Math.random() - 0.5) * 40;
+                let y = (Math.random() - 0.5) * 25;
+                let z = (Math.random() - 0.5) * 40;
+                if (Math.abs(x) < 5 && Math.abs(y) < 5) y += 7;
+                sprite.position.set(x, y, z);
+                sprite.userData = {
+                    baseY: y,
+                    orbitRadius: Math.sqrt(x * x + z * z),
+                    orbitAngle: Math.atan2(z, x),
+                    orbitSpeed: ORBIT_SYNC_SPEED,
+                    floatAmp: Math.random() * 0.5 + 0.15,
+                    floatSpeed: Math.random() * 0.9 + 0.5,
+                    phase: Math.random() * Math.PI * 2,
+                    baseScale: scale
+                };
+                glScene.add(sprite);
+                fotoSprites.push(sprite);
+            }
+        }
+
+        const frasesRomanticas = [
+            'Sejak kamu hadir dalam hidupku, aku merasa alam semesta telah menemukan cara sempurna untuk menata dirinya di dalam hatiku. Kamu seperti seluruh galaksi, penuh dengan misteri indah yang ingin aku temukan perlahan-lahan, seperti bintang-bintang yang bersinar bahkan di malam-malamku yang paling gelap. Terkadang aku berpikir, di antara jutaan dunia, aku sangat beruntung menemukanmu, seolah takdir telah merancang kisah kita sejak awal waktu. Dan mencintaimu terasa seperti ini; tak terbatas, dalam, dan cemerlang, seperti langit saat aku menatapnya dan memikirkan segala arti dirimu bagiku. ✨'
+        ];
+
+        function mostrarMensajeRomantico() {
+            const mensaje = frasesRomanticas[Math.floor(Math.random() * frasesRomanticas.length)];
+            mensajeRomantico.textContent = mensaje;
+            modalCarta.classList.add('visible');
+        }
+
+        function init() {
+            glScene = new THREE.Scene();
+            crearEstrellasFondo();
+            generateGalaxy();
+            generateHeart();
+            loadHeartModel();
+            generateTexts();
+            generatePhotos();
+
+            const sizes = { width: window.innerWidth, height: window.innerHeight };
+            glCamera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 600);
+            glCamera.position.set(10, 12, 20);
+            glScene.add(glCamera);
+
+            glRenderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
+            glRenderer.setSize(sizes.width, sizes.height);
+            glRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            glControls = new THREE.OrbitControls(glCamera, glRenderer.domElement);
+            glControls.enableDamping = true;
+            glClock = new THREE.Clock();
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            cerrarCarta.addEventListener('click', () => {
+                modalCarta.classList.remove('visible');
+                modalWishlist.classList.add('visible');
+            });
+            modalCarta.addEventListener('click', (event) => {
+                if (event.target === modalCarta) modalCarta.classList.remove('visible');
+            });
+
+            cerrarWishlist.addEventListener('click', () => modalWishlist.classList.remove('visible'));
+            modalWishlist.addEventListener('click', (event) => {
+                if (event.target === modalWishlist) modalWishlist.classList.remove('visible');
+            });
+            wishlistAddBtn.addEventListener('click', addWishlistItem);
+            wishlistInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') addWishlistItem();
+            });
+            loadWishlist();
+
+            canvasEl.addEventListener('pointerdown', (event) => {
+                if (!heartModel) return;
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, glCamera);
+                const impactos = raycaster.intersectObject(heartModel, true);
+                if (impactos.length > 0) mostrarMensajeRomantico();
+            });
+
+            closeBtn.addEventListener('click', () => {
+                if (active) toggleGalaxiloveOverlay();
+            });
+
+            window.addEventListener('resize', () => {
+                if (!glRenderer) return;
+                sizes.width = window.innerWidth;
+                sizes.height = window.innerHeight;
+                glCamera.aspect = sizes.width / sizes.height;
+                glCamera.updateProjectionMatrix();
+                glRenderer.setSize(sizes.width, sizes.height);
+            });
+
+            initialized = true;
+        }
+
+        function tick() {
+            if (!active) { animationId = null; return; }
+            const elapsed = glClock.getElapsedTime();
+
+            galaxy.rotation.y += 0.001;
+            heart.rotation.y += ORBIT_SYNC_SPEED;
+            heart.rotation.z = Math.sin(elapsed * 1.7) * 0.08;
+
+            if (heartModel) {
+                heartModel.rotation.y += 0.01;
+                heartModel.rotation.x = Math.sin(elapsed * 1.8) * 0.1;
+                heartModel.position.y = 3.2 + Math.sin(elapsed * 2.2) * 0.25;
+            }
+
+            textoSprites.forEach(t => {
+                const d = t.userData;
+                d.orbitAngle += d.orbitSpeed;
+                t.position.x = Math.cos(d.orbitAngle) * d.orbitRadius;
+                t.position.z = Math.sin(d.orbitAngle) * d.orbitRadius;
+                t.position.y = d.baseY + Math.sin(elapsed * d.floatSpeed + d.phase) * d.floatAmp;
+                const pulse = 1 + Math.sin(elapsed * 2.4 + d.phase) * 0.1;
+                t.scale.set(d.baseSize * 4 * pulse, d.baseSize * pulse, 1);
+                t.material.opacity = 0.72 + Math.sin(elapsed * 1.9 + d.phase) * 0.2;
+                t.lookAt(glCamera.position);
+            });
+
+            fotoSprites.forEach(s => {
+                const d = s.userData;
+                d.orbitAngle += d.orbitSpeed;
+                s.position.x = Math.cos(d.orbitAngle) * d.orbitRadius;
+                s.position.z = Math.sin(d.orbitAngle) * d.orbitRadius;
+                s.position.y = d.baseY + Math.sin(elapsed * d.floatSpeed + d.phase) * d.floatAmp;
+                const pulse = 1 + Math.sin(elapsed * 1.7 + d.phase) * 0.08;
+                s.scale.set(d.baseScale * pulse, d.baseScale * pulse, 1);
+                s.material.rotation += 0.0015;
+                s.material.opacity = 0.7 + Math.sin(elapsed * 1.5 + d.phase) * 0.25;
+                s.lookAt(glCamera.position);
+            });
+
+            glControls.update();
+            glRenderer.render(glScene, glCamera);
+            animationId = requestAnimationFrame(tick);
+        }
+
+        // Fungsi global dipanggil oleh script NebulaHeart saat gestur 👌 terdeteksi
+        window.toggleGalaxiloveOverlay = function() {
+            if (!initialized) init();
+            active = !active;
+            if (active) {
+                overlay.style.display = 'block';
+                if (!animationId) tick();
+                musica.play().catch(() => { /* browser mungkin memblokir autoplay tanpa klik langsung, tidak apa-apa */ });
+            } else {
+                overlay.style.display = 'none';
+                musica.pause();
+            }
+        };
+    })();
+    </script>
 </body>
 </html>
