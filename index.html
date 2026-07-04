@@ -1,1314 +1,377 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NebulaHeart 3D - Web Gesture Controller (FINAL FIX)</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: black;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: white;
-        }
-        #canvas-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 1;
-        }
-        #ui-layer {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 2;
-            pointer-events: none;
-        }
-        #camera-feed {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 240px;
-            height: 180px;
-            z-index: 2;
-            border: 2px solid #00ff00;
-            border-radius: 8px;
-            transform: scaleX(-1); /* Mirror camera */
-            background-color: #222;
-        }
-        .status-text {
-            font-size: 24px;
-            font-weight: bold;
-            color: #00ff00;
-            text-shadow: 2px 2px 4px #000;
-            margin-bottom: 5px;
-        }
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-            font-size: 20px;
-            text-align: center;
-        }
-        .falling-heart {
-            position: absolute;
-            top: -30px;
-            font-size: 18px;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 3;
-            animation-name: fall;
-            animation-timing-function: linear;
-            animation-fill-mode: forwards;
-        }
-        @keyframes fall {
-            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
-            10% { opacity: 0.9; }
-            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
-        }
-        .love-caption {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 3;
-            font-size: 32px;
-            font-weight: bold;
-            color: #ffb3d9;
-            text-shadow: 2px 2px 6px #000;
-            opacity: 0;
-            transition: opacity 0.6s ease;
-            pointer-events: none;
-            text-align: center;
-            max-width: 90vw;
-        }
-        .love-caption.show {
-            opacity: 1;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Pesan Wishlist</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+    :root {
+        --bg-deep: #0a0715;
+        --bg-panel: #140f24;
+        --line: #2a2140;
+        --pink: #ff4da6;
+        --pink-soft: #ffb3d9;
+        --lilac: #b98bff;
+        --text: #f1ecff;
+        --text-dim: #9186b3;
+        --new-glow: 0 0 0 1px rgba(255, 77, 166, 0.5), 0 0 18px rgba(255, 77, 166, 0.25);
+    }
 
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        /* ===== Overlay Galaksi Cinta (dibuka/ditutup dengan gestur 👌) ===== */
-        #galaxilove-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 50;
-            background: black;
-        }
-        #galaxilove-overlay .webgl { position: fixed; top: 0; left: 0; outline: none; }
-        #gl-titulo-corazon {
-            position: fixed;
-            top: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #ffd7ef;
-            font-family: Arial, sans-serif;
-            font-size: clamp(1.2rem, 2.8vw, 2rem);
-            font-weight: bold;
-            text-shadow: 0 0 10px #ff3ea5, 0 0 24px #ff3ea5;
-            z-index: 20;
-            pointer-events: none;
-        }
-        #gl-hint {
-            position: fixed;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #ffd7ef;
-            font-family: Arial, sans-serif;
-            font-size: 15px;
-            text-shadow: 0 0 8px #ff3ea5;
-            z-index: 20;
-            pointer-events: none;
-            text-align: center;
-        }
-        #gl-close-btn {
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            z-index: 25;
-            background: rgba(255, 77, 166, 0.85);
-            color: #fff;
-            border: none;
-            border-radius: 999px;
-            width: 38px;
-            height: 38px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        #gl-modal-carta {
-            position: fixed;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(3px);
-            z-index: 30;
-        }
-        #gl-modal-carta.visible { display: flex; }
-        #gl-modal-carta .carta {
-            width: min(86vw, 420px);
-            background: linear-gradient(160deg, #fff8fb 0%, #ffe9f4 100%);
-            border: 2px solid #ffc7e4;
-            border-radius: 18px;
-            padding: 22px 20px 16px;
-            box-shadow: 0 12px 36px rgba(255, 20, 147, 0.4);
-            color: #8a235f;
-            font-family: 'Georgia', serif;
-            text-align: center;
-            position: relative;
-            animation: cartaAparece 0.28s ease-out;
-        }
-        #gl-modal-carta .carta h3 { font-size: 1.15rem; margin-bottom: 10px; }
-        #gl-mensaje-romantico {
-            font-size: clamp(1.05rem, 2.5vw, 1.35rem);
-            line-height: 1.5;
-            color: #b01867;
-            text-shadow: 0 0 10px rgba(255, 70, 150, 0.2);
-        }
-        #gl-cerrar-carta {
-            margin-top: 14px;
-            border: none;
-            border-radius: 999px;
-            background: #ff4da6;
-            color: #fff;
-            font-size: 0.95rem;
-            font-weight: bold;
-            padding: 8px 16px;
-            cursor: pointer;
-        }
-        @keyframes cartaAparece {
-            from { opacity: 0; transform: scale(0.9) translateY(12px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        #gl-modal-wishlist {
-            position: fixed;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(3px);
-            z-index: 30;
-        }
-        #gl-modal-wishlist.visible { display: flex; }
-        #gl-wishlist-list {
-            list-style: none;
-            padding: 0;
-            margin: 12px 0;
-            max-height: 220px;
-            overflow-y: auto;
-            text-align: left;
-        }
-        #gl-wishlist-list li {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 7px 4px;
-            border-bottom: 1px dashed #ffc7e4;
-            font-size: 0.95rem;
-        }
-        #gl-wishlist-list li.done span { text-decoration: line-through; opacity: 0.55; }
-        #gl-wishlist-list li input[type="checkbox"] {
-            width: 18px; height: 18px; accent-color: #ff4da6; cursor: pointer; flex-shrink: 0;
-        }
-        #gl-wishlist-list li span { flex: 1; word-break: break-word; }
-        #gl-wishlist-list li .gl-wishlist-remove {
-            background: none; border: none; color: #c2447e; font-size: 1rem; cursor: pointer; padding: 0 4px;
-        }
-        #gl-wishlist-list li .gl-wishlist-send {
-            background: none; border: none; font-size: 1rem; cursor: pointer; padding: 0 4px;
-            opacity: 0.85; transition: transform 0.15s ease;
-        }
-        #gl-wishlist-list li .gl-wishlist-send:hover { transform: scale(1.15); }
-        #gl-wishlist-list li .gl-wishlist-send:disabled { opacity: 0.5; cursor: default; transform: none; }
-        .gl-wishlist-add-row { display: flex; gap: 6px; margin-top: 4px; }
-        #gl-wishlist-input {
-            flex: 1;
-            padding: 9px 10px;
-            border-radius: 10px;
-            border: 1px solid #ffc7e4;
-            font-size: 0.9rem;
-            font-family: inherit;
-        }
-        #gl-wishlist-add-btn {
-            border: none;
-            border-radius: 10px;
-            background: #ff4da6;
-            color: #fff;
-            font-weight: bold;
-            padding: 0 16px;
-            cursor: pointer;
-            font-size: 1.15rem;
-        }
-    </style>
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+            radial-gradient(circle at 15% 10%, rgba(185, 139, 255, 0.16), transparent 45%),
+            radial-gradient(circle at 85% 90%, rgba(255, 77, 166, 0.14), transparent 45%),
+            var(--bg-deep);
+        color: var(--text);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        padding: 32px 18px 60px;
+    }
+
+    .wrap { max-width: 720px; margin: 0 auto; }
+
+    header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+    }
+
+    h1 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: clamp(1.5rem, 4vw, 2.1rem);
+        margin: 0;
+        letter-spacing: 0.01em;
+        background: linear-gradient(90deg, var(--pink-soft), var(--lilac));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .subtitle {
+        color: var(--text-dim);
+        font-size: 0.9rem;
+        margin: 4px 0 26px;
+    }
+
+    .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 22px;
+        flex-wrap: wrap;
+    }
+
+    .count-pill {
+        font-size: 0.8rem;
+        padding: 5px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        color: var(--text-dim);
+        background: rgba(255,255,255,0.02);
+    }
+    .count-pill strong { color: var(--pink-soft); font-weight: 700; }
+
+    button.ghost-btn {
+        margin-left: auto;
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--text-dim);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: border-color .15s ease, color .15s ease;
+    }
+    button.ghost-btn:hover { border-color: var(--pink); color: var(--pink-soft); }
+
+    .status-line {
+        font-size: 0.82rem;
+        color: var(--text-dim);
+        min-height: 1.2em;
+        margin-bottom: 14px;
+    }
+    .status-line.error { color: #ff8fb8; }
+
+    ul.messages {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    li.card {
+        background: linear-gradient(160deg, var(--bg-panel), #1b1430);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px 16px 14px;
+        position: relative;
+        animation: fadeIn 0.25s ease;
+    }
+    li.card.new { box-shadow: var(--new-glow); }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+
+    .badge {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 3px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .badge.baru { background: rgba(255, 77, 166, 0.18); color: var(--pink-soft); border: 1px solid rgba(255,77,166,0.4); }
+    .badge.dibaca { background: rgba(185, 139, 255, 0.12); color: var(--lilac); border: 1px solid rgba(185,139,255,0.3); }
+
+    .msg-text {
+        font-size: 1.02rem;
+        line-height: 1.5;
+        color: var(--text);
+        word-break: break-word;
+        margin: 0;
+    }
+
+    .card-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 12px;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .timestamp { font-size: 0.75rem; color: var(--text-dim); }
+
+    .actions { display: flex; gap: 8px; }
+
+    .actions button {
+        border: none;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity .15s ease;
+    }
+    .actions button:hover { opacity: 0.85; }
+
+    .btn-read { background: rgba(185, 139, 255, 0.16); color: var(--lilac); }
+    .btn-delete { background: rgba(255, 77, 166, 0.14); color: var(--pink-soft); }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-dim);
+        border: 1px dashed var(--line);
+        border-radius: 16px;
+    }
+    .empty-state .glyph { font-size: 2rem; display: block; margin-bottom: 10px; }
+
+    footer {
+        text-align: center;
+        color: var(--text-dim);
+        font-size: 0.75rem;
+        margin-top: 40px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        li.card { animation: none; }
+    }
+</style>
 </head>
 <body>
+    <div class="wrap">
+        <header>
+            <h1>Pesan Wishlist</h1>
+        </header>
+        <p class="subtitle">Daftar wishlist yang dikirim dari halaman Galaksi Cinta.</p>
 
-    <div class="loading" id="loading-screen">
-        <h2>Mempersiapkan NebulaHeart 3D...</h2>
-        <p>Mohon izinkan akses Kamera saat diminta.</p>
-    </div>
-
-    <div id="ui-layer" style="display: none;">
-        <div class="status-text" id="mode-text">MODE: MENCARI TANGAN...</div>
-    </div>
-    
-    <video id="camera-feed" autoplay playsinline style="display: none;"></video>
-    <div id="canvas-container"></div>
-    <div id="love-caption" class="love-caption"></div>
-
-    <!-- ===== Overlay Galaksi Cinta - dibuka/ditutup dengan gestur OK Sign 👌 ===== -->
-    <div id="galaxilove-overlay">
-        <canvas class="webgl" id="gl-canvas"></canvas>
-        <div id="gl-titulo-corazon">Tekan hatinya</div>
-        <div id="gl-hint">Buat gestur 👌 lagi untuk kembali</div>
-        <button id="gl-close-btn" title="Tutup">✕</button>
-        <div id="gl-modal-carta">
-            <div class="carta">
-                <h3>Untukmu</h3>
-                <p id="gl-mensaje-romantico"></p>
-                <button id="gl-cerrar-carta">Tutup</button>
-            </div>
+        <div class="toolbar">
+            <span class="count-pill">Baru: <strong id="count-baru">0</strong></span>
+            <span class="count-pill">Total: <strong id="count-total">0</strong></span>
+            <button class="ghost-btn" id="refresh-btn">↻ Muat ulang</button>
         </div>
-        <div id="gl-modal-wishlist">
-            <div class="carta">
-                <h3>Wishlist Kita 📝</h3>
-                <ul id="gl-wishlist-list"></ul>
-                <div class="gl-wishlist-add-row">
-                    <input type="text" id="gl-wishlist-input" placeholder="Tambah wishlist..." maxlength="70">
-                    <button id="gl-wishlist-add-btn" title="Tambah">+</button>
-                </div>
-                <button id="gl-cerrar-wishlist">Tutup</button>
-            </div>
+
+        <p class="status-line" id="status-line"></p>
+
+        <ul class="messages" id="message-list"></ul>
+
+        <div class="empty-state" id="empty-state" style="display:none;">
+            <span class="glyph">🌌</span>
+            Belum ada wishlist yang dikirim.
         </div>
-        <audio id="gl-musica-fondo" loop>
-            <source src="cintanya akuu.mp3" type="audio/mpeg">
-        </audio>
+
+        <footer>Terhubung ke Supabase • pembaruan realtime aktif</footer>
     </div>
 
-    <script>
-        // ==========================================
-        // KONFIGURASI & INISIALISASI
-        // ==========================================
-        const NUM_PARTICLES = 1500;
-        let currentMode = 1; 
-        
-        let handTarget = { x: 0, y: 0, z: 0 };
-        let handCurrent = { x: 0, y: 0, z: -12 };
-        let rotationAngle = 0;
+<script>
+(function () {
+    const SUPABASE_URL = 'https://cadtlaamaarorzrjnddl.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZHRsYWFtYWFyb3J6cmpuZGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMTU1MTIsImV4cCI6MjA5ODY5MTUxMn0.O7HU78QkBdy8jh7HlIedeqfzHzb084PCjLeKmstR1uw';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const TABLE = 'wishlist_messages';
 
-        // Teks Label Mode
-        const modeLabels = {
-            1: "ROTASI KOSMOS (Semua Jari Buka)",
-            2: "GALAKSI SPIRAL 🌌 (1 Jari Telunjuk)",
-            3: "TEKS I LOVE YOU (2 Jari / Peace)",
-            4: "BENTUK HATI (Tangan Mengepal)",
-            5: "SELY 🫰 (Finger Heart)",
-            7: "DNA HELIX 🧬 (Rock Sign)",
-            9: "ZEN & CINTA 🤟 (I Love You Sign)"
-        };
+    const listEl = document.getElementById('message-list');
+    const emptyEl = document.getElementById('empty-state');
+    const statusEl = document.getElementById('status-line');
+    const countBaruEl = document.getElementById('count-baru');
+    const countTotalEl = document.getElementById('count-total');
+    const refreshBtn = document.getElementById('refresh-btn');
 
-        // Gestur OK Sign 👌 sekarang dipakai untuk toggle overlay "Galaksi Cinta"
-        let lastOkSignActive = false;
-        let lastOkToggleTime = 0;
-        const OK_TOGGLE_COOLDOWN = 1500; // ms, biar tidak toggle berkali-kali per detik
-
-        // ==========================================
-        // SETUP THREE.JS (RENDERER 3D)
-        // ==========================================
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50);
-        camera.position.z = 0; 
-        
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        container.appendChild(renderer.domElement);
-
-        // Render manual (autoClear = false) supaya bisa bikin efek "jejak komet" (trail)
-        renderer.autoClear = false;
-        const trailScene = new THREE.Scene();
-        const trailCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-        const trailPlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(2, 2),
-            new THREE.MeshBasicMaterial({
-                color: 0x000000,
-                transparent: true,
-                opacity: 0.15,
-                depthWrite: false,
-                depthTest: false
-            })
-        );
-        trailScene.add(trailPlane);
-
-        // Latar bintang statis (Starfield) biar suasana makin "angkasa"
-        const NUM_STARS = 600;
-        const starGeometry = new THREE.BufferGeometry();
-        const starPositions = new Float32Array(NUM_STARS * 3);
-        for (let i = 0; i < NUM_STARS; i++) {
-            starPositions[i * 3]     = (Math.random() - 0.5) * 60;
-            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 60;
-            starPositions[i * 3 + 2] = -15 - Math.random() * 25;
+    function formatTime(iso) {
+        try {
+            const d = new Date(iso);
+            return d.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+        } catch (e) {
+            return iso;
         }
-        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-        const starMaterial = new THREE.PointsMaterial({
-            size: 0.08,
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.5,
-            sizeAttenuation: true
+    }
+
+    function setStatus(text, isError) {
+        statusEl.textContent = text || '';
+        statusEl.classList.toggle('error', !!isError);
+    }
+
+    function render(messages) {
+        listEl.innerHTML = '';
+        countTotalEl.textContent = messages.length;
+        countBaruEl.textContent = messages.filter(m => m.status === 'baru').length;
+
+        if (messages.length === 0) {
+            emptyEl.style.display = 'block';
+            return;
+        }
+        emptyEl.style.display = 'none';
+
+        messages.forEach(msg => {
+            const li = document.createElement('li');
+            li.className = 'card' + (msg.status === 'baru' ? ' new' : '');
+
+            const top = document.createElement('div');
+            top.className = 'card-top';
+
+            const badge = document.createElement('span');
+            badge.className = 'badge ' + (msg.status === 'baru' ? 'baru' : 'dibaca');
+            badge.textContent = msg.status === 'baru' ? 'Baru' : 'Dibaca';
+
+            const text = document.createElement('p');
+            text.className = 'msg-text';
+            text.textContent = msg.text;
+
+            top.appendChild(badge);
+            li.appendChild(top);
+            li.appendChild(text);
+
+            const bottom = document.createElement('div');
+            bottom.className = 'card-bottom';
+
+            const time = document.createElement('span');
+            time.className = 'timestamp';
+            time.textContent = formatTime(msg.created_at);
+
+            const actions = document.createElement('div');
+            actions.className = 'actions';
+
+            if (msg.status === 'baru') {
+                const readBtn = document.createElement('button');
+                readBtn.className = 'btn-read';
+                readBtn.textContent = 'Tandai dibaca';
+                readBtn.addEventListener('click', () => markAsRead(msg.id));
+                actions.appendChild(readBtn);
+            }
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn-delete';
+            delBtn.textContent = 'Hapus';
+            delBtn.addEventListener('click', () => deleteMessage(msg.id));
+            actions.appendChild(delBtn);
+
+            bottom.appendChild(time);
+            bottom.appendChild(actions);
+            li.appendChild(bottom);
+
+            listEl.appendChild(li);
         });
-        const starField = new THREE.Points(starGeometry, starMaterial);
-        scene.add(starField);
+    }
 
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(NUM_PARTICLES * 3);
-        const colors = new Float32Array(NUM_PARTICLES * 3);
-        const currentPositions = new Float32Array(NUM_PARTICLES * 3);
-        
-        const posSpace = new Float32Array(NUM_PARTICLES * 3);
-        const posText = new Float32Array(NUM_PARTICLES * 3);
-        const posHeart = new Float32Array(NUM_PARTICLES * 3);
-        const posSely = new Float32Array(NUM_PARTICLES * 3);
-        const posGalaxy = new Float32Array(NUM_PARTICLES * 3);
-        const posDNA = new Float32Array(NUM_PARTICLES * 3);
-        const posPray = new Float32Array(NUM_PARTICLES * 3); // Mode 9: ZEN + HATI + SELY (vertikal)
-        const PRAY_ZEN_COUNT = Math.floor(NUM_PARTICLES * 0.34);
-        const PRAY_HEART_COUNT = Math.floor(NUM_PARTICLES * 0.33);
+    let currentMessages = [];
 
-        generateShapes();
+    async function loadMessages() {
+        setStatus('Memuat...');
+        const { data, error } = await supabaseClient
+            .from(TABLE)
+            .select('*')
+            .order('created_at', { ascending: false });
 
-        for(let i = 0; i < NUM_PARTICLES * 3; i++) {
-            currentPositions[i] = posSpace[i];
-            positions[i] = posSpace[i];
+        if (error) {
+            setStatus('Gagal memuat: ' + error.message, true);
+            return;
         }
+        currentMessages = data || [];
+        render(currentMessages);
+        setStatus('');
+    }
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-        const material = new THREE.PointsMaterial({
-            size: 0.15,
-            vertexColors: true,
-            blending: THREE.AdditiveBlending,
-            transparent: true,
-            opacity: 0.8,
-            depthWrite: false
-        });
-
-        const particleSystem = new THREE.Points(geometry, material);
-        scene.add(particleSystem);
-
-        function createTextParticles(text, targetArray, scaleX, scaleY, offsetX, offsetY) {
-            const offCanvas = document.createElement('canvas');
-            offCanvas.width = 800; offCanvas.height = 200;
-            const ctx = offCanvas.getContext('2d');
-            ctx.fillStyle = "black"; ctx.fillRect(0, 0, 800, 200);
-            ctx.fillStyle = "white"; ctx.font = "bold 130px sans-serif";
-            ctx.fillText(text, offsetX, offsetY);
-            
-            const imgData = ctx.getImageData(0, 0, 800, 200).data;
-            const textPoints = [];
-            for (let y = 0; y < 200; y += 2) {
-                for (let x = 0; x < 800; x += 2) {
-                    let alpha = imgData[((y * 800) + x) * 4 + 0]; 
-                    if (alpha > 128) {
-                        textPoints.push({
-                            x: (x - 400) / scaleX,
-                            y: -(y - 100) / scaleY,
-                            z: (Math.random() * 0.2) - 0.1
-                        });
-                    }
-                }
-            }
-            for(let i=0; i < NUM_PARTICLES; i++) {
-                let p = textPoints[Math.floor(Math.random() * textPoints.length)];
-                targetArray[i*3] = p.x;
-                targetArray[i*3+1] = p.y;
-                targetArray[i*3+2] = p.z;
-            }
+    async function markAsRead(id) {
+        const { error } = await supabaseClient
+            .from(TABLE)
+            .update({ status: 'dibaca' })
+            .eq('id', id);
+        if (error) {
+            setStatus('Gagal menandai: ' + error.message, true);
+            return;
         }
+        const item = currentMessages.find(m => m.id === id);
+        if (item) item.status = 'dibaca';
+        render(currentMessages);
+    }
 
-        function generateShapes() {
-            for(let i=0; i < NUM_PARTICLES; i++) {
-                posSpace[i*3] = (Math.random() * 8) - 4.0;
-                posSpace[i*3+1] = (Math.random() * 8) - 4.0;
-                posSpace[i*3+2] = (Math.random() * 8) - 4.0;
-            }
-
-            createTextParticles("I LOVE YOU", posText, 70.0, 70.0, 20, 140);
-            createTextParticles("SELY", posSely, 70.0, 70.0, 230, 140);
-
-            for(let i=0; i < NUM_PARTICLES; i++) {
-                let t = (Math.random() * 2 * Math.PI) - Math.PI;
-                let p = (Math.random() * 2 * Math.PI) - Math.PI;
-                let x = 2.0 * Math.pow(Math.sin(t), 3);
-                let y = 2.0 * Math.cos(t) - 0.7 * Math.cos(2*t) - 0.3 * Math.cos(3*t) - 0.1 * Math.cos(4*t);
-                let z = Math.sin(p) * 0.4;
-                
-                posHeart[i*3] = x * 0.85;
-                posHeart[i*3+1] = (y * 0.85) + 0.5;
-                posHeart[i*3+2] = z;
-            }
-
-            // GALAKSI SPIRAL (Mode 6)
-            const numArms = 3;
-            const galaxyRadius = 2.6;
-            for (let i = 0; i < NUM_PARTICLES; i++) {
-                let arm = i % numArms;
-                let t = Math.random();
-                let angle = t * Math.PI * 4 + (arm * (2 * Math.PI / numArms));
-                angle += (Math.random() - 0.5) * 0.45;
-                let radius = t * galaxyRadius + (Math.random() - 0.5) * 0.15;
-                posGalaxy[i*3]   = radius * Math.cos(angle);
-                posGalaxy[i*3+1] = (Math.random() - 0.5) * 0.18 * (1 - t * 0.5);
-                posGalaxy[i*3+2] = radius * Math.sin(angle);
-            }
-
-            // DNA HELIX (Mode 7)
-            const dnaHeight = 3.6;
-            const dnaRadius = 0.9;
-            const dnaTurns = 3;
-            for (let i = 0; i < NUM_PARTICLES; i++) {
-                if (i % 10 === 0) {
-                    // Partikel "anak tangga" yang menghubungkan dua untai DNA
-                    let tt = (Math.floor(i / 10) / (NUM_PARTICLES / 10)) * dnaHeight - dnaHeight / 2;
-                    let angle = (tt / dnaHeight) * dnaTurns * Math.PI * 2;
-                    let frac = Math.random();
-                    let rx1 = dnaRadius * Math.cos(angle);
-                    let rz1 = dnaRadius * Math.sin(angle);
-                    let rx2 = dnaRadius * Math.cos(angle + Math.PI);
-                    let rz2 = dnaRadius * Math.sin(angle + Math.PI);
-                    posDNA[i*3]   = rx1 + (rx2 - rx1) * frac;
-                    posDNA[i*3+1] = tt;
-                    posDNA[i*3+2] = rz1 + (rz2 - rz1) * frac;
-                } else {
-                    let strand = i % 2;
-                    let tt = (i / NUM_PARTICLES) * dnaHeight - dnaHeight / 2;
-                    let angle = (tt / dnaHeight) * dnaTurns * Math.PI * 2 + (strand === 1 ? Math.PI : 0);
-                    posDNA[i*3]   = dnaRadius * Math.cos(angle) + (Math.random() - 0.5) * 0.05;
-                    posDNA[i*3+1] = tt;
-                    posDNA[i*3+2] = dnaRadius * Math.sin(angle) + (Math.random() - 0.5) * 0.05;
-                }
-            }
-
-            // ZEN + HATI + SELY (Mode 9) - disusun VERTIKAL: teks "ZEN" (atas),
-            // bentuk hati (tengah), lalu teks "SELY" (bawah)
-            const zenTextPoints = [];
-            {
-                const offCanvas3 = document.createElement('canvas');
-                offCanvas3.width = 800; offCanvas3.height = 200;
-                const ctx3 = offCanvas3.getContext('2d');
-                ctx3.fillStyle = "black"; ctx3.fillRect(0, 0, 800, 200);
-                ctx3.fillStyle = "white"; ctx3.font = "bold 130px sans-serif";
-                const zenWidth = ctx3.measureText("ZEN").width;
-                ctx3.fillText("ZEN", (800 - zenWidth) / 2, 140);
-                const imgData3 = ctx3.getImageData(0, 0, 800, 200).data;
-                for (let y = 0; y < 200; y += 2) {
-                    for (let x = 0; x < 800; x += 2) {
-                        let alpha = imgData3[((y * 800) + x) * 4 + 0];
-                        if (alpha > 128) {
-                            zenTextPoints.push({
-                                x: (x - 400) / 90.0,
-                                y: -(y - 100) / 90.0,
-                                z: (Math.random() * 0.2) - 0.1
-                            });
-                        }
-                    }
-                }
-            }
-
-            const selyTextPoints = [];
-            {
-                const offCanvas2 = document.createElement('canvas');
-                offCanvas2.width = 800; offCanvas2.height = 200;
-                const ctx2 = offCanvas2.getContext('2d');
-                ctx2.fillStyle = "black"; ctx2.fillRect(0, 0, 800, 200);
-                ctx2.fillStyle = "white"; ctx2.font = "bold 130px sans-serif";
-                ctx2.fillText("SELY", 230, 140);
-                const imgData2 = ctx2.getImageData(0, 0, 800, 200).data;
-                for (let y = 0; y < 200; y += 2) {
-                    for (let x = 0; x < 800; x += 2) {
-                        let alpha = imgData2[((y * 800) + x) * 4 + 0];
-                        if (alpha > 128) {
-                            selyTextPoints.push({
-                                x: (x - 400) / 90.0,
-                                y: -(y - 100) / 90.0,
-                                z: (Math.random() * 0.2) - 0.1
-                            });
-                        }
-                    }
-                }
-            }
-
-            for (let i = 0; i < NUM_PARTICLES; i++) {
-                if (i < PRAY_ZEN_COUNT) {
-                    // Teks "ZEN" di ATAS
-                    let p = zenTextPoints[Math.floor(Math.random() * zenTextPoints.length)];
-                    posPray[i*3]   = p.x;
-                    posPray[i*3+1] = p.y + 2.3; // posisi ATAS
-                    posPray[i*3+2] = p.z;
-                } else if (i < PRAY_ZEN_COUNT + PRAY_HEART_COUNT) {
-                    // Bentuk hati kecil di TENGAH
-                    let t = (Math.random() * 2 * Math.PI) - Math.PI;
-                    let x = 2.0 * Math.pow(Math.sin(t), 3);
-                    let y = 2.0 * Math.cos(t) - 0.7 * Math.cos(2*t) - 0.3 * Math.cos(3*t) - 0.1 * Math.cos(4*t);
-                    posPray[i*3]   = x * 0.45;
-                    posPray[i*3+1] = (y * 0.45) + 0.1; // posisi TENGAH
-                    posPray[i*3+2] = (Math.random() - 0.5) * 0.3;
-                } else {
-                    // Teks "SELY" di BAWAH
-                    let p = selyTextPoints[Math.floor(Math.random() * selyTextPoints.length)];
-                    posPray[i*3]   = p.x;
-                    posPray[i*3+1] = p.y - 2.4; // posisi BAWAH
-                    posPray[i*3+2] = p.z;
-                }
-            }
+    async function deleteMessage(id) {
+        const { error } = await supabaseClient
+            .from(TABLE)
+            .delete()
+            .eq('id', id);
+        if (error) {
+            setStatus('Gagal menghapus: ' + error.message, true);
+            return;
         }
-
-        // ==========================================
-        // LOGIKA DETEKSI GESTUR - URUTAN DIPERBAIKI
-        // ==========================================
-        function calculateGestureMode(landmarks) {
-            const tips = [8, 12, 16, 20];
-            const pips = [6, 10, 14, 18];
-            
-            // Cek status masing-masing 4 jari (Telunjuk, Tengah, Manis, Kelingking)
-            let fingersUp = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
-
-            // 1. Cek Mode SELY 🫰 (Prioritas Pertama)
-            const thumbTip = landmarks[4];
-            const indexTip = landmarks[8];
-            const dxHeart = thumbTip.x - indexTip.x;
-            const dyHeart = thumbTip.y - indexTip.y;
-            const distHeart = Math.sqrt(dxHeart*dxHeart + dyHeart*dyHeart);
-            
-            // Jika Jempol & Telunjuk berdekatan, dan 3 jari lainnya menekuk
-            if (distHeart < 0.08 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 5; 
-            }
-
-            // 2. Cek Mode OK Sign 👌 (Jempol & Telunjuk berdekatan, 3 jari lain berdiri)
-            //    Dipakai untuk toggle overlay "Galaksi Cinta" (buka/tutup dengan gestur yang sama)
-            if (distHeart < 0.08 && fingersUp[1] && fingersUp[2] && fingersUp[3]) {
-                if (!lastOkSignActive && (Date.now() - lastOkToggleTime > OK_TOGGLE_COOLDOWN)) {
-                    if (typeof toggleGalaxiloveOverlay === 'function') toggleGalaxiloveOverlay();
-                    lastOkToggleTime = Date.now();
-                }
-                lastOkSignActive = true;
-                return 1;
-            }
-            lastOkSignActive = false;
-
-            // 3. Cek Mode ZEN & CINTA 🤟 (Sign ILY: Jempol + Telunjuk + Kelingking berdiri,
-            //    Tengah & Manis menekuk, dan jempol terentang keluar dari telapak)
-            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
-                const thumbMcp = landmarks[2];
-                const pinkyMcp = landmarks[17];
-                const dxThumbTip = thumbTip.x - pinkyMcp.x;
-                const dyThumbTip = thumbTip.y - pinkyMcp.y;
-                const distThumbTipPinky = Math.sqrt(dxThumbTip*dxThumbTip + dyThumbTip*dyThumbTip);
-                const dxThumbMcp = thumbMcp.x - pinkyMcp.x;
-                const dyThumbMcp = thumbMcp.y - pinkyMcp.y;
-                const distThumbMcpPinky = Math.sqrt(dxThumbMcp*dxThumbMcp + dyThumbMcp*dyThumbMcp);
-
-                // Jempol terentang menjauh dari telapak (bukan terlipat) -> gestur 🤟
-                if (distThumbTipPinky > distThumbMcpPinky * 1.1) {
-                    return 9;
-                }
-            }
-
-            // 4. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri, jempol terlipat)
-            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
-                return 7;
-            }
-
-            // 5. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
-            if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 3;
-            }
-
-            // 6. Cek Mode GALAKSI SPIRAL 🌌 (Hanya 1 Jari Telunjuk berdiri)
-            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 2;
-            }
-
-            // 7. Cek Mode KEPAL (Semua ke-4 jari menekuk)
-            if (!fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 4;
-            }
-
-            // 8. Default: KOSMOS (Semua jari terbuka bebas)
-            return 1; 
-        }
-
-        const videoElement = document.getElementById('camera-feed');
-        const captionEl = document.getElementById('love-caption');
-        const loveCaptions = {
-            4: "Untuk kamu, dengan sepenuh hati 💖",
-            5: "Kamu spesial banget buat aku 🫰",
-            9: "aku mau kamu jadi milik ku selamanya 🤟"
-        };
-        function updateCaption(mode) {
-            if (loveCaptions[mode]) {
-                captionEl.innerText = loveCaptions[mode];
-                captionEl.classList.add('show');
-            } else {
-                captionEl.classList.remove('show');
-            }
-        }
-        const hands = new Hands({locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-        }});
-
-        hands.setOptions({
-            maxNumHands: 1,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
-
-        hands.onResults((results) => {
-            document.getElementById('loading-screen').style.display = 'none';
-
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const landmarks = results.multiHandLandmarks[0];
-                currentMode = calculateGestureMode(landmarks);
-                document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
-                updateCaption(currentMode);
-
-                const wrist = landmarks[0];
-                handTarget.x = -((wrist.x - 0.5) * 15.0); 
-                handTarget.y = -((wrist.y - 0.5) * 10.0);
-                
-                const pinkyMcp = landmarks[17];
-                const dxDist = wrist.x - pinkyMcp.x;
-                const dyDist = wrist.y - pinkyMcp.y;
-                const distance = Math.sqrt(dxDist*dxDist + dyDist*dyDist);
-                handTarget.z = -10.0 - (1.0 / (distance + 0.01)) * 0.2;
-            } else {
-                currentMode = 1;
-                document.getElementById('mode-text').innerText = "MODE: ROTASI KOSMOS (Tidak ada tangan)";
-                handTarget = { x: 0, y: 0, z: -12 };
-                updateCaption(1);
-            }
-        });
-
-        const cameraFeed = new Camera(videoElement, {
-            onFrame: async () => {
-                await hands.send({image: videoElement});
-            },
-            width: 480,
-            height: 360
-        });
-        cameraFeed.start();
-
-        // ==========================================
-        // HUJAN HATI & KELOPAK BUNGA (Nuansa Romantis)
-        // ==========================================
-        const romanticEmojis = ['💗', '🌸', '💕', '✨'];
-        function spawnFallingHeart() {
-            const heart = document.createElement('div');
-            heart.className = 'falling-heart';
-            heart.innerText = romanticEmojis[Math.floor(Math.random() * romanticEmojis.length)];
-            heart.style.left = (Math.random() * 100) + 'vw';
-            const duration = 7 + Math.random() * 6;
-            heart.style.animationDuration = duration + 's';
-            heart.style.fontSize = (14 + Math.random() * 16) + 'px';
-            document.body.appendChild(heart);
-            setTimeout(() => heart.remove(), duration * 1000);
-        }
-        setInterval(spawnFallingHeart, 750);
-
-        // ==========================================
-        // LOOP ANIMASI RENDERING 3D
-        // ==========================================
-        function animate() {
-            requestAnimationFrame(animate);
-
-            handCurrent.x += (handTarget.x - handCurrent.x) * 0.15;
-            handCurrent.y += (handTarget.y - handCurrent.y) * 0.15;
-            handCurrent.z += (handTarget.z - handCurrent.z) * 0.15;
-
-            let targetPosArray;
-            if (currentMode === 1) { targetPosArray = posSpace; rotationAngle += 0.005; }
-            else if (currentMode === 2) { targetPosArray = posGalaxy; rotationAngle += 0.006; }
-            else if (currentMode === 3) { targetPosArray = posText; rotationAngle = 0; }
-            else if (currentMode === 4) { targetPosArray = posHeart; rotationAngle += 0.015; }
-            else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; }
-            else if (currentMode === 7) { targetPosArray = posDNA; rotationAngle += 0.02; }
-            else if (currentMode === 9) { targetPosArray = posPray; rotationAngle = 0; }
-
-            const posAttr = geometry.attributes.position.array;
-            const colAttr = geometry.attributes.color.array;
-
-            for (let i = 0; i < NUM_PARTICLES; i++) {
-                currentPositions[i*3] += (targetPosArray[i*3] - currentPositions[i*3]) * 0.15;
-                currentPositions[i*3+1] += (targetPosArray[i*3+1] - currentPositions[i*3+1]) * 0.15;
-                currentPositions[i*3+2] += (targetPosArray[i*3+2] - currentPositions[i*3+2]) * 0.15;
-
-                posAttr[i*3] = currentPositions[i*3];
-                posAttr[i*3+1] = currentPositions[i*3+1];
-                posAttr[i*3+2] = currentPositions[i*3+2];
-
-                if (currentMode === 3) { // Cyan
-                    colAttr[i*3] = 0.0; colAttr[i*3+1] = 0.8; colAttr[i*3+2] = 1.0;
-                } else if (currentMode === 4) { // Pink/Red
-                    colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.1; colAttr[i*3+2] = 0.4;
-                } else if (currentMode === 5) { // Ungu Sely
-                    colAttr[i*3] = 0.8; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0;
-                } else if (currentMode === 7) { // DNA - untai cyan & magenta, anak tangga putih
-                    if (i % 10 === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 1.0; }
-                    else if (i % 2 === 0) { colAttr[i*3] = 0.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 0.9; }
-                    else { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.0; colAttr[i*3+2] = 0.6; }
-                } else if (currentMode === 9) { // ZEN (emas lembut) + HATI (pink) + SELY (putih keunguan)
-                    if (i < PRAY_ZEN_COUNT) {
-                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.55;
-                    } else if (i < PRAY_ZEN_COUNT + PRAY_HEART_COUNT) {
-                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.15; colAttr[i*3+2] = 0.45;
-                    } else {
-                        colAttr[i*3] = 0.85; colAttr[i*3+1] = 0.75; colAttr[i*3+2] = 1.0;
-                    }
-                } else if (currentMode === 2) { // Galaksi - 3 lengan gradasi emas/ungu/biru
-                    let arm = i % 3;
-                    if (arm === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.4; }
-                    else if (arm === 1) { colAttr[i*3] = 0.6; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0; }
-                    else { colAttr[i*3] = 0.2; colAttr[i*3+1] = 0.6; colAttr[i*3+2] = 1.0; }
-                } else { // Biru Angcosmos
-                    colAttr[i*3] = 0.1; colAttr[i*3+1] = 0.5; colAttr[i*3+2] = 1.0;
-                }
-            }
-
-            geometry.attributes.position.needsUpdate = true;
-            geometry.attributes.color.needsUpdate = true;
-
-            if ([2, 3, 4, 5, 7, 9].includes(currentMode)) {
-                particleSystem.position.set(handCurrent.x, handCurrent.y, handCurrent.z);
-                if (currentMode === 2) {
-                    particleSystem.rotation.set(0.3, rotationAngle, 0); // sedikit miring seperti galaksi asli
-                } else {
-                    particleSystem.rotation.set(0, rotationAngle, 0);
-                }
-            } else {
-                particleSystem.position.set(0, 0, -12);
-                particleSystem.rotation.set(0, rotationAngle, 0);
-            }
-
-            // Bintang latar berkelip pelan + rotasi sangat lambat
-            starMaterial.opacity = 0.35 + Math.sin(Date.now() * 0.001) * 0.15;
-            starField.rotation.y += 0.0002;
-
-            // Render dengan efek jejak (trail) lalu gambar scene utama di atasnya
-            renderer.render(trailScene, trailCamera);
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
-
-    <!-- ============================================================
-         GALAKSI CINTA - overlay yang dibuka/ditutup dengan gestur 👌
-         Dibungkus IIFE supaya variabel (scene, camera, dll) tidak
-         bentrok dengan script NebulaHeart 3D di atas.
-    ============================================================ -->
-    <script>
-    (function() {
-        let initialized = false;
-        let active = false;
-        let animationId = null;
-
-        let glScene, glCamera, glRenderer, glControls, glClock;
-        let galaxy, heart, heartModel;
-        let textoSprites = [], fotoSprites = [];
-        let raycaster, mouse;
-
-        const overlay = document.getElementById('galaxilove-overlay');
-        const canvasEl = document.getElementById('gl-canvas');
-        const modalCarta = document.getElementById('gl-modal-carta');
-        const mensajeRomantico = document.getElementById('gl-mensaje-romantico');
-        const cerrarCarta = document.getElementById('gl-cerrar-carta');
-        const closeBtn = document.getElementById('gl-close-btn');
-        const musica = document.getElementById('gl-musica-fondo');
-
-        const modalWishlist = document.getElementById('gl-modal-wishlist');
-        const wishlistList = document.getElementById('gl-wishlist-list');
-        const wishlistInput = document.getElementById('gl-wishlist-input');
-        const wishlistAddBtn = document.getElementById('gl-wishlist-add-btn');
-        const cerrarWishlist = document.getElementById('gl-cerrar-wishlist');
-
-        // ===== Supabase (database wishlist, tersimpan online & sinkron di semua device) =====
-        const SUPABASE_URL = 'https://cadtlaamaarorzrjnddl.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZHRsYWFtYWFyb3J6cmpuZGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMTU1MTIsImV4cCI6MjA5ODY5MTUxMn0.O7HU78QkBdy8jh7HlIedeqfzHzb084PCjLeKmstR1uw';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const WISHLIST_TABLE = 'wishlist';
-        const WISHLIST_MESSAGES_TABLE = 'wishlist_messages';
-
-        let wishlistItems = [];
-        let wishlistLoading = false;
-
-        async function loadWishlist() {
-            wishlistLoading = true;
-            renderWishlist();
-            const { data, error } = await supabaseClient
-                .from(WISHLIST_TABLE)
-                .select('*')
-                .order('created_at', { ascending: true });
-            wishlistLoading = false;
-            if (error) {
-                console.error('Gagal memuat wishlist:', error.message);
-                wishlistItems = [];
-                renderWishlist(true);
-                return;
-            }
-            wishlistItems = data || [];
-            renderWishlist();
-        }
-
-        function renderWishlist(loadError) {
-            wishlistList.innerHTML = '';
-
-            if (wishlistLoading) {
-                const li = document.createElement('li');
-                li.textContent = 'Memuat wishlist...';
-                li.style.opacity = '0.6';
-                wishlistList.appendChild(li);
-                return;
-            }
-            if (loadError) {
-                const li = document.createElement('li');
-                li.textContent = 'Gagal memuat wishlist. Cek koneksi / setup Supabase.';
-                li.style.color = '#c2447e';
-                wishlistList.appendChild(li);
-                return;
-            }
-
-            wishlistItems.forEach((item, idx) => {
-                const li = document.createElement('li');
-                if (item.done) li.classList.add('done');
-
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.checked = item.done;
-                checkbox.addEventListener('change', async () => {
-                    const newDone = checkbox.checked;
-                    li.classList.toggle('done', newDone);
-                    const { error } = await supabaseClient
-                        .from(WISHLIST_TABLE)
-                        .update({ done: newDone })
-                        .eq('id', item.id);
-                    if (error) {
-                        console.error('Gagal update wishlist:', error.message);
-                        checkbox.checked = !newDone;
-                        li.classList.toggle('done', !newDone);
-                    } else {
-                        item.done = newDone;
-                    }
-                });
-
-                const span = document.createElement('span');
-                span.textContent = item.text;
-
-                const sendBtn = document.createElement('button');
-                sendBtn.className = 'gl-wishlist-send';
-                sendBtn.textContent = '📨';
-                sendBtn.title = 'Kirim ke Admin';
-                sendBtn.addEventListener('click', async () => {
-                    sendBtn.disabled = true;
-                    const { error } = await supabaseClient
-                        .from(WISHLIST_MESSAGES_TABLE)
-                        .insert({ text: item.text, status: 'baru' });
-                    if (error) {
-                        console.error('Gagal mengirim wishlist:', error.message);
-                        sendBtn.disabled = false;
-                        return;
-                    }
-                    sendBtn.textContent = '✅';
-                    setTimeout(() => {
-                        sendBtn.textContent = '📨';
-                        sendBtn.disabled = false;
-                    }, 1500);
-                });
-
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'gl-wishlist-remove';
-                removeBtn.textContent = '✕';
-                removeBtn.title = 'Hapus';
-                removeBtn.addEventListener('click', async () => {
-                    const { error } = await supabaseClient
-                        .from(WISHLIST_TABLE)
-                        .delete()
-                        .eq('id', item.id);
-                    if (!error) {
-                        wishlistItems.splice(idx, 1);
-                        renderWishlist();
-                    } else {
-                        console.error('Gagal hapus wishlist:', error.message);
-                    }
-                });
-
-                li.appendChild(checkbox);
-                li.appendChild(span);
-                li.appendChild(sendBtn);
-                li.appendChild(removeBtn);
-                wishlistList.appendChild(li);
-            });
-        }
-
-        async function addWishlistItem() {
-            const text = wishlistInput.value.trim();
-            if (!text) return;
-            wishlistInput.disabled = true;
-            const { data, error } = await supabaseClient
-                .from(WISHLIST_TABLE)
-                .insert({ text, done: false })
-                .select();
-            wishlistInput.disabled = false;
-            if (error) {
-                console.error('Gagal menambah wishlist:', error.message);
-                return;
-            }
-            if (data && data[0]) wishlistItems.push(data[0]);
-            renderWishlist();
-            wishlistInput.value = '';
-            wishlistInput.focus();
-        }
-
-        const ORBIT_SYNC_SPEED = 0.003;
-
-
-        function crearEstrellasFondo() {
-            const starGeometry = new THREE.BufferGeometry();
-            const starCount = 5000;
-            const positions = new Float32Array(starCount * 3);
-            for (let i = 0; i < starCount * 3; i++) {
-                positions[i] = (Math.random() - 0.5) * 500;
-            }
-            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true });
-            const stars = new THREE.Points(starGeometry, starMaterial);
-            glScene.add(stars);
-        }
-
-        function generateGalaxy() {
-            const parameters = {
-                count: 80000, size: 0.01, radius: 6, branches: 4, spin: 1,
-                randomness: 0.2, randomnessPower: 3,
-                insideColor: "#ff1b6b", outsideColor: "#3000ff"
-            };
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(parameters.count * 3);
-            const colors = new Float32Array(parameters.count * 3);
-            const colorInside = new THREE.Color(parameters.insideColor);
-            const colorOutside = new THREE.Color(parameters.outsideColor);
-
-            for (let i = 0; i < parameters.count; i++) {
-                const i3 = i * 3;
-                const radius = Math.random() * parameters.radius;
-                const spinAngle = radius * parameters.spin;
-                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
-                const randomX = (Math.random() - 0.5) * parameters.randomness * radius;
-                const randomY = (Math.random() - 0.5) * parameters.randomness * radius;
-                const randomZ = (Math.random() - 0.5) * parameters.randomness * radius;
-
-                positions[i3]     = Math.cos(branchAngle + spinAngle) * radius + randomX;
-                positions[i3 + 1] = randomY;
-                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
-
-                const mixed = colorInside.clone().lerp(colorOutside, radius / parameters.radius);
-                colors[i3] = mixed.r; colors[i3 + 1] = mixed.g; colors[i3 + 2] = mixed.b;
-            }
-
-            geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-            geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-
-            const material = new THREE.PointsMaterial({
-                size: parameters.size, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false
-            });
-
-            galaxy = new THREE.Points(geometry, material);
-            glScene.add(galaxy);
-        }
-
-        function generateHeart() {
-            const heartGeometry = new THREE.BufferGeometry();
-            const hPos = [], hCol = [];
-            for (let i = 0; i < 3500; i++) {
-                const t = Math.random() * Math.PI * 2;
-                const s = Math.random() * 0.6 + 0.4;
-                let x = 17 * Math.pow(Math.sin(t), 3);
-                let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-                let z = (Math.random() - 0.5) * 1;
-                x *= s * 0.15; y *= s * 0.15; z *= s * 0.15;
-                hPos.push(x, y + 2.2, z);
-                let c = new THREE.Color();
-                c.setHSL(0.95 + Math.random() * 0.05, 1, 0.65);
-                hCol.push(c.r, c.g, c.b);
-            }
-            heartGeometry.setAttribute("position", new THREE.Float32BufferAttribute(hPos, 3));
-            heartGeometry.setAttribute("color", new THREE.Float32BufferAttribute(hCol, 3));
-            const heartMaterial = new THREE.PointsMaterial({ size: 0.12, vertexColors: true });
-            heart = new THREE.Points(heartGeometry, heartMaterial);
-            glScene.add(heart);
-        }
-
-        function loadHeartModel() {
-            const gltfLoader = new THREE.GLTFLoader();
-            const matcapLoader = new THREE.TextureLoader();
-            gltfLoader.load(
-                'https://assets.codepen.io/74321/heart.glb',
-                (gltf) => {
-                    heartModel = gltf.scene;
-                    heartModel.position.set(0, 3.2, 0);
-                    heartModel.scale.set(1.2, 1.2, 1.2);
-                    const matcap = matcapLoader.load('https://assets.codepen.io/74321/3.png');
-                    heartModel.traverse((child) => {
-                        if (child.isMesh) {
-                            child.material = new THREE.MeshMatcapMaterial({ matcap, color: new THREE.Color('#ff3366') });
-                        }
-                    });
-                    glScene.add(heartModel);
-                },
-                undefined,
-                () => { /* Jika model gagal dimuat, scene tetap berjalan */ }
-            );
-        }
-
-        const frases = [
-            "Aku cinta kamu 💖", "Aku sayang kamu 💘", "Kamu segalanya bagiku ", "Sayangku ", "Cintaku 💞",
-            "Aku memujamu ", "Aku rindu kamu ", "Segalanya bagiku 💫", "Ratuku 👑", "Semestaku ",
-            "Cantik 😍", "Jelita ", "Manis 💕", "Tuan Putri "
-        ];
-
-        function crearTexto(msg, size = 1.8) {
-            const canvas = document.createElement("canvas");
-            canvas.width = 512; canvas.height = 128;
-            const ctx = canvas.getContext("2d");
-            ctx.font = "bold 50px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillStyle = "#ff1493";
-            ctx.fillText(msg, canvas.width / 2, canvas.height / 2);
-            const texture = new THREE.CanvasTexture(canvas);
-            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-            const sprite = new THREE.Sprite(material);
-            sprite.scale.set(size * 4, size, 1);
-            return sprite;
-        }
-
-        function generateTexts() {
-            for (let i = 0; i < 90; i++) {
-                let t = crearTexto(frases[Math.floor(Math.random() * frases.length)], 1 + Math.random());
-                let x = (Math.random() - 0.5) * 40;
-                let y = (Math.random() - 0.5) * 25;
-                let z = (Math.random() - 0.5) * 40;
-                if (Math.abs(x) < 5 && Math.abs(y) < 5) y += 7;
-                t.position.set(x, y, z);
-                t.userData = {
-                    baseY: y,
-                    orbitRadius: Math.sqrt(x * x + z * z),
-                    orbitAngle: Math.atan2(z, x),
-                    orbitSpeed: ORBIT_SYNC_SPEED,
-                    floatAmp: Math.random() * 0.6 + 0.2,
-                    floatSpeed: Math.random() * 0.8 + 0.6,
-                    phase: Math.random() * Math.PI * 2,
-                    baseSize: 1 + Math.random()
-                };
-                t.scale.set(t.userData.baseSize * 4, t.userData.baseSize, 1);
-                glScene.add(t);
-                textoSprites.push(t);
-            }
-        }
-
-        function generatePhotos() {
-            const photoTextureLoader = new THREE.TextureLoader();
-            const urls = [
-                "foto1.jpg",
-                "foto2.jpg",
-                "foto3.jpg"
-            ];
-            for (let i = 0; i < 30; i++) {
-                const texture = photoTextureLoader.load(urls[i % urls.length]);
-                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-                const sprite = new THREE.Sprite(material);
-                const scale = 1 + Math.random();
-                sprite.scale.set(scale, scale, 1);
-                let x = (Math.random() - 0.5) * 40;
-                let y = (Math.random() - 0.5) * 25;
-                let z = (Math.random() - 0.5) * 40;
-                if (Math.abs(x) < 5 && Math.abs(y) < 5) y += 7;
-                sprite.position.set(x, y, z);
-                sprite.userData = {
-                    baseY: y,
-                    orbitRadius: Math.sqrt(x * x + z * z),
-                    orbitAngle: Math.atan2(z, x),
-                    orbitSpeed: ORBIT_SYNC_SPEED,
-                    floatAmp: Math.random() * 0.5 + 0.15,
-                    floatSpeed: Math.random() * 0.9 + 0.5,
-                    phase: Math.random() * Math.PI * 2,
-                    baseScale: scale
-                };
-                glScene.add(sprite);
-                fotoSprites.push(sprite);
-            }
-        }
-
-        const frasesRomanticas = [
-            'Sejak kamu hadir dalam hidupku, aku merasa alam semesta telah menemukan cara sempurna untuk menata dirinya di dalam hatiku. Kamu seperti seluruh galaksi, penuh dengan misteri indah yang ingin aku temukan perlahan-lahan, seperti bintang-bintang yang bersinar bahkan di malam-malamku yang paling gelap. Terkadang aku berpikir, di antara jutaan dunia, aku sangat beruntung menemukanmu, seolah takdir telah merancang kisah kita sejak awal waktu. Dan mencintaimu terasa seperti ini; tak terbatas, dalam, dan cemerlang, seperti langit saat aku menatapnya dan memikirkan segala arti dirimu bagiku. ✨'
-        ];
-
-        function mostrarMensajeRomantico() {
-            const mensaje = frasesRomanticas[Math.floor(Math.random() * frasesRomanticas.length)];
-            mensajeRomantico.textContent = mensaje;
-            modalCarta.classList.add('visible');
-        }
-
-        function init() {
-            glScene = new THREE.Scene();
-            crearEstrellasFondo();
-            generateGalaxy();
-            generateHeart();
-            loadHeartModel();
-            generateTexts();
-            generatePhotos();
-
-            const sizes = { width: window.innerWidth, height: window.innerHeight };
-            glCamera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 600);
-            glCamera.position.set(10, 12, 20);
-            glScene.add(glCamera);
-
-            glRenderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
-            glRenderer.setSize(sizes.width, sizes.height);
-            glRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-            glControls = new THREE.OrbitControls(glCamera, glRenderer.domElement);
-            glControls.enableDamping = true;
-            glClock = new THREE.Clock();
-            raycaster = new THREE.Raycaster();
-            mouse = new THREE.Vector2();
-
-            cerrarCarta.addEventListener('click', () => {
-                modalCarta.classList.remove('visible');
-                modalWishlist.classList.add('visible');
-            });
-            modalCarta.addEventListener('click', (event) => {
-                if (event.target === modalCarta) modalCarta.classList.remove('visible');
-            });
-
-            cerrarWishlist.addEventListener('click', () => modalWishlist.classList.remove('visible'));
-            modalWishlist.addEventListener('click', (event) => {
-                if (event.target === modalWishlist) modalWishlist.classList.remove('visible');
-            });
-            wishlistAddBtn.addEventListener('click', addWishlistItem);
-            wishlistInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') addWishlistItem();
-            });
-            loadWishlist();
-
-            canvasEl.addEventListener('pointerdown', (event) => {
-                if (!heartModel) return;
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-                raycaster.setFromCamera(mouse, glCamera);
-                const impactos = raycaster.intersectObject(heartModel, true);
-                if (impactos.length > 0) mostrarMensajeRomantico();
-            });
-
-            closeBtn.addEventListener('click', () => {
-                if (active) toggleGalaxiloveOverlay();
-            });
-
-            window.addEventListener('resize', () => {
-                if (!glRenderer) return;
-                sizes.width = window.innerWidth;
-                sizes.height = window.innerHeight;
-                glCamera.aspect = sizes.width / sizes.height;
-                glCamera.updateProjectionMatrix();
-                glRenderer.setSize(sizes.width, sizes.height);
-            });
-
-            initialized = true;
-        }
-
-        function tick() {
-            if (!active) { animationId = null; return; }
-            const elapsed = glClock.getElapsedTime();
-
-            galaxy.rotation.y += 0.001;
-            heart.rotation.y += ORBIT_SYNC_SPEED;
-            heart.rotation.z = Math.sin(elapsed * 1.7) * 0.08;
-
-            if (heartModel) {
-                heartModel.rotation.y += 0.01;
-                heartModel.rotation.x = Math.sin(elapsed * 1.8) * 0.1;
-                heartModel.position.y = 3.2 + Math.sin(elapsed * 2.2) * 0.25;
-            }
-
-            textoSprites.forEach(t => {
-                const d = t.userData;
-                d.orbitAngle += d.orbitSpeed;
-                t.position.x = Math.cos(d.orbitAngle) * d.orbitRadius;
-                t.position.z = Math.sin(d.orbitAngle) * d.orbitRadius;
-                t.position.y = d.baseY + Math.sin(elapsed * d.floatSpeed + d.phase) * d.floatAmp;
-                const pulse = 1 + Math.sin(elapsed * 2.4 + d.phase) * 0.1;
-                t.scale.set(d.baseSize * 4 * pulse, d.baseSize * pulse, 1);
-                t.material.opacity = 0.72 + Math.sin(elapsed * 1.9 + d.phase) * 0.2;
-                t.lookAt(glCamera.position);
-            });
-
-            fotoSprites.forEach(s => {
-                const d = s.userData;
-                d.orbitAngle += d.orbitSpeed;
-                s.position.x = Math.cos(d.orbitAngle) * d.orbitRadius;
-                s.position.z = Math.sin(d.orbitAngle) * d.orbitRadius;
-                s.position.y = d.baseY + Math.sin(elapsed * d.floatSpeed + d.phase) * d.floatAmp;
-                const pulse = 1 + Math.sin(elapsed * 1.7 + d.phase) * 0.08;
-                s.scale.set(d.baseScale * pulse, d.baseScale * pulse, 1);
-                s.material.rotation += 0.0015;
-                s.material.opacity = 0.7 + Math.sin(elapsed * 1.5 + d.phase) * 0.25;
-                s.lookAt(glCamera.position);
-            });
-
-            glControls.update();
-            glRenderer.render(glScene, glCamera);
-            animationId = requestAnimationFrame(tick);
-        }
-
-        // Fungsi global dipanggil oleh script NebulaHeart saat gestur 👌 terdeteksi
-        window.toggleGalaxiloveOverlay = function() {
-            if (!initialized) init();
-            active = !active;
-            if (active) {
-                overlay.style.display = 'block';
-                if (!animationId) tick();
-                musica.play().catch(() => { /* browser mungkin memblokir autoplay tanpa klik langsung, tidak apa-apa */ });
-            } else {
-                overlay.style.display = 'none';
-                musica.pause();
-            }
-        };
-    })();
-    </script>
+        currentMessages = currentMessages.filter(m => m.id !== id);
+        render(currentMessages);
+    }
+
+    refreshBtn.addEventListener('click', loadMessages);
+
+    // Realtime: pesan baru langsung muncul tanpa perlu refresh manual
+    supabaseClient
+        .channel('wishlist_messages_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, () => {
+            loadMessages();
+        })
+        .subscribe();
+
+    loadMessages();
+})();
+</script>
 </body>
 </html>
