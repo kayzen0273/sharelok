@@ -179,10 +179,24 @@
     pointer-events:none; opacity:0;
   }
   .cam-overlay.show{ opacity:1; }
+  .call-grid{
+    display:flex; gap:8px; margin-bottom:12px;
+  }
+  .call-grid .cam-wrap{ flex:1; min-width:0; margin-bottom:0; border-width:3px; }
   .cam-msg{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     text-align:center; color:#fff; font-size:13px; padding:20px; background:rgba(0,0,0,.55);
   }
+  .tile-label{
+    position:absolute; left:8px; bottom:8px;
+    background:rgba(0,0,0,.45); color:#fff; font-size:10.5px; font-weight:700;
+    padding:3px 8px; border-radius:20px; letter-spacing:.02em;
+  }
+  .remote-wrap video{ transform:none; }
+  .remote-wrap .cam-msg{ font-size:12px; padding:16px; }
+  #btnCall{ margin-bottom:14px; }
+  #btnCall.in-call{ background:#FDEAEA; border-color:var(--rose); color:var(--rose-dark); }
+
 
   .thumbs-row{ display:flex; gap:8px; margin-bottom:14px; }
   .thumb-slot{
@@ -303,11 +317,21 @@
       <div class="status-chip" id="chipPartner">Pasangan: menunggu…</div>
     </div>
 
-    <div class="cam-wrap" id="camWrap">
-      <video id="video" autoplay playsinline muted></video>
-      <div class="cam-overlay" id="camOverlay"></div>
-      <div class="cam-msg" id="camMsg" style="display:none;"></div>
+    <div class="call-grid">
+      <div class="cam-wrap" id="camWrap">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="cam-overlay" id="camOverlay"></div>
+        <div class="cam-msg" id="camMsg" style="display:none;"></div>
+        <div class="tile-label">Kamu</div>
+      </div>
+      <div class="cam-wrap remote-wrap" id="remoteWrap">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="cam-msg" id="remoteTilePlaceholder">Pasangan belum nyalain video call 📷</div>
+        <div class="tile-label">Pasangan</div>
+      </div>
     </div>
+
+    <button class="btn btn-secondary" id="btnCall">🎥 Mulai Video Call</button>
 
     <div class="thumbs-row" id="thumbsRow">
       <div class="thumb-slot" data-i="0">1</div>
@@ -500,12 +524,18 @@ document.getElementById('copyCodeBtn').onclick = ()=>{
 
 async function startCamera(){
   try{
-    state.stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user" }, audio:false });
+    state.stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user" }, audio:true });
     video.srcObject = state.stream;
   }catch(e){
-    camMsg.style.display = 'flex';
-    camMsg.textContent = "Tidak bisa mengakses kamera. Izinkan akses kamera di browser lalu muat ulang halaman.";
-    btnCapture.disabled = true;
+    try{
+      // fallback: some devices/browsers reject audio+video together, retry video-only
+      state.stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user" }, audio:false });
+      video.srcObject = state.stream;
+    }catch(e2){
+      camMsg.style.display = 'flex';
+      camMsg.textContent = "Tidak bisa mengakses kamera. Izinkan akses kamera di browser lalu muat ulang halaman.";
+      btnCapture.disabled = true;
+    }
   }
 }
 
@@ -564,7 +594,6 @@ async function finalizeMine(){
     return;
   }
   chipYou.textContent = "Kamu: selesai ✔";
-  document.getElementById('camWrap').style.display='none';
   thumbsRow.style.display='none';
   btnCapture.style.display='none';
   partnerWait.style.display='block';
@@ -604,10 +633,153 @@ async function pollRoom(){
 function checkDone(){
   if(state.leftPhotos.length===4 && state.rightPhotos.length===4){
     clearInterval(state.pollTimer);
+    if(callActive) endCall(true);
     if(state.stream) state.stream.getTracks().forEach(t=>t.stop());
     goToEditor();
   }
 }
+
+/* ---------------- LIVE VIDEO CALL (WebRTC, signaling via Supabase) ---------------- */
+const remoteVideo = document.getElementById('remoteVideo');
+const remoteTilePlaceholder = document.getElementById('remoteTilePlaceholder');
+const btnCall = document.getElementById('btnCall');
+const ICE_SERVERS = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" }
+];
+
+let pc = null;
+let callActive = false;
+let callPollTimer = null;
+let localIceBuffer = [];
+let iceFlushTimer = null;
+let appliedRemoteIce = 0;
+let remoteDescApplied = false;
+
+function myIceField(){ return state.role === 'left' ? 'ice_left' : 'ice_right'; }
+function peerIceField(){ return state.role === 'left' ? 'ice_right' : 'ice_left'; }
+
+async function startCall(){
+  if(!state.stream){ await startCamera(); }
+  if(!state.stream) return;
+
+  localIceBuffer = [];
+  appliedRemoteIce = 0;
+  remoteDescApplied = false;
+
+  pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  state.stream.getTracks().forEach(t => pc.addTrack(t, state.stream));
+
+  pc.ontrack = (e)=>{
+    remoteVideo.srcObject = e.streams[0];
+    remoteTilePlaceholder.style.display = 'none';
+    remoteVideo.play().catch(()=>{
+      // autoplay-with-sound blocked: mute then let a tap unmute
+      remoteVideo.muted = true;
+      remoteVideo.play().catch(()=>{});
+      remoteTilePlaceholder.style.display = 'flex';
+      remoteTilePlaceholder.textContent = 'Ketuk untuk aktifkan suara 🔇';
+      remoteTilePlaceholder.style.background = 'rgba(0,0,0,.28)';
+      remoteTilePlaceholder.style.cursor = 'pointer';
+      remoteTilePlaceholder.onclick = ()=>{
+        remoteVideo.muted = false;
+        remoteTilePlaceholder.style.display = 'none';
+      };
+    });
+  };
+  pc.onicecandidate = (e)=>{
+    if(e.candidate){
+      localIceBuffer.push(e.candidate.toJSON());
+      scheduleIceFlush();
+    }
+  };
+  pc.onconnectionstatechange = ()=>{
+    if(pc && (pc.connectionState === 'failed' || pc.connectionState === 'disconnected')){
+      remoteTilePlaceholder.style.display = 'flex';
+      remoteTilePlaceholder.textContent = 'Koneksi video terputus…';
+    }
+  };
+
+  callActive = true;
+  updateCallUI();
+  remoteTilePlaceholder.textContent = 'Menyambungkan…';
+
+  try{
+    if(state.role === 'left'){
+      // fresh call: clear any leftover signaling from a previous session
+      await supaPatch(state.room, { answer_sdp:null, ice_left:[], ice_right:[], call_ended:false });
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await supaPatch(state.room, { offer_sdp: { type:offer.type, sdp:offer.sdp } });
+    } else {
+      await supaPatch(state.room, { call_ended:false });
+    }
+  }catch(e){ /* will retry via poll */ }
+
+  startCallPolling();
+}
+
+function scheduleIceFlush(){
+  if(iceFlushTimer) return;
+  iceFlushTimer = setTimeout(async ()=>{
+    iceFlushTimer = null;
+    try{ await supaPatch(state.room, { [myIceField()]: localIceBuffer }); }catch(e){}
+  }, 500);
+}
+
+function startCallPolling(){
+  if(callPollTimer) clearInterval(callPollTimer);
+  callPollTimer = setInterval(pollCallSignal, 1500);
+  pollCallSignal();
+}
+
+async function pollCallSignal(){
+  if(!pc) return;
+  try{
+    const row = await supaGet(state.room);
+    if(!row) return;
+
+    if(row.call_ended){ endCall(false); return; }
+
+    if(state.role === 'right' && row.offer_sdp && !remoteDescApplied){
+      remoteDescApplied = true;
+      await pc.setRemoteDescription(new RTCSessionDescription(row.offer_sdp));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await supaPatch(state.room, { answer_sdp: { type:answer.type, sdp:answer.sdp } });
+    }
+    if(state.role === 'left' && row.answer_sdp && pc.signalingState === 'have-local-offer'){
+      await pc.setRemoteDescription(new RTCSessionDescription(row.answer_sdp));
+    }
+
+    const peerIce = row[peerIceField()] || [];
+    for(let i = appliedRemoteIce; i < peerIce.length; i++){
+      try{ await pc.addIceCandidate(peerIce[i]); }catch(e){}
+    }
+    appliedRemoteIce = peerIce.length;
+  }catch(e){ /* silent retry */ }
+}
+
+function endCall(notify){
+  callActive = false;
+  if(pc){ try{ pc.close(); }catch(e){} pc = null; }
+  if(callPollTimer) clearInterval(callPollTimer);
+  remoteVideo.srcObject = null;
+  remoteTilePlaceholder.style.display = 'flex';
+  remoteTilePlaceholder.textContent = 'Pasangan belum nyalain video call 📷';
+  updateCallUI();
+  if(notify){ supaPatch(state.room, { call_ended:true }).catch(()=>{}); }
+}
+
+function updateCallUI(){
+  btnCall.textContent = callActive ? "🔴 Akhiri Video Call" : "🎥 Mulai Video Call";
+  btnCall.classList.toggle('in-call', callActive);
+}
+
+btnCall.onclick = ()=>{
+  if(callActive) endCall(true);
+  else startCall();
+};
 
 /* ---------------- EDITOR ---------------- */
 const canvas = document.getElementById('stripCanvas');
