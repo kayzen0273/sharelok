@@ -202,7 +202,7 @@
 
     <div class="jj-eyebrow"><span class="dot"></span>KAMERA &middot; FOTO &middot; JEDAG JEDUG</div>
     <h1 class="jj-title">Buat JJ-mu</h1>
-    <p class="jj-sub">Jepret beberapa foto, tekan <b>Buat Video JJ</b>, dan fotonya langsung disusun jadi video jedag&#8209;jedug siap upload.</p>
+    <p class="jj-sub">Jepret beberapa foto, tekan <b>Buat Video JJ</b> — otomatis jadi video jedag&#8209;jedug ala trend TikTok: <b>glow scan</b>, <b>stutter patah&#8209;patah</b>, dan <b>wobble slebew</b> nyatu jadi satu.</p>
     <div class="jj-meter" id="jjMeter"><span></span><span></span><span></span><span></span><span></span><span></span></div>
 
     <div class="jj-msg" id="jjMsg"></div>
@@ -433,6 +433,41 @@
     const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
   }
+  // "Slebew" style wobble/liquify: cover-fit image sliced into horizontal
+  // strips, each shifted sideways by a sine wave for a warped-glass look.
+  function drawWobbleCover(ctx, img, w, h, strength, phase){
+    const strips = 34;
+    const stripH = Math.ceil(h / strips) + 1;
+    const scale = Math.max(w / img.width, h / img.height);
+    const sw = w / scale, sh = h / scale;
+    const sx0 = (img.width - sw) / 2, sy0 = (img.height - sh) / 2;
+    for (let i = 0; i < strips; i++){
+      const destY = i * (h / strips);
+      const destH = Math.min(h / strips + 1, h - destY);
+      if (destH <= 0) continue;
+      const srcY = sy0 + (destY / h) * sh;
+      const srcH = (destH / h) * sh;
+      const offset = Math.sin((i / strips) * Math.PI * 4 + phase) * strength;
+      ctx.drawImage(img, sx0, srcY, sw, srcH, offset, destY, w, destH);
+    }
+  }
+  // Diagonal light-sweep ("glow scan") that travels across the frame once per beat.
+  function drawGlowScan(ctx, progress, w, h, colorRGB){
+    const bandWidth = 220;
+    const span = w + h * 1.4;
+    const cx = -h * 0.7 + progress * (span + bandWidth);
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.translate(cx, h / 2);
+    ctx.rotate(-Math.PI / 7);
+    const grad = ctx.createLinearGradient(-bandWidth / 2, 0, bandWidth / 2, 0);
+    grad.addColorStop(0, 'rgba(' + colorRGB + ',0)');
+    grad.addColorStop(0.5, 'rgba(' + colorRGB + ',0.55)');
+    grad.addColorStop(1, 'rgba(' + colorRGB + ',0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(-bandWidth / 2, -h * 1.5, bandWidth, h * 3);
+    ctx.restore();
+  }
   function shuffle(arr){
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--){
@@ -515,26 +550,51 @@
         return;
       }
       const beatIndex = Math.min(Math.floor(elapsed / beatInterval), numBeats - 1);
-      const t = (elapsed - beatIndex * beatInterval) / beatInterval;
+      let t = (elapsed - beatIndex * beatInterval) / beatInterval;
       const accent = beatIndex % 4 === 0;
       const img = order[beatIndex % order.length];
+      const cycle = beatIndex % 8;
+      const isWobbleBeat = cycle === 5;          // "slebew" wobble every 2 bars
+      const isStutterBeat = !isWobbleBeat && (cycle === 2 || cycle === 6); // patah-patah
 
-      const amp = accent ? 0.24 : 0.13;
-      const punch = Math.min(t / 0.35, 1);
-      const eased = 1 - Math.pow(1 - punch, 3);
-      const zoom = 1 + amp * (1 - eased);
+      // patah-patah: quantize time so motion advances in visible jerky steps
+      if (isStutterBeat){
+        const steps = 6;
+        t = Math.floor(t * steps) / steps;
+      }
 
-      const shakeAmp = accent ? 16 : 7;
-      const shakeDecay = Math.max(0, 1 - t / 0.25);
-      const sx = (Math.random() - 0.5) * 2 * shakeAmp * shakeDecay;
-      const sy = (Math.random() - 0.5) * 2 * shakeAmp * shakeDecay;
+      if (isWobbleBeat && t < 0.55){
+        const strength = 22 * (1 - t / 0.55);
+        drawWobbleCover(ctx, img, W, H, strength, elapsed * 9);
+      } else {
+        const amp = accent ? 0.24 : 0.13;
+        const punch = Math.min(t / 0.35, 1);
+        const eased = 1 - Math.pow(1 - punch, 3);
+        const zoom = 1 + amp * (1 - eased);
 
-      ctx.save();
-      ctx.translate(W / 2 + sx, H / 2 + sy);
-      ctx.scale(zoom, zoom);
-      ctx.translate(-W / 2, -H / 2);
-      drawCover(ctx, img, W, H);
-      ctx.restore();
+        const shakeAmp = accent ? 16 : (isStutterBeat ? 12 : 7);
+        const shakeDecay = Math.max(0, 1 - t / 0.25);
+        const sx = (Math.random() - 0.5) * 2 * shakeAmp * shakeDecay;
+        const sy = (Math.random() - 0.5) * 2 * shakeAmp * shakeDecay;
+
+        ctx.save();
+        ctx.translate(W / 2 + sx, H / 2 + sy);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-W / 2, -H / 2);
+        drawCover(ctx, img, W, H);
+        ctx.restore();
+      }
+
+      // occasional single-frame black flicker to sell the "patah-patah" chop
+      if (isStutterBeat && t < 0.5 && Math.floor(t * 6) % 2 === 0 && t % (1/6) < 0.02){
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // glow scan: diagonal light sweep once per beat, color rotates
+      const glowColors = ['0,229,255', '255,46,136', '232,255,41'];
+      const glowProgress = Math.min(t / 0.65, 1);
+      drawGlowScan(ctx, glowProgress, W, H, glowColors[beatIndex % glowColors.length]);
 
       const flashDur = accent ? 0.22 : 0.11;
       const flashDecay = Math.max(0, 1 - t / flashDur);
@@ -561,7 +621,7 @@
       draw(elapsed);
       const progress = Math.max(0, Math.min(1, elapsed / totalSec));
       els.bar.style.width = (progress * 100) + '%';
-      const labels = ['NGE-JEDAG...', 'JEDAG JEDUG!', 'HAMPIR JADI...'];
+      const labels = ['NGE-JEDAG...', 'GLOW · STUTTER · WOBBLE', 'HAMPIR JADI...'];
       els.overlayLabel.textContent = labels[Math.min(2, Math.floor(progress * 3))];
       if (elapsed < totalSec + 0.4){
         rafId = requestAnimationFrame(frame);
