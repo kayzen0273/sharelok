@@ -173,6 +173,69 @@ canvas#sceneCanvas{
 }
 
 
+.filter-badge{
+  position:absolute;
+  top:64px;
+  left:22px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  padding:7px 12px;
+  border-radius:2px;
+  border:1px solid rgba(234,229,214,0.25);
+  background:rgba(10,10,8,0.7);
+  color:var(--paper);
+  z-index:5;
+  transition:border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.filter-badge-label{
+  color:var(--signal-dim);
+  opacity:0.9;
+}
+.filter-badge.flash{
+  border-color:var(--signal);
+  box-shadow:0 0 14px rgba(245,197,24,0.45);
+}
+.filter-dots{
+  display:flex;
+  gap:5px;
+  margin-left:4px;
+}
+.filter-dot{
+  width:11px; height:11px;
+  border-radius:50%;
+  border:1.5px solid rgba(234,229,214,0.4);
+  padding:0;
+  cursor:pointer;
+  transition:transform 0.15s ease, border-color 0.15s ease;
+}
+.filter-dot:hover{ transform:scale(1.15); }
+.filter-dot.active{
+  border-color:var(--signal);
+  box-shadow:0 0 6px rgba(245,197,24,0.7);
+  transform:scale(1.2);
+}
+
+.gesture-key .swatch.fingers{
+  border-radius:2px;
+  border-color:#28c8f5;
+}
+.gesture-key .swatch.rock{
+  border-radius:2px;
+  border-color:#b98cf0;
+  background:#b98cf0;
+  opacity:0.85;
+}
+.gesture-key .swatch.ok{
+  border-radius:50%;
+  border-color:var(--ok);
+  border-style:dashed;
+}
+
 #loadingOverlay{
   position:absolute; inset:0;
   background:var(--ink);
@@ -404,6 +467,23 @@ canvas#sceneCanvas{
       <span id="progressText">0 / 9 piezas colocadas</span>
     </div>
 
+    <div id="filterBadge" class="filter-badge">
+      <span class="filter-badge-label">FILTRO</span>
+      <span id="filterName">Clásico B/N</span>
+      <div id="filterDots" class="filter-dots"></div>
+    </div>
+
+    <div class="hud-bottom">
+      <div class="gesture-key">
+        <div class="item"><span class="swatch pinch"></span> pellizco (2 manos) = encuadrar foto</div>
+        <div class="item"><span class="swatch drag"></span> pellizco (1 mano) = mover pieza</div>
+        <div class="item"><span class="swatch fist"></span> puño sostenido = guardar / reiniciar</div>
+        <div class="item"><span class="swatch fingers"></span> 0–5 dedos = elegir filtro</div>
+        <div class="item"><span class="swatch rock"></span> 🤘 = filtro pixel art</div>
+        <div class="item"><span class="swatch ok"></span> 👌 = volver a clásico</div>
+      </div>
+    </div>
+
     <div id="loadingOverlay">
       <div class="loader-text" id="loaderText">cargando modelo HandLandmarker…</div>
       <div class="loader-bar"></div>
@@ -445,6 +525,8 @@ import {
 
 const LM = {
   WRIST: 0,
+  THUMB_MCP: 2,
+  THUMB_IP: 3,
   THUMB_TIP: 4,
   INDEX_MCP: 5,
   INDEX_TIP: 8,
@@ -468,6 +550,11 @@ const LOAD_TIMEOUT_MS = 20000;
 const PHOTOBOOTH_CONTRAST_ALPHA = 1.3;
 const PHOTOBOOTH_BRIGHTNESS_BETA = 10;
 const PHOTOBOOTH_NOISE_STD = 15;
+
+const FINGER_EXTEND_RATIO = 1.15;
+const THUMB_EXTEND_RATIO = 1.1;
+const FILTER_HOLD_MS = 550;
+const FILTER_PIXEL_BLOCK = 12;
 
 const HAND_CONNECTIONS = [
   [0, 1], [1, 2], [2, 3], [3, 4],
@@ -497,6 +584,10 @@ const galleryCount = document.getElementById("galleryCount");
 const downloadStripBtn = document.getElementById("downloadStripBtn");
 const resetAllBtn = document.getElementById("resetAllBtn");
 const stripCompleteMsg = document.getElementById("stripCompleteMsg");
+
+const filterBadge = document.getElementById("filterBadge");
+const filterNameEl = document.getElementById("filterName");
+const filterDotsEl = document.getElementById("filterDots");
 
 let appState = "tracking";
 
@@ -838,8 +929,6 @@ function drawCountdownOverlay(box) {
     return;
   }
 
-  applyBWInsideBox(box);
-
   ctx.save();
   ctx.strokeStyle = "#f5c518";
   ctx.lineWidth = 3;
@@ -881,6 +970,308 @@ function applyPhotoboothEffect(imageData) {
   return imageData;
 }
 
+// ---------------------------------------------------------------------------
+// FILTER ENGINE — multiple "cool" camera filters, selectable by hand gestures
+// ---------------------------------------------------------------------------
+
+function buildLUT(mapFn) {
+  const lut = new Uint8ClampedArray(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const [r, g, b] = mapFn(i);
+    lut[i * 3] = r;
+    lut[i * 3 + 1] = g;
+    lut[i * 3 + 2] = b;
+  }
+  return lut;
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+const CLASSIC_LUT = buildLUT((i) => {
+  const v = i * PHOTOBOOTH_CONTRAST_ALPHA + PHOTOBOOTH_BRIGHTNESS_BETA;
+  return [v, v, v];
+});
+
+const SEPIA_LUT = buildLUT((i) => [
+  i * 0.95 + 35,
+  i * 0.74 + 18,
+  i * 0.48,
+]);
+
+const VINTAGE_LUT = buildLUT((i) => {
+  const v = i * 0.72 + 48;
+  return [v * 1.08 + 18, v * 0.98 + 8, v * 0.8];
+});
+
+const NEON_LUT = buildLUT((i) => {
+  const t = i / 255;
+  const shadow = [42, 6, 62];
+  const highlight = [40, 245, 232];
+  return [
+    lerp(shadow[0], highlight[0], t),
+    lerp(shadow[1], highlight[1], t),
+    lerp(shadow[2], highlight[2], t),
+  ];
+});
+
+const THERMAL_STOPS = [
+  [0, [8, 8, 42]],
+  [64, [32, 20, 145]],
+  [128, [20, 165, 60]],
+  [192, [242, 210, 20]],
+  [255, [232, 30, 20]],
+];
+const THERMAL_LUT = buildLUT((i) => {
+  for (let s = 0; s < THERMAL_STOPS.length - 1; s++) {
+    const [pos0, c0] = THERMAL_STOPS[s];
+    const [pos1, c1] = THERMAL_STOPS[s + 1];
+    if (i >= pos0 && i <= pos1) {
+      const t = (i - pos0) / (pos1 - pos0);
+      return [lerp(c0[0], c1[0], t), lerp(c0[1], c1[1], t), lerp(c0[2], c1[2], t)];
+    }
+  }
+  return [255, 255, 255];
+});
+
+function makeVignette(width, height) {
+  const cx = width / 2;
+  const cy = height / 2;
+  const maxDist2 = cx * cx + cy * cy;
+  return (px, py) => {
+    const dx = px - cx;
+    const dy = py - cy;
+    const d2 = (dx * dx + dy * dy) / maxDist2;
+    return 1 - Math.min(0.55, d2 * 0.55);
+  };
+}
+
+function applyLutFilter(imageData, lut, { noiseStd = 0, vignette = null } = {}) {
+  const d = imageData.data;
+  const width = imageData.width;
+  for (let i = 0, px = 0; i < d.length; i += 4, px++) {
+    const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    const gi = gray < 0 ? 0 : gray > 255 ? 255 : gray | 0;
+    let r = lut[gi * 3];
+    let g = lut[gi * 3 + 1];
+    let b = lut[gi * 3 + 2];
+    if (noiseStd) {
+      const n = gaussianNoise(noiseStd);
+      r += n; g += n; b += n;
+    }
+    if (vignette) {
+      const x = px % width;
+      const y = (px / width) | 0;
+      const f = vignette(x, y);
+      r *= f; g *= f; b *= f;
+    }
+    d[i] = r; d[i + 1] = g; d[i + 2] = b;
+  }
+  return imageData;
+}
+
+function applyClassicFilter(imageData) {
+  return applyLutFilter(imageData, CLASSIC_LUT, { noiseStd: PHOTOBOOTH_NOISE_STD });
+}
+function applySepiaFilter(imageData) {
+  return applyLutFilter(imageData, SEPIA_LUT, { noiseStd: 6 });
+}
+function applyInvertFilter(imageData) {
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i] = 255 - d[i];
+    d[i + 1] = 255 - d[i + 1];
+    d[i + 2] = 255 - d[i + 2];
+  }
+  return imageData;
+}
+function applyVintageFilter(imageData) {
+  const vignette = makeVignette(imageData.width, imageData.height);
+  return applyLutFilter(imageData, VINTAGE_LUT, { noiseStd: 8, vignette });
+}
+function applyNeonFilter(imageData) {
+  return applyLutFilter(imageData, NEON_LUT, { noiseStd: 0 });
+}
+function applyThermalFilter(imageData) {
+  return applyLutFilter(imageData, THERMAL_LUT, { noiseStd: 0 });
+}
+function applyPixelFilter(imageData) {
+  const { data, width, height } = imageData;
+  const block = FILTER_PIXEL_BLOCK;
+  for (let by = 0; by < height; by += block) {
+    const bh = Math.min(block, height - by);
+    for (let bx = 0; bx < width; bx += block) {
+      const bw = Math.min(block, width - bx);
+      let rSum = 0, gSum = 0, bSum = 0, count = 0;
+      for (let y = 0; y < bh; y++) {
+        for (let x = 0; x < bw; x++) {
+          const idx = ((by + y) * width + (bx + x)) * 4;
+          rSum += data[idx]; gSum += data[idx + 1]; bSum += data[idx + 2];
+          count++;
+        }
+      }
+      const r = Math.round(rSum / count);
+      const g = Math.round(gSum / count);
+      const b = Math.round(bSum / count);
+      for (let y = 0; y < bh; y++) {
+        for (let x = 0; x < bw; x++) {
+          const idx = ((by + y) * width + (bx + x)) * 4;
+          data[idx] = r; data[idx + 1] = g; data[idx + 2] = b;
+        }
+      }
+    }
+  }
+  return imageData;
+}
+
+const FILTERS = [
+  { id: "classic", label: "Clásico B/N", swatch: "#eae5d6", apply: applyClassicFilter },
+  { id: "sepia", label: "Sepia", swatch: "#a9773f", apply: applySepiaFilter },
+  { id: "invert", label: "Invertido", swatch: "#ffffff", apply: applyInvertFilter, invertSwatch: true },
+  { id: "vintage", label: "Vintage", swatch: "#c98a4b", apply: applyVintageFilter },
+  { id: "neon", label: "Neón", swatch: "#28f5d8", apply: applyNeonFilter },
+  { id: "thermal", label: "Térmico", swatch: "#f2521a", apply: applyThermalFilter },
+  { id: "pixel", label: "Pixel Art", swatch: "#5fae6e", apply: applyPixelFilter },
+];
+
+let currentFilterIndex = 0;
+
+function applyFilterToRegion(x, y, w, h, filterFn) {
+  const rx = Math.max(0, Math.round(x));
+  const ry = Math.max(0, Math.round(y));
+  const rw = Math.min(canvas.width - rx, Math.round(w));
+  const rh = Math.min(canvas.height - ry, Math.round(h));
+  if (rw <= 0 || rh <= 0) return;
+  const region = ctx.getImageData(rx, ry, rw, rh);
+  filterFn(region);
+  ctx.putImageData(region, rx, ry);
+}
+
+function applyCurrentFilterFullCanvas() {
+  applyFilterToRegion(0, 0, canvas.width, canvas.height, FILTERS[currentFilterIndex].apply);
+}
+
+let filterBadgeFlashTimer = null;
+function setActiveFilter(index) {
+  if (index === currentFilterIndex) return;
+  currentFilterIndex = index;
+  if (filterNameEl) filterNameEl.textContent = FILTERS[currentFilterIndex].label;
+  if (filterDotsEl) {
+    [...filterDotsEl.children].forEach((dot, i) => {
+      dot.classList.toggle("active", i === currentFilterIndex);
+    });
+  }
+  if (filterBadge) {
+    filterBadge.classList.remove("flash");
+    void filterBadge.offsetWidth;
+    filterBadge.classList.add("flash");
+    clearTimeout(filterBadgeFlashTimer);
+    filterBadgeFlashTimer = setTimeout(() => filterBadge.classList.remove("flash"), 420);
+  }
+}
+
+function buildFilterDots() {
+  if (!filterDotsEl) return;
+  filterDotsEl.innerHTML = "";
+  FILTERS.forEach((f, i) => {
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = "filter-dot" + (i === currentFilterIndex ? " active" : "");
+    dot.title = f.label;
+    dot.style.background = f.swatch;
+    if (f.invertSwatch) dot.style.boxShadow = "inset 0 0 0 2px #111";
+    dot.addEventListener("click", () => setActiveFilter(i));
+    filterDotsEl.appendChild(dot);
+  });
+}
+
+// ---- gesture-detection helpers for filter selection ----
+
+function isFingerExtended(landmarks, tipIdx, mcpIdx) {
+  const wrist = landmarks[LM.WRIST];
+  return dist2D(landmarks[tipIdx], wrist) > dist2D(landmarks[mcpIdx], wrist) * FINGER_EXTEND_RATIO;
+}
+function isFingerCurled(landmarks, tipIdx, mcpIdx) {
+  const wrist = landmarks[LM.WRIST];
+  return dist2D(landmarks[tipIdx], wrist) < dist2D(landmarks[mcpIdx], wrist);
+}
+function isThumbExtended(landmarks) {
+  const thumbTip = landmarks[LM.THUMB_TIP];
+  const thumbMcp = landmarks[LM.THUMB_MCP];
+  const pinkyMcp = landmarks[LM.PINKY_MCP];
+  return dist2D(thumbTip, pinkyMcp) > dist2D(thumbMcp, pinkyMcp) * THUMB_EXTEND_RATIO;
+}
+function countExtendedFingers(landmarks) {
+  let count = 0;
+  if (isFingerExtended(landmarks, LM.INDEX_TIP, LM.INDEX_MCP)) count++;
+  if (isFingerExtended(landmarks, LM.MIDDLE_TIP, LM.MIDDLE_MCP)) count++;
+  if (isFingerExtended(landmarks, LM.RING_TIP, LM.RING_MCP)) count++;
+  if (isFingerExtended(landmarks, LM.PINKY_TIP, LM.PINKY_MCP)) count++;
+  if (isThumbExtended(landmarks)) count++;
+  return count;
+}
+function isRockSign(landmarks) {
+  return (
+    isFingerExtended(landmarks, LM.INDEX_TIP, LM.INDEX_MCP) &&
+    isFingerExtended(landmarks, LM.PINKY_TIP, LM.PINKY_MCP) &&
+    isFingerCurled(landmarks, LM.MIDDLE_TIP, LM.MIDDLE_MCP) &&
+    isFingerCurled(landmarks, LM.RING_TIP, LM.RING_MCP)
+  );
+}
+function isOkSign(landmarks) {
+  const pinchClose = dist2D(landmarks[LM.THUMB_TIP], landmarks[LM.INDEX_TIP]) < PINCH_THRESHOLD * 1.3;
+  return (
+    pinchClose &&
+    isFingerExtended(landmarks, LM.MIDDLE_TIP, LM.MIDDLE_MCP) &&
+    isFingerExtended(landmarks, LM.RING_TIP, LM.RING_MCP) &&
+    isFingerExtended(landmarks, LM.PINKY_TIP, LM.PINKY_MCP)
+  );
+}
+
+const PIXEL_FILTER_INDEX = FILTERS.findIndex((f) => f.id === "pixel");
+const filterGesture = { pendingIndex: null, pendingSince: 0 };
+
+function handleFilterSelectGesture(landmarks) {
+  let desiredIndex = null;
+  let gestureLabel = "";
+
+  if (isRockSign(landmarks)) {
+    desiredIndex = PIXEL_FILTER_INDEX;
+    gestureLabel = "🤘 rock";
+  } else if (isOkSign(landmarks)) {
+    desiredIndex = 0;
+    gestureLabel = "👌 ok";
+  } else if (!isPinching(landmarks)) {
+    const fingers = countExtendedFingers(landmarks);
+    desiredIndex = fingers;
+    gestureLabel = `${fingers} dedo(s)`;
+  }
+
+  if (desiredIndex === null || desiredIndex === currentFilterIndex) {
+    filterGesture.pendingIndex = null;
+    statusText.textContent = isStripFull()
+      ? "tira completa — descarga o reinicia"
+      : "manos en seguimiento";
+    return;
+  }
+
+  if (filterGesture.pendingIndex === desiredIndex) {
+    const heldMs = performance.now() - filterGesture.pendingSince;
+    if (heldMs >= FILTER_HOLD_MS) {
+      setActiveFilter(desiredIndex);
+      filterGesture.pendingIndex = null;
+      statusText.textContent = `filtro: ${FILTERS[desiredIndex].label}`;
+    } else {
+      statusText.textContent = `${gestureLabel} → ${FILTERS[desiredIndex].label}… mantén`;
+    }
+  } else {
+    filterGesture.pendingIndex = desiredIndex;
+    filterGesture.pendingSince = performance.now();
+    statusText.textContent = `${gestureLabel} → ${FILTERS[desiredIndex].label}… mantén`;
+  }
+}
+
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -913,7 +1304,7 @@ function finishCountdownAndCapture(box) {
   );
 
   const fullImageData = cropCtx.getImageData(0, 0, cropCanvas.width, cropCanvas.height);
-  applyPhotoboothEffect(fullImageData);
+  FILTERS[currentFilterIndex].apply(fullImageData);
   cropCtx.putImageData(fullImageData, 0, 0);
 
   puzzle.fullPhotoboothCanvas = cropCanvas;
@@ -1227,18 +1618,6 @@ function drawVideoFrame() {
   ctx.restore();
 }
 
-function applyBWInsideBox(box) {
-  const x = Math.max(0, Math.round(box.x));
-  const y = Math.max(0, Math.round(box.y));
-  const w = Math.min(canvas.width - x, Math.round(box.width));
-  const h = Math.min(canvas.height - y, Math.round(box.height));
-  if (w <= 0 || h <= 0) return;
-
-  const region = ctx.getImageData(x, y, w, h);
-  applyPhotoboothEffect(region);
-  ctx.putImageData(region, x, y);
-}
-
 function drawLiveFrameOverlay(box) {
   ctx.save();
   ctx.strokeStyle = "#f5c518";
@@ -1454,7 +1833,6 @@ function processResults(result) {
     if (appState === "tracking") {
       const sinceLastSeen = performance.now() - lastSeenFrame.at;
       if (lastSeenFrame.box && sinceLastSeen < FRAME_GRACE_MS) {
-        applyBWInsideBox(lastSeenFrame.box);
         drawLiveFrameOverlay(lastSeenFrame.box);
       }
       statusText.textContent = isStripFull()
@@ -1508,7 +1886,6 @@ function processResults(result) {
       const frameBox = computeHandFrame(indexA, indexB);
 
       if (frameBox.width > 4 && frameBox.height > 4) {
-        applyBWInsideBox(frameBox);
         drawLiveFrameOverlay(frameBox);
         lastSeenFrame.box = frameBox;
         lastSeenFrame.at = performance.now();
@@ -1535,10 +1912,12 @@ function processResults(result) {
       freezeGate.holding = false;
       const sinceLastSeen = performance.now() - lastSeenFrame.at;
       if (lastSeenFrame.box && sinceLastSeen < FRAME_GRACE_MS) {
-        applyBWInsideBox(lastSeenFrame.box);
         drawLiveFrameOverlay(lastSeenFrame.box);
-        statusText.textContent = "manos en seguimiento";
+      }
+      if (handsLandmarks.length === 1) {
+        handleFilterSelectGesture(handsLandmarks[0]);
       } else {
+        filterGesture.pendingIndex = null;
         statusText.textContent = "manos en seguimiento";
       }
     }
@@ -1583,6 +1962,7 @@ function processResults(result) {
 function renderLoop() {
   if (videoEl.readyState >= 2 && handLandmarker) {
     drawVideoFrame();
+    applyCurrentFilterFullCanvas();
     const nowMs = performance.now();
     const result = handLandmarker.detectForVideo(videoEl, nowMs);
     processResults(result);
@@ -1662,6 +2042,9 @@ if (resetAllBtn) {
     if (confirmed) resetEverything();
   });
 }
+
+buildFilterDots();
+if (filterNameEl) filterNameEl.textContent = FILTERS[currentFilterIndex].label;
 
 boot();
 </script>
