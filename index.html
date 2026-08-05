@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migrasi Firebase → Supabase</title>
+<!-- SDK versi "compat" (bukan module) supaya bisa dibuka langsung dari file di HP, tanpa server -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  body { font-family: -apple-system, Roboto, Arial, sans-serif; background:#0f172a; color:#e2e8f0; margin:0; padding:20px; }
+  h1 { font-size:18px; margin-bottom:4px; }
+  p.sub { color:#94a3b8; font-size:13px; margin-top:0; margin-bottom:20px; }
+  button { width:100%; padding:16px; font-size:16px; font-weight:700; border:none; border-radius:10px;
+           background:#19737c; color:white; }
+  button:disabled { background:#334155; color:#94a3b8; }
+  #log { margin-top:20px; background:#1e293b; border-radius:10px; padding:12px; font-size:12.5px;
+         line-height:1.6; height:60vh; overflow-y:auto; white-space:pre-wrap; word-break:break-word; }
+  .ok { color:#4ade80; }
+  .err { color:#f87171; }
+  .info { color:#93c5fd; }
+  .done { color:#fbbf24; font-weight:700; }
+</style>
+</head>
+<body>
+
+<h1>🔄 Migrasi Data: Firebase → Supabase</h1>
+<p class="sub">Sistek Kasir — jalan langsung di browser HP, tidak perlu install apa-apa. Pastikan internet stabil, lalu tekan tombol di bawah.</p>
+
+<button id="btnStart" onclick="startMigration()">Mulai Migrasi</button>
+<div id="log"></div>
+
+<script>
+// ================= KONFIGURASI =================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAKhe3ILdMTN7Dn9Ao3MqlzW3s5hHUDB_c",
+  authDomain: "toko-husna-c6415.firebaseapp.com",
+  projectId: "toko-husna-c6415",
+  storageBucket: "toko-husna-c6415.firebasestorage.app",
+  messagingSenderId: "171239564619",
+  appId: "1:171239564619:web:29972d886bd39f1559f4ce",
+  measurementId: "G-4BKNYL5KFC"
+};
+const FIREBASE_APP_ID = "default-app-id"; // sama dengan window.appId di aplikasi utama
+
+const SUPABASE_URL = "https://qunnhqmteenjrufiosuw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1bm5ocW10ZWVuanJ1Zmlvc3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NDQwNDUsImV4cCI6MjEwMTUyMDA0NX0.BFU73Er2oS7c82MlQKa0gdSswilU3cID9LH1q_2i-8A";
+
+const PUBLIC_COLLECTIONS = [
+  'active_carts', 'cashflow', 'daily_revenue', 'dokter_list', 'inventory',
+  'paket_barang', 'pasien_list', 'pending_carts', 'priceHistory', 'purchases',
+  'shift_absensi', 'shift_config', 'shift_jadwal', 'shift_karyawan', 'shift_lokasi',
+  'stock_opname', 'suppliers', 'transactions', 'transfer_barang', 'users',
+  'settings', 'otp_reset', 'changelog', 'presence', 'feedback',
+];
+// =================================================
+
+const logEl = document.getElementById('log');
+const btn = document.getElementById('btnStart');
+
+function log(msg, cls) {
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function convertValue(v) {
+  if (v === null || v === undefined) return v;
+  if (v && typeof v.toDate === 'function') return v.toDate().toISOString(); // Firestore Timestamp
+  if (Array.isArray(v)) return v.map(convertValue);
+  if (typeof v === 'object') {
+    const out = {};
+    for (const k in v) out[k] = convertValue(v[k]);
+    return out;
+  }
+  return v;
+}
+
+async function upsertRows(sb, rows, label) {
+  if (rows.length === 0) return;
+  const CHUNK = 300;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const { error } = await sb.from('fs_documents').upsert(chunk, { onConflict: 'path_key,id' });
+    if (error) throw error;
+    log(`  -> ${label}: tersimpan ${Math.min(i + CHUNK, rows.length)}/${rows.length}`, 'ok');
+  }
+}
+
+async function startMigration() {
+  btn.disabled = true;
+  btn.textContent = 'Sedang migrasi... jangan tutup halaman ini';
+  logEl.innerHTML = '';
+  let totalDocs = 0;
+
+  try {
+    log('Menghubungkan ke Firebase...', 'info');
+    const fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    await auth.signInAnonymously();
+    log('✓ Login anonim Firebase berhasil', 'ok');
+
+    log('Menghubungkan ke Supabase...', 'info');
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    log('✓ Terhubung ke Supabase', 'ok');
+
+    for (const name of PUBLIC_COLLECTIONS) {
+      const path = `artifacts/${FIREBASE_APP_ID}/public/data/${name}`;
+      log(`\nMembaca collection "${name}"...`, 'info');
+      try {
+        const snap = await db.collection(path).get();
+        log(`  ${snap.size} dokumen ditemukan`);
+        const rows = snap.docs.map(d => ({
+          path_key: path,
+          id: d.id,
+          data: convertValue(d.data()),
+        }));
+        await upsertRows(sb, rows, name);
+        totalDocs += rows.length;
+      } catch (e) {
+        log(`  ✗ Gagal baca "${name}": ${e.message}`, 'err');
+      }
+    }
+
+    log('\nMembaca catatan per-user (collectionGroup "catatan")...', 'info');
+    try {
+      const snap = await db.collectionGroup('catatan').get();
+      log(`  ${snap.size} dokumen ditemukan`);
+      const rows = snap.docs
+        .filter(d => d.ref.path.startsWith(`artifacts/${FIREBASE_APP_ID}/users/`))
+        .map(d => ({
+          path_key: d.ref.path.split('/').slice(0, -1).join('/'),
+          id: d.id,
+          data: convertValue(d.data()),
+        }));
+      await upsertRows(sb, rows, 'catatan');
+      totalDocs += rows.length;
+    } catch (e) {
+      log(`  ✗ Gagal baca "catatan": ${e.message}`, 'err');
+      log(`  (Kalau errornya soal index/permission, catatan per-user perlu dipindah manual — beri tahu saya)`, 'err');
+    }
+
+    log(`\n✅ SELESAI. Total ${totalDocs} dokumen dipindah ke Supabase.`, 'done');
+    btn.textContent = 'Migrasi selesai ✓';
+  } catch (e) {
+    log(`\n✗ Migrasi berhenti karena error: ${e.message}`, 'err');
+    btn.disabled = false;
+    btn.textContent = 'Coba Lagi';
+  }
+}
+</script>
+</body>
+</html>
