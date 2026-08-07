@@ -2,1094 +2,405 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>liquidchrome1 — TouchDesigner-style Webcam Shader</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migrasi Data — Toko Husna (Firebase → Supabase)</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
-
-  :root{
-    --void:#0a0a0c;
-    --panel:#16171b;
-    --panel2:#1d1f24;
-    --border:#2b2d33;
-    --border-soft:#232429;
-    --text:#e7e8ec;
-    --text-dim:#84868f;
-    --text-dimmer:#585a63;
-    --amber:#ff9d2e;
-    --teal:#5eead4;
-    --danger:#ff5c5c;
-    --font-ui: 'Space Grotesk', 'Inter', sans-serif;
-    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f4f5f7; color: #1a1a1a; margin: 0; padding: 24px;
+    line-height: 1.5;
   }
-
-  *{ box-sizing:border-box; }
-  html,body{
-    margin:0; padding:0; width:100%; height:100%;
-    background:var(--void);
-    color:var(--text);
-    font-family:var(--font-ui);
-    overflow:hidden;
-    -webkit-tap-highlight-color:transparent;
+  .wrap { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #666; margin: 0 0 20px; font-size: 14px; }
+  .card {
+    background: #fff; border: 1px solid #e2e4e8; border-radius: 10px;
+    padding: 20px; margin-bottom: 16px;
   }
-
-  body{
-    background-image:radial-gradient(circle, #1a1b1f 1px, transparent 1px);
-    background-size:22px 22px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    height:100dvh;
+  .notice {
+    background: #eef6ff; border: 1px solid #bcdcff; color: #0a4d8f;
+    border-radius: 8px; padding: 12px 14px; font-size: 13.5px; margin-bottom: 16px;
   }
-
-  #app{
-    width:100%;
-    height:100%;
-    max-width:1600px;
-    max-height:980px;
-    display:flex;
-    flex-direction:column;
-    background:var(--panel);
-    border:1px solid var(--border);
-    box-shadow:0 40px 90px -30px rgba(0,0,0,0.7);
-    overflow:hidden;
+  .notice b { display: block; margin-bottom: 4px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #444; }
+  input[type=text] {
+    width: 100%; padding: 9px 10px; border: 1px solid #d5d7dc; border-radius: 6px;
+    font-size: 14px; font-family: ui-monospace, monospace;
   }
-  @media (min-width:1020px) and (min-height:680px){
-    #app{ margin:22px; height:calc(100% - 44px); border-radius:8px; }
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 220px; }
+  button {
+    background: #16a34a; color: #fff; border: none; border-radius: 7px;
+    padding: 11px 20px; font-size: 14.5px; font-weight: 600; cursor: pointer;
+    margin-top: 14px;
   }
-
-  /* ---------- Titlebar ---------- */
-  .titlebar{
-    height:38px;
-    flex:0 0 auto;
-    display:flex;
-    align-items:center;
-    gap:14px;
-    padding:0 12px;
-    background:linear-gradient(180deg,#1c1d22,#17181c);
-    border-bottom:1px solid var(--border);
-    font-family:var(--font-mono);
-    font-size:11.5px;
-    color:var(--text-dim);
-    -webkit-user-select:none; user-select:none;
+  button:hover { background: #128a3e; }
+  button:disabled { background: #9ca3af; cursor: not-allowed; }
+  button.secondary { background: #fff; color: #16a34a; border: 1px solid #16a34a; }
+  button.secondary:hover { background: #f0fdf4; }
+  #log {
+    background: #0d1117; color: #d8dee6; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12.5px; padding: 14px; border-radius: 8px; height: 340px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-word; margin-top: 14px; display: none;
   }
-  .dots{ display:flex; gap:7px; flex:0 0 auto; }
-  .dots span{ width:10px; height:10px; border-radius:50%; display:block; }
-  .dots span:nth-child(1){ background:#ff5f57; }
-  .dots span:nth-child(2){ background:#febc2e; }
-  .dots span:nth-child(3){ background:#28c840; }
-  .path{ color:var(--text); letter-spacing:0.2px; }
-  .path b{ color:var(--teal); font-weight:500; }
-  .menu{ display:flex; gap:16px; margin-left:6px; }
-  .menu span{ opacity:0.55; }
-  .menu span:hover{ opacity:0.9; }
-  .titlebar .spacer{ flex:1; }
-  .res-readout{ opacity:0.55; }
-  @media (max-width:720px){ .menu, .res-readout{ display:none; } }
-
-  /* ---------- Body layout ---------- */
-  .td-body{
-    flex:1 1 auto;
-    display:flex;
-    min-height:0;
-  }
-
-  .viewer-wrap{
-    position:relative;
-    flex:1 1 auto;
-    min-width:0;
-    background:#000;
-    overflow:hidden;
-    border-right:1px solid var(--border);
-  }
-  .viewer-tag{
-    position:absolute; top:10px; left:10px;
-    font-family:var(--font-mono); font-size:10.5px;
-    color:rgba(231,232,236,0.65);
-    background:rgba(10,10,12,0.45);
-    border:1px solid rgba(255,255,255,0.08);
-    padding:3px 7px; border-radius:3px;
-    letter-spacing:0.3px;
-    pointer-events:none;
-    z-index:3;
-  }
-  .rec-tag{
-    position:absolute; top:10px; right:10px;
-    display:flex; align-items:center; gap:6px;
-    font-family:var(--font-mono); font-size:10.5px;
-    color:rgba(231,232,236,0.75);
-    background:rgba(10,10,12,0.45);
-    border:1px solid rgba(255,255,255,0.08);
-    padding:3px 8px; border-radius:3px;
-    pointer-events:none;
-    z-index:3;
-  }
-  .rec-dot{ width:6px; height:6px; border-radius:50%; background:var(--danger); box-shadow:0 0 6px var(--danger); animation:pulse 1.6s ease-in-out infinite; }
-  @media (prefers-reduced-motion:reduce){ .rec-dot{ animation:none; } }
-  @keyframes pulse{ 0%,100%{ opacity:1;} 50%{ opacity:0.25;} }
-
-  #glcanvas{
-    position:absolute; inset:0;
-    width:100%; height:100%;
-    display:block;
-    cursor:crosshair;
-    touch-action:none;
-  }
-
-  /* ---------- Start overlay ---------- */
-  .start-overlay{
-    position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
-    flex-direction:column; gap:18px;
-    background:radial-gradient(circle at 50% 40%, #1a1b20 0%, #0a0a0c 75%);
-    z-index:10;
-    padding:24px; text-align:center;
-  }
-  .start-overlay.hidden{ display:none; }
-  .start-ring{
-    width:64px; height:64px; border-radius:50%;
-    border:1px solid var(--border);
-    display:flex; align-items:center; justify-content:center;
-  }
-  .start-btn{
-    width:64px; height:64px; border-radius:50%;
-    background:var(--amber);
-    border:none; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-    color:#1a1206;
-    box-shadow:0 0 0 0 rgba(255,157,46,0.5);
-    transition:transform 0.15s ease, box-shadow 0.15s ease;
-  }
-  .start-btn:hover{ transform:scale(1.06); box-shadow:0 0 24px 4px rgba(255,157,46,0.35); }
-  .start-btn svg{ width:22px; height:22px; margin-left:3px; }
-  .start-title{ font-size:15px; letter-spacing:0.3px; color:var(--text); font-weight:500; }
-  .start-sub{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); max-width:340px; line-height:1.6; }
-  .start-sub b{ color:var(--text-dimmer); }
-  .start-alt{
-    margin-top:4px; font-family:var(--font-mono); font-size:11px; color:var(--text-dimmer);
-    background:none; border:1px solid var(--border); padding:7px 12px; border-radius:4px; cursor:pointer;
-  }
-  .start-alt:hover{ color:var(--text-dim); border-color:var(--text-dimmer); }
-  .start-error{ font-family:var(--font-mono); font-size:11px; color:var(--danger); max-width:340px; display:none; }
-
-  /* ---------- Params panel ---------- */
-  .params{
-    flex:0 0 280px;
-    width:280px;
-    background:var(--panel);
-    display:flex;
-    flex-direction:column;
-    overflow-y:auto;
-    font-family:var(--font-mono);
-  }
-  .params::-webkit-scrollbar{ width:8px; }
-  .params::-webkit-scrollbar-thumb{ background:var(--border); border-radius:4px; }
-
-  .params-head{
-    padding:12px 14px 10px;
-    font-size:10.5px;
-    letter-spacing:1.5px;
-    color:var(--text-dimmer);
-    border-bottom:1px solid var(--border-soft);
-    display:flex; justify-content:space-between; align-items:center;
-  }
-  .panel-close{
-    display:none;
-    background:none; border:1px solid var(--border); color:var(--text-dim);
-    width:22px; height:22px; border-radius:4px; cursor:pointer; font-size:13px; line-height:1;
-    align-items:center; justify-content:center;
-  }
-
-  .group{ padding:12px 14px; border-bottom:1px solid var(--border-soft); }
-  .group-label{ font-size:10px; letter-spacing:1.2px; color:var(--text-dimmer); margin-bottom:10px; }
-
-  .param-row{ margin-bottom:14px; }
-  .param-row:last-child{ margin-bottom:0; }
-  .param-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
-  .param-name{ font-size:11.5px; color:var(--text); letter-spacing:0.2px; }
-  .param-val{ font-size:11px; color:var(--teal); min-width:34px; text-align:right; }
-
-  input[type=range]{
-    -webkit-appearance:none; appearance:none;
-    width:100%; height:4px; border-radius:2px;
-    background:var(--panel2);
-    outline:none;
-    cursor:pointer;
-  }
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none; appearance:none;
-    width:12px; height:12px; border-radius:2px;
-    background:var(--teal);
-    border:none;
-    box-shadow:0 0 0 3px rgba(94,234,212,0.15);
-    margin-top:0;
-    cursor:pointer;
-  }
-  input[type=range]::-moz-range-thumb{
-    width:12px; height:12px; border-radius:2px;
-    background:var(--teal); border:none;
-    box-shadow:0 0 0 3px rgba(94,234,212,0.15);
-    cursor:pointer;
-  }
-  input[type=range]::-moz-range-track{ background:transparent; }
-
-  .seg{
-    display:flex; border:1px solid var(--border); border-radius:5px; overflow:hidden;
-  }
-  .seg button{
-    flex:1; background:var(--panel2); border:none; color:var(--text-dim);
-    font-family:var(--font-mono); font-size:11px; padding:7px 0; cursor:pointer;
-    border-right:1px solid var(--border);
-  }
-  .seg button:last-child{ border-right:none; }
-  .seg button.active{ background:var(--teal); color:#0a1a17; font-weight:600; }
-  .seg button:hover:not(.active){ color:var(--text); }
-
-  .switch-row{ display:flex; align-items:center; justify-content:space-between; }
-  .switch{
-    width:36px; height:20px; border-radius:10px; background:var(--panel2);
-    border:1px solid var(--border); position:relative; cursor:pointer; flex:0 0 auto;
-  }
-  .switch::after{
-    content:''; position:absolute; top:1px; left:1px; width:16px; height:16px; border-radius:50%;
-    background:var(--text-dimmer); transition:transform 0.15s ease, background 0.15s ease;
-  }
-  .switch.on{ background:rgba(94,234,212,0.12); border-color:var(--teal); }
-  .switch.on::after{ transform:translateX(16px); background:var(--teal); }
-
-  .btn-row{ display:flex; gap:8px; }
-  .btn{
-    flex:1; background:var(--panel2); border:1px solid var(--border); color:var(--text);
-    font-family:var(--font-mono); font-size:11px; padding:9px 0; border-radius:5px; cursor:pointer;
-    letter-spacing:0.3px;
-  }
-  .btn:hover{ border-color:var(--text-dimmer); }
-  .btn.primary{ background:rgba(255,157,46,0.1); border-color:rgba(255,157,46,0.4); color:var(--amber); }
-  .btn.primary:hover{ background:rgba(255,157,46,0.18); }
-
-  .hint{ font-size:10.5px; color:var(--text-dimmer); line-height:1.6; padding:12px 14px; }
-
-  .params-toggle{
-    display:none;
-    position:absolute; top:10px; right:10px; z-index:5;
-    background:rgba(10,10,12,0.55); border:1px solid rgba(255,255,255,0.12);
-    color:var(--text); width:34px; height:34px; border-radius:6px;
-    align-items:center; justify-content:center; cursor:pointer;
-  }
-  .params-toggle svg{ width:16px; height:16px; }
-
-  @media (max-width:860px){
-    .rec-tag{ display:none; }
-    .params-toggle{ display:flex; }
-    .params{
-      position:absolute; top:0; right:0; bottom:0;
-      width:min(78vw, 300px); flex:none;
-      border-left:1px solid var(--border);
-      transform:translateX(100%);
-      transition:transform 0.22s ease;
-      z-index:8;
-      box-shadow:-20px 0 40px rgba(0,0,0,0.4);
-    }
-    .params.open{ transform:translateX(0); }
-    .panel-close{ display:flex; }
-    .td-body{ position:relative; }
-  }
-
-  /* ---------- Transport bar ---------- */
-  .transport{
-    flex:0 0 auto;
-    height:46px;
-    background:var(--panel);
-    border-top:1px solid var(--border);
-    display:flex;
-    align-items:center;
-    gap:16px;
-    padding:0 12px;
-    font-family:var(--font-mono);
-    font-size:11px;
-    color:var(--text-dim);
-    -webkit-user-select:none; user-select:none;
-    overflow-x:auto;
-    white-space:nowrap;
-  }
-  .transport::-webkit-scrollbar{ display:none; }
-
-  .transport-btn{
-    background:none; border:none; color:var(--text-dim); cursor:pointer;
-    width:26px; height:26px; display:flex; align-items:center; justify-content:center;
-    border-radius:4px; flex:0 0 auto;
-  }
-  .transport-btn:hover{ color:var(--text); background:var(--panel2); }
-  .transport-btn svg{ width:13px; height:13px; }
-  .transport-btn.play{ color:var(--text); }
-
-  .tc-box{
-    background:var(--amber); color:#1a1206; font-weight:600;
-    padding:4px 9px; border-radius:3px; letter-spacing:0.5px; flex:0 0 auto;
-  }
-  .frame-box{ background:var(--panel2); padding:4px 9px; border-radius:3px; color:var(--text); flex:0 0 auto; }
-
-  .stat{ display:flex; flex-direction:column; line-height:1.25; flex:0 0 auto; }
-  .stat .l{ font-size:8.5px; color:var(--text-dimmer); letter-spacing:0.5px; }
-  .stat .v{ font-size:11px; color:var(--text); }
-  .stat .v.live{ color:var(--teal); }
-
-  .transport .spacer{ flex:1; min-width:8px; }
-
-  .loop-toggle{ display:flex; border:1px solid var(--border); border-radius:4px; overflow:hidden; flex:0 0 auto; }
-  .loop-toggle button{
-    background:var(--panel2); border:none; color:var(--text-dimmer); font-family:var(--font-mono);
-    font-size:10px; padding:5px 9px; cursor:pointer;
-  }
-  .loop-toggle button.active{ background:var(--amber); color:#1a1206; font-weight:600; }
-
-  @media (max-width:640px){
-    .stat.hide-sm{ display:none; }
-  }
+  .logline.ok { color: #7ee787; }
+  .logline.warn { color: #f2cc60; }
+  .logline.err { color: #ff7b72; }
+  .logline.hd { color: #79c0ff; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+  th { color: #666; font-weight: 600; }
+  td.num { text-align: right; font-family: ui-monospace, monospace; }
+  .status-ok { color: #16a34a; font-weight: 600; }
+  .status-err { color: #dc2626; font-weight: 600; }
+  .status-warn { color: #b45309; font-weight: 600; }
+  .footer-note { font-size: 12px; color: #888; margin-top: 18px; }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <h1>Migrasi Data: Firebase → Supabase</h1>
+  <p class="sub">Toko Husna — sekali jalan, aman diulang kapan saja.</p>
 
-<div id="app">
-
-  <div class="titlebar">
-    <div class="dots"><span></span><span></span><span></span></div>
-    <div class="path">/project1/<b>liquidchrome1</b></div>
-    <div class="menu"><span>File</span><span>Edit</span><span>Dialogs</span></div>
-    <div class="spacer"></div>
-    <div class="res-readout" id="resReadout">—</div>
+  <div class="notice">
+    <b>Alat ini HANYA MEMBACA dari Firebase, tidak pernah menulis atau menghapus di sana.</b>
+    Semua data disalin ke Supabase menggunakan "upsert" (timpa-jika-sama), jadi aman dijalankan
+    berkali-kali kalau perlu — tidak akan membuat data dobel atau merusak apapun di Firebase.
+    Data Firebase Anda tetap utuh setelah ini selesai.
   </div>
 
-  <div class="td-body">
-
-    <div class="viewer-wrap" id="viewerWrap">
-      <canvas id="glcanvas"></canvas>
-
-      <div class="viewer-tag">null2 · liquid chrome</div>
-      <div class="rec-tag"><span class="rec-dot"></span>LIVE</div>
-
-      <button class="params-toggle" id="paramsToggle" aria-label="Buka panel parameter">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-      </button>
-
-      <div class="start-overlay" id="startOverlay">
-        <div class="start-ring">
-          <button class="start-btn" id="startBtn" aria-label="Mulai kamera">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          </button>
-        </div>
-        <div class="start-title">Klik untuk mulai efek liquid chrome</div>
-        <div class="start-sub">Rekreasi efek <b>real-time body-chrome TouchDesigner</b> pakai WebGL. Kamera dipakai langsung di browser kamu — <b>tidak direkam / tidak diunggah kemana pun</b>.</div>
-        <button class="start-alt" id="demoBtn">Coba mode demo tanpa kamera →</button>
-        <div class="start-error" id="startError"></div>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="appIdInput">App ID (biasanya tidak perlu diubah)</label>
+        <input type="text" id="appIdInput" value="default-app-id">
       </div>
     </div>
-
-    <div class="params" id="paramsPanel">
-      <div class="params-head">
-        PARAMETERS
-        <button class="panel-close" id="panelClose" aria-label="Tutup panel">✕</button>
-      </div>
-
-      <div class="group">
-        <div class="group-label">CHROME</div>
-        <div class="param-row">
-          <div class="param-top"><span class="param-name">Chrome Amount</span><span class="param-val" id="v-chrome">65%</span></div>
-          <input type="range" id="s-chrome" min="0" max="100" value="65">
-        </div>
-        <div class="param-row">
-          <div class="param-top"><span class="param-name">Drip Flow</span><span class="param-val" id="v-drip">45%</span></div>
-          <input type="range" id="s-drip" min="0" max="100" value="45">
-        </div>
-        <div class="param-row">
-          <div class="param-top"><span class="param-name">Trail Decay</span><span class="param-val" id="v-trail">55%</span></div>
-          <input type="range" id="s-trail" min="0" max="92" value="55">
-        </div>
-        <div class="param-row">
-          <div class="param-top"><span class="param-name">Noise Scale</span><span class="param-val" id="v-noise">4.0</span></div>
-          <input type="range" id="s-noise" min="10" max="100" value="40">
-        </div>
-      </div>
-
-      <div class="group">
-        <div class="group-label">MATERIAL</div>
-        <div class="param-row" style="margin-bottom:0">
-          <div class="param-top"><span class="param-name">Color Mode</span></div>
-          <div class="seg" id="colorSeg">
-            <button data-mode="0" class="active">Silver</button>
-            <button data-mode="1">Gold</button>
-            <button data-mode="2">Holo</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="group">
-        <div class="group-label">INPUT</div>
-        <div class="param-row">
-          <div class="switch-row">
-            <span class="param-name">Mirror selfie</span>
-            <div class="switch on" id="sw-mirror"></div>
-          </div>
-        </div>
-        <div class="param-row" style="margin-bottom:0">
-          <div class="switch-row">
-            <span class="param-name">Auto ripple pulse</span>
-            <div class="switch on" id="sw-autopulse"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="group">
-        <div class="btn-row">
-          <button class="btn" id="resetBtn">Reset</button>
-          <button class="btn primary" id="snapBtn">Snapshot</button>
-        </div>
-      </div>
-
-      <div class="hint">Sentuh / klik canvas untuk riak manual. Gerak &amp; kontur wajah-tubuh memicu area chrome lebih kuat. Browser tidak bisa akses sensor depth seperti Kinect di TouchDesigner asli — efek ini didekati lewat kontur &amp; gerakan dari gambar webcam.</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button id="testBtn" class="secondary">1. Tes Koneksi Dulu</button>
+      <button id="startBtn" disabled>2. Mulai Migrasi Penuh</button>
     </div>
-
+    <div id="log"></div>
   </div>
 
-  <div class="transport">
-    <button class="transport-btn play" id="playBtn" aria-label="Play/Pause">
-      <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
-    </button>
-    <div class="tc-box" id="tcBox">00:00:00:00</div>
-    <div class="frame-box" id="frameBox">Frame 0</div>
-
-    <div class="stat"><span class="l">FPS</span><span class="v live" id="fpsVal">—</span></div>
-    <div class="stat hide-sm"><span class="l">TEMPO</span><span class="v">120.0</span></div>
-    <div class="stat hide-sm"><span class="l">T SIG</span><span class="v">4 / 4</span></div>
-
-    <div class="spacer"></div>
-
-    <div class="loop-toggle">
-      <button id="loopBtn" class="active">Loop</button>
-      <button id="onceBtn">Once</button>
-    </div>
+  <div class="card" id="summaryCard" style="display:none;">
+    <h3 style="margin-top:0;">Ringkasan Hasil</h3>
+    <table id="summaryTable">
+      <thead><tr><th>Tabel</th><th class="num">Firebase</th><th class="num">Supabase</th><th>Status</th></tr></thead>
+      <tbody></tbody>
+    </table>
   </div>
 
+  <p class="footer-note">
+    App ID hanya perlu diganti jika dulu Anda menjalankan aplikasi ini di dalam lingkungan sandbox
+    khusus (mis. Google AI Studio canvas) yang menyuntik variabel <code>__app_id</code> sendiri.
+    Untuk deployment normal (file HTML dibuka langsung / di-hosting sendiri), nilai default
+    <code>default-app-id</code> ini sudah pasti benar. Kalau "Tes Koneksi" tidak menemukan data
+    apapun, itu tandanya App ID perlu disesuaikan.
+  </p>
 </div>
 
-<script>
-(function(){
-  "use strict";
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  /* ============ DOM refs ============ */
-  var canvas = document.getElementById('glcanvas');
-  var viewerWrap = document.getElementById('viewerWrap');
-  var startOverlay = document.getElementById('startOverlay');
-  var startBtn = document.getElementById('startBtn');
-  var demoBtn = document.getElementById('demoBtn');
-  var startError = document.getElementById('startError');
-  var resReadout = document.getElementById('resReadout');
+<!-- Firebase SDK (pointed at the ORIGINAL project, exactly as in the old app) + migration logic -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore, collection, collectionGroup, doc, getDoc, getDocs,
+    query, orderBy, limit, startAfter, Timestamp
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  var paramsPanel = document.getElementById('paramsPanel');
-  var paramsToggle = document.getElementById('paramsToggle');
-  var panelClose = document.getElementById('panelClose');
-
-  var playBtn = document.getElementById('playBtn');
-  var playIcon = document.getElementById('playIcon');
-  var tcBox = document.getElementById('tcBox');
-  var frameBox = document.getElementById('frameBox');
-  var fpsVal = document.getElementById('fpsVal');
-  var loopBtn = document.getElementById('loopBtn');
-  var onceBtn = document.getElementById('onceBtn');
-
-  var resetBtn = document.getElementById('resetBtn');
-  var snapBtn = document.getElementById('snapBtn');
-
-  /* ============ State ============ */
-  var params = {
-    chrome: 0.65,
-    drip: 0.45,
-    trail: 0.55,
-    noiseScale: 4.0,
-    colorMode: 0,
-    mirror: true,
-    autoPulse: true
+  // ── Original Firebase project (read-only source) ──────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyAKhe3ILdMTN7Dn9Ao3MqlzW3s5hHUDB_c",
+    authDomain: "toko-husna-c6415.firebaseapp.com",
+    projectId: "toko-husna-c6415",
+    storageBucket: "toko-husna-c6415.firebasestorage.app",
+    messagingSenderId: "171239564619",
+    appId: "1:171239564619:web:29972d886bd39f1559f4ce",
+    measurementId: "G-4BKNYL5KFC"
   };
-  var DEFAULTS = JSON.parse(JSON.stringify(params));
+  const fbApp = initializeApp(firebaseConfig);
+  const fbAuth = getAuth(fbApp);
+  const db = getFirestore(fbApp);
 
-  var state = {
-    started:false,
-    usingFallback:false,
-    paused:false,
-    frameCount:0,
-    startTime:0
-  };
+  // ── New Supabase project (write destination) ───────────────────────────────
+  const SUPABASE_URL = 'https://kusetiuorizpufixfwbs.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1c2V0aXVvcml6cHVmaXhmd2JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NjMzOTQsImV4cCI6MjEwMTUzOTM5NH0.VmuEY9-EGugF648ziFcW-L8QQhp7QRW3t6JUdDsmGmk';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  var mouseState = { x:0.5, y:0.5, clickStart:-9999 };
+  const PAGE_SIZE = 300;
+  const CHUNK_SIZE = 300;
 
-  /* ============ Slider wiring ============ */
-  function pctFill(input){
-    var min = parseFloat(input.min), max = parseFloat(input.max), val = parseFloat(input.value);
-    var pct = (val-min)/(max-min)*100;
-    input.style.background = 'linear-gradient(to right, var(--teal) 0%, var(--teal) '+pct+'%, var(--panel2) '+pct+'%, var(--panel2) 100%)';
-  }
+  // ── Core transform/pagination logic (identical to the unit-tested version) ─
+  function isFirestoreTimestamp(v) { return v instanceof Timestamp; }
 
-  var sChrome = document.getElementById('s-chrome');
-  var sDrip = document.getElementById('s-drip');
-  var sTrail = document.getElementById('s-trail');
-  var sNoise = document.getElementById('s-noise');
-  var vChrome = document.getElementById('v-chrome');
-  var vDrip = document.getElementById('v-drip');
-  var vTrail = document.getElementById('v-trail');
-  var vNoise = document.getElementById('v-noise');
-
-  function syncSlidersFromParams(){
-    sChrome.value = Math.round(params.chrome*100);
-    sDrip.value = Math.round(params.drip*100);
-    sTrail.value = Math.round(params.trail*100);
-    sNoise.value = Math.round(params.noiseScale*10);
-    vChrome.textContent = Math.round(params.chrome*100)+'%';
-    vDrip.textContent = Math.round(params.drip*100)+'%';
-    vTrail.textContent = Math.round(params.trail*100)+'%';
-    vNoise.textContent = params.noiseScale.toFixed(1);
-    [sChrome,sDrip,sTrail,sNoise].forEach(pctFill);
-    document.querySelectorAll('#colorSeg button').forEach(function(b){
-      b.classList.toggle('active', parseInt(b.getAttribute('data-mode'),10)===params.colorMode);
-    });
-    document.getElementById('sw-mirror').classList.toggle('on', params.mirror);
-    document.getElementById('sw-autopulse').classList.toggle('on', params.autoPulse);
-  }
-
-  sChrome.addEventListener('input', function(){ params.chrome = sChrome.value/100; vChrome.textContent = sChrome.value+'%'; pctFill(sChrome); });
-  sDrip.addEventListener('input', function(){ params.drip = sDrip.value/100; vDrip.textContent = sDrip.value+'%'; pctFill(sDrip); });
-  sTrail.addEventListener('input', function(){ params.trail = sTrail.value/100; vTrail.textContent = sTrail.value+'%'; pctFill(sTrail); });
-  sNoise.addEventListener('input', function(){ params.noiseScale = sNoise.value/10; vNoise.textContent = params.noiseScale.toFixed(1); pctFill(sNoise); });
-
-  document.getElementById('colorSeg').addEventListener('click', function(e){
-    var btn = e.target.closest('button');
-    if(!btn) return;
-    params.colorMode = parseInt(btn.getAttribute('data-mode'),10);
-    document.querySelectorAll('#colorSeg button').forEach(function(b){ b.classList.remove('active'); });
-    btn.classList.add('active');
-  });
-
-  document.getElementById('sw-mirror').addEventListener('click', function(){
-    params.mirror = !params.mirror;
-    this.classList.toggle('on', params.mirror);
-  });
-  document.getElementById('sw-autopulse').addEventListener('click', function(){
-    params.autoPulse = !params.autoPulse;
-    this.classList.toggle('on', params.autoPulse);
-  });
-
-  resetBtn.addEventListener('click', function(){
-    params = JSON.parse(JSON.stringify(DEFAULTS));
-    syncSlidersFromParams();
-  });
-
-  snapBtn.addEventListener('click', function(){
-    try{
-      canvas.toBlob(function(blob){
-        if(!blob) return;
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url; a.download = 'liquid-chrome-'+Date.now()+'.png';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
-      }, 'image/png');
-    }catch(err){ console.error('Snapshot failed', err); }
-  });
-
-  paramsToggle.addEventListener('click', function(){ paramsPanel.classList.add('open'); });
-  panelClose.addEventListener('click', function(){ paramsPanel.classList.remove('open'); });
-
-  syncSlidersFromParams();
-
-  /* ============ Transport ============ */
-  loopBtn.addEventListener('click', function(){
-    loopBtn.classList.add('active'); onceBtn.classList.remove('active');
-    params.autoPulse = true;
-    document.getElementById('sw-autopulse').classList.add('on');
-  });
-  onceBtn.addEventListener('click', function(){
-    onceBtn.classList.add('active'); loopBtn.classList.remove('active');
-    params.autoPulse = false;
-    document.getElementById('sw-autopulse').classList.remove('on');
-  });
-
-  playBtn.addEventListener('click', function(){
-    state.paused = !state.paused;
-    playIcon.innerHTML = state.paused
-      ? '<path d="M8 5v14l11-7z"/>'
-      : '<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>';
-  });
-
-  /* ============ Video / fallback demo source ============ */
-  var videoEl = document.createElement('video');
-  videoEl.autoplay = true; videoEl.muted = true; videoEl.playsInline = true;
-
-  var fallbackCanvas = document.createElement('canvas');
-  fallbackCanvas.width = 640; fallbackCanvas.height = 480;
-  var fctx = fallbackCanvas.getContext('2d');
-
-  function drawFallbackFrame(t){
-    var w = fallbackCanvas.width, h = fallbackCanvas.height;
-    var g = fctx.createLinearGradient(0,0,0,h);
-    g.addColorStop(0,'#1b1c20'); g.addColorStop(1,'#0a0a0c');
-    fctx.fillStyle = g; fctx.fillRect(0,0,w,h);
-
-    for(var i=0;i<4;i++){
-      var a = t*0.0004 + i*1.7;
-      var bx = w*0.5 + Math.sin(a*1.3+i)*w*0.28;
-      var by = h*0.5 + Math.cos(a*1.0+i*1.4)*h*0.26;
-      var r = 90 + 40*Math.sin(t*0.0009+i);
-      var grad = fctx.createRadialGradient(bx,by,0,bx,by,r);
-      var hue = (i*70 + t*0.02)%360;
-      grad.addColorStop(0,'hsla('+hue+',70%,60%,0.55)');
-      grad.addColorStop(1,'hsla('+hue+',70%,60%,0)');
-      fctx.fillStyle = grad;
-      fctx.beginPath(); fctx.arc(bx,by,r,0,Math.PI*2); fctx.fill();
+  function transformValue(v) {
+    if (v === null || v === undefined) return v;
+    if (isFirestoreTimestamp(v)) return { __ts: v.toDate().toISOString() };
+    if (Array.isArray(v)) return v.map(transformValue);
+    if (typeof v === 'object') {
+      const out = {};
+      for (const k in v) if (Object.prototype.hasOwnProperty.call(v, k)) out[k] = transformValue(v[k]);
+      return out;
     }
-
-    fctx.save();
-    fctx.translate(w/2, h/2 + Math.sin(t*0.0011)*14);
-    fctx.fillStyle = 'rgba(220,222,228,0.9)';
-    fctx.beginPath(); fctx.ellipse(0,-70,46,52,0,0,Math.PI*2); fctx.fill();
-    fctx.beginPath(); fctx.ellipse(0,40,78,105,0,0,Math.PI*2); fctx.fill();
-    var armA = Math.sin(t*0.0016)*0.6;
-    fctx.strokeStyle = 'rgba(220,222,228,0.9)';
-    fctx.lineWidth = 26; fctx.lineCap = 'round';
-    fctx.beginPath(); fctx.moveTo(-60,-10); fctx.lineTo(-60-70*Math.cos(armA), -10+90*Math.sin(armA)); fctx.stroke();
-    fctx.beginPath(); fctx.moveTo(60,-10); fctx.lineTo(60+70*Math.cos(-armA), -10+90*Math.sin(-armA)); fctx.stroke();
-    fctx.restore();
+    return v;
   }
 
-  /* ============ WebGL setup ============ */
-  var gl = null;
-  try{
-    gl = canvas.getContext('webgl', {preserveDrawingBuffer:true, antialias:false}) ||
-         canvas.getContext('experimental-webgl', {preserveDrawingBuffer:true, antialias:false});
-  }catch(e){ gl = null; }
-
-  if(!gl){
-    startError.style.display = 'block';
-    startError.textContent = 'WebGL tidak didukung di browser ini. Coba browser lain (Chrome/Edge/Firefox terbaru).';
-  }
-
-  var VS = "\
-attribute vec2 aPosition;\n\
-varying vec2 vUv;\n\
-void main(){\n\
-  vUv = aPosition*0.5+0.5;\n\
-  gl_Position = vec4(aPosition,0.0,1.0);\n\
-}";
-
-  var FS_MAIN = "\
-precision highp float;\n\
-varying vec2 vUv;\n\
-uniform sampler2D uVideo;\n\
-uniform sampler2D uPrevOutput;\n\
-uniform vec2 uResolution;\n\
-uniform vec2 uVideoResolution;\n\
-uniform float uTime;\n\
-uniform float uChromeAmount;\n\
-uniform float uDripFlow;\n\
-uniform float uTrailDecay;\n\
-uniform float uNoiseScale;\n\
-uniform float uColorMode;\n\
-uniform float uMirror;\n\
-uniform vec3 uMouse;\n\
-\n\
-float hash(vec2 p){\n\
-  p = fract(p*vec2(123.34,456.21));\n\
-  p += dot(p,p+45.32);\n\
-  return fract(p.x*p.y);\n\
-}\n\
-float vnoise(vec2 p){\n\
-  vec2 i = floor(p);\n\
-  vec2 f = fract(p);\n\
-  float a = hash(i);\n\
-  float b = hash(i+vec2(1.0,0.0));\n\
-  float c = hash(i+vec2(0.0,1.0));\n\
-  float d = hash(i+vec2(1.0,1.0));\n\
-  vec2 u = f*f*(3.0-2.0*f);\n\
-  return mix(a,b,u.x) + (c-a)*u.y*(1.0-u.x) + (d-b)*u.x*u.y;\n\
-}\n\
-float fbm(vec2 p){\n\
-  float v = 0.0; float amp = 0.5;\n\
-  for(int i=0;i<4;i++){\n\
-    v += amp*vnoise(p);\n\
-    p *= 2.02;\n\
-    amp *= 0.5;\n\
-  }\n\
-  return v;\n\
-}\n\
-vec2 coverUv(vec2 uv){\n\
-  float r = uResolution.x/uVideoResolution.x;\n\
-  float r2 = uResolution.y/uVideoResolution.y;\n\
-  float s = max(r,r2);\n\
-  float cropW = r/s;\n\
-  float cropH = r2/s;\n\
-  return (uv-0.5)*vec2(cropW,cropH)+0.5;\n\
-}\n\
-void main(){\n\
-  vec2 uv = vUv;\n\
-  if(uMirror>0.5) uv.x = 1.0-uv.x;\n\
-  vec2 vuv = coverUv(uv);\n\
-  vec2 texel = 1.0/uVideoResolution;\n\
-\n\
-  float tl = dot(texture2D(uVideo, vuv+vec2(-texel.x, texel.y)).rgb, vec3(0.299,0.587,0.114));\n\
-  float tr = dot(texture2D(uVideo, vuv+vec2( texel.x, texel.y)).rgb, vec3(0.299,0.587,0.114));\n\
-  float bl = dot(texture2D(uVideo, vuv+vec2(-texel.x,-texel.y)).rgb, vec3(0.299,0.587,0.114));\n\
-  float br = dot(texture2D(uVideo, vuv+vec2( texel.x,-texel.y)).rgb, vec3(0.299,0.587,0.114));\n\
-  float gx = (tr+br)-(tl+bl);\n\
-  float gy = (tl+tr)-(bl+br);\n\
-  float edge = clamp(length(vec2(gx,gy))*4.0, 0.0, 1.0);\n\
-\n\
-  vec2 flowUv = vuv*uNoiseScale + vec2(0.0, -uTime*0.12);\n\
-  float n = fbm(flowUv);\n\
-  float n2 = fbm(flowUv*1.7+5.2);\n\
-\n\
-  float dispAmt = uDripFlow*(0.15+0.85*edge)*0.06;\n\
-  vec2 disp = vec2((n-0.5)*0.6,(n2-0.5)*1.4)*dispAmt;\n\
-\n\
-  float mdist = distance(uv, uMouse.xy);\n\
-  float ripple = sin(mdist*50.0 - uMouse.z*8.0) * exp(-uMouse.z*2.5) * exp(-mdist*6.0);\n\
-  vec2 rdir = (uv-uMouse.xy)/(mdist+0.0001);\n\
-  disp += rdir*ripple*0.035;\n\
-\n\
-  vec2 dispUv = vuv+disp;\n\
-  vec3 baseColor = texture2D(uVideo, vuv).rgb;\n\
-\n\
-  float caAmt = dispAmt*6.0 + abs(ripple)*0.02;\n\
-  float rC = texture2D(uVideo, dispUv+vec2(caAmt,0.0)).r;\n\
-  float gC = texture2D(uVideo, dispUv).g;\n\
-  float bC = texture2D(uVideo, dispUv-vec2(caAmt,0.0)).b;\n\
-  vec3 caColor = vec3(rC,gC,bC);\n\
-\n\
-  vec3 normal = normalize(vec3(-gx*3.0,-gy*3.0,1.0));\n\
-  vec3 lightDir = normalize(vec3(0.45,0.65,0.6));\n\
-  float diffuse = max(dot(normal,lightDir),0.0);\n\
-  float spec = pow(diffuse, 10.0);\n\
-  float fresnel = pow(1.0-clamp(normal.z,0.0,1.0), 2.5);\n\
-\n\
-  vec3 chromeTint;\n\
-  if(uColorMode<0.5){\n\
-    chromeTint = vec3(0.82,0.87,0.93);\n\
-  } else if(uColorMode<1.5){\n\
-    chromeTint = vec3(0.96,0.78,0.44);\n\
-  } else {\n\
-    float hue = fresnel*3.0 + n*2.0 + uTime*0.2;\n\
-    chromeTint = vec3(0.5+0.5*sin(hue), 0.5+0.5*sin(hue+2.094), 0.5+0.5*sin(hue+4.188));\n\
-  }\n\
-\n\
-  vec3 chromeColor = caColor*(0.22+0.55*fresnel) + chromeTint*(spec*1.8+fresnel*0.35);\n\
-  chromeColor = mix(chromeColor, vec3(1.0), spec*0.55);\n\
-\n\
-  float mask = clamp(uChromeAmount*(0.32+0.68*edge) + spec*0.3, 0.0, 1.0);\n\
-\n\
-  vec3 outColor = mix(baseColor, chromeColor, mask);\n\
-\n\
-  vec3 prev = texture2D(uPrevOutput, vUv).rgb;\n\
-  float trail = uTrailDecay*(0.3+0.7*mask);\n\
-  vec3 finalColor = mix(outColor, prev, trail);\n\
-\n\
-  gl_FragColor = vec4(finalColor, 1.0);\n\
-}";
-
-  var FS_BLIT = "\
-precision mediump float;\n\
-varying vec2 vUv;\n\
-uniform sampler2D uTex;\n\
-void main(){ gl_FragColor = texture2D(uTex, vUv); }";
-
-  function compileShader(type, src){
-    var sh = gl.createShader(type);
-    gl.shaderSource(sh, src);
-    gl.compileShader(sh);
-    if(!gl.getShaderParameter(sh, gl.COMPILE_STATUS)){
-      console.error(gl.getShaderInfoLog(sh));
-      throw new Error('Shader compile failed');
+  async function fetchAllDocs(queryPage, onPage, pageSize) {
+    let lastDoc = null, total = 0;
+    while (true) {
+      const snap = await queryPage(lastDoc, pageSize);
+      const docs = snap.docs || [];
+      if (docs.length === 0) break;
+      const rows = docs.map(d => ({ id: d.id, data: transformValue(d.data()) }));
+      await onPage(rows, docs);
+      total += rows.length;
+      if (docs.length < pageSize) break;
+      lastDoc = docs[docs.length - 1];
     }
-    return sh;
-  }
-  function createProgram(vsSrc, fsSrc){
-    var vs = compileShader(gl.VERTEX_SHADER, vsSrc);
-    var fs = compileShader(gl.FRAGMENT_SHADER, fsSrc);
-    var prog = gl.createProgram();
-    gl.attachShader(prog, vs);
-    gl.attachShader(prog, fs);
-    gl.linkProgram(prog);
-    if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
-      console.error(gl.getProgramInfoLog(prog));
-      throw new Error('Program link failed');
-    }
-    return prog;
+    return total;
   }
 
-  var mainProg, blitProg;
-  var mainU = {}, blitU = {};
-  var mainAttrib, blitAttrib;
-  var quadBuffer;
-  var videoTex;
-  var fbos = [null,null];
-  var readIdx=0, writeIdx=1;
-  var videoResW=640, videoResH=480;
-  var glReady = false;
-
-  function initGL(){
-    quadBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
-
-    mainProg = createProgram(VS, FS_MAIN);
-    blitProg = createProgram(VS, FS_BLIT);
-
-    mainAttrib = gl.getAttribLocation(mainProg, 'aPosition');
-    blitAttrib = gl.getAttribLocation(blitProg, 'aPosition');
-
-    ['uVideo','uPrevOutput','uResolution','uVideoResolution','uTime','uChromeAmount','uDripFlow','uTrailDecay','uNoiseScale','uColorMode','uMirror','uMouse'].forEach(function(name){
-      mainU[name] = gl.getUniformLocation(mainProg, name);
-    });
-    blitU.uTex = gl.getUniformLocation(blitProg, 'uTex');
-
-    videoTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, videoTex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,255]));
-
-    resizeGL(true);
-    glReady = true;
+  function chunkArr(arr, size) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
   }
 
-  function createFBO(w, h){
-    var tex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    var fb = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    return {fb:fb, tex:tex, w:w, h:h};
-  }
-  function destroyFBO(o){
-    if(!o) return;
-    gl.deleteTexture(o.tex);
-    gl.deleteFramebuffer(o.fb);
+  function categorizeCatatanPath(fullPath) {
+    const parts = fullPath.split('/');
+    if (parts[2] === 'public') return { kind: 'public' };
+    if (parts[2] === 'users') return { kind: 'private', ownerUid: parts[3] };
+    return { kind: 'unknown' };
   }
 
-  var lastCanvasW=0, lastCanvasH=0;
-  function resizeGL(force){
-    var dpr = Math.min(window.devicePixelRatio||1, 1.5);
-    var w = Math.max(2, Math.round(viewerWrap.clientWidth*dpr));
-    var h = Math.max(2, Math.round(viewerWrap.clientHeight*dpr));
-    if(!force && w===lastCanvasW && h===lastCanvasH) return;
-    lastCanvasW=w; lastCanvasH=h;
-    canvas.width = w; canvas.height = h;
-    canvas.style.width = viewerWrap.clientWidth+'px';
-    canvas.style.height = viewerWrap.clientHeight+'px';
+  // ── UI helpers ──────────────────────────────────────────────────────────────
+  const logEl = document.getElementById('log');
+  const startBtn = document.getElementById('startBtn');
+  const testBtn = document.getElementById('testBtn');
+  const summaryCard = document.getElementById('summaryCard');
+  const summaryTbody = document.querySelector('#summaryTable tbody');
 
-    destroyFBO(fbos[0]); destroyFBO(fbos[1]);
-    fbos[0] = createFBO(w,h);
-    fbos[1] = createFBO(w,h);
-    [fbos[0],fbos[1]].forEach(function(o){
-      gl.bindFramebuffer(gl.FRAMEBUFFER, o.fb);
-      gl.viewport(0,0,o.w,o.h);
-      gl.clearColor(0,0,0,1);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-    });
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    readIdx=0; writeIdx=1;
-
-    resReadout.textContent = viewerWrap.clientWidth+' × '+viewerWrap.clientHeight;
+  function log(msg, cls) {
+    logEl.style.display = 'block';
+    const line = document.createElement('div');
+    line.className = 'logline' + (cls ? ' ' + cls : '');
+    line.textContent = msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
   }
+  function clearLog() { logEl.innerHTML = ''; }
 
-  function updateVideoTexture(){
-    var source, vw, vh;
-    if(state.usingFallback){
-      source = fallbackCanvas; vw = fallbackCanvas.width; vh = fallbackCanvas.height;
-    } else {
-      source = videoEl; vw = videoEl.videoWidth; vh = videoEl.videoHeight;
-    }
-    if(!vw || !vh) return false;
-    videoResW = vw; videoResH = vh;
-    gl.bindTexture(gl.TEXTURE_2D, videoTex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    try{
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
-    }catch(e){ return false; }
-    return true;
-  }
-
-  function drawFrame(now){
-    var w = canvas.width, h = canvas.height;
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbos[writeIdx].fb);
-    gl.viewport(0,0,fbos[writeIdx].w, fbos[writeIdx].h);
-    gl.useProgram(mainProg);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-    gl.enableVertexAttribArray(mainAttrib);
-    gl.vertexAttribPointer(mainAttrib, 2, gl.FLOAT, false, 0, 0);
-
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, videoTex);
-    gl.uniform1i(mainU.uVideo, 0);
-
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, fbos[readIdx].tex);
-    gl.uniform1i(mainU.uPrevOutput, 1);
-
-    gl.uniform2f(mainU.uResolution, w, h);
-    gl.uniform2f(mainU.uVideoResolution, videoResW, videoResH);
-    gl.uniform1f(mainU.uTime, now*0.001);
-    gl.uniform1f(mainU.uChromeAmount, params.chrome);
-    gl.uniform1f(mainU.uDripFlow, params.drip);
-    gl.uniform1f(mainU.uTrailDecay, params.trail);
-    gl.uniform1f(mainU.uNoiseScale, params.noiseScale);
-    gl.uniform1f(mainU.uColorMode, params.colorMode);
-    gl.uniform1f(mainU.uMirror, params.mirror?1.0:0.0);
-    var elapsed = (now - mouseState.clickStart)/1000;
-    gl.uniform3f(mainU.uMouse, mouseState.x, mouseState.y, elapsed);
-
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0,0,w,h);
-    gl.useProgram(blitProg);
-    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-    gl.enableVertexAttribArray(blitAttrib);
-    gl.vertexAttribPointer(blitAttrib, 2, gl.FLOAT, false, 0, 0);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, fbos[writeIdx].tex);
-    gl.uniform1i(blitU.uTex, 0);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    var tmp = readIdx; readIdx = writeIdx; writeIdx = tmp;
-  }
-
-  /* ============ Pointer / ripple ============ */
-  function setPointerFromEvent(e){
-    var rect = canvas.getBoundingClientRect();
-    var cx = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
-    var cy = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
-    mouseState.x = (cx-rect.left)/rect.width;
-    mouseState.y = 1.0 - (cy-rect.top)/rect.height;
-  }
-  canvas.addEventListener('pointerdown', function(e){
-    setPointerFromEvent(e);
-    mouseState.clickStart = performance.now();
-  });
-  canvas.addEventListener('pointermove', function(e){
-    if(e.pressure && e.pressure>0){
-      setPointerFromEvent(e);
-      mouseState.clickStart = performance.now();
-    }
-  });
-
-  /* ============ Main loop ============ */
-  var lastFpsT=0, fpsFrames=0;
-  var lastAutoPulse=0;
-
-  function loop(now){
-    requestAnimationFrame(loop);
-    if(!glReady) return;
-
-    if(!lastFpsT) lastFpsT = now;
-    fpsFrames++;
-    if(now-lastFpsT>=500){
-      var fps = (fpsFrames*1000/(now-lastFpsT));
-      fpsVal.textContent = fps.toFixed(1);
-      fpsFrames=0; lastFpsT=now;
-    }
-
-    if(state.paused) return;
-
-    resizeGL(false);
-
-    if(state.usingFallback) drawFallbackFrame(now);
-
-    if(params.autoPulse && now-lastAutoPulse>2600){
-      lastAutoPulse = now;
-      mouseState.x = 0.5 + (Math.random()-0.5)*0.3;
-      mouseState.y = 0.55 + (Math.random()-0.5)*0.3;
-      mouseState.clickStart = now;
-    }
-
-    var ok = updateVideoTexture();
-    if(ok){
-      drawFrame(now);
-      state.frameCount++;
-      var elapsedS = (now - state.startTime)/1000;
-      frameBox.textContent = 'Frame '+state.frameCount;
-      tcBox.textContent = formatTimecode(elapsedS);
+  async function upsertRows(table, rows, extraColsFn) {
+    const chunks = chunkArr(rows, CHUNK_SIZE);
+    for (const c of chunks) {
+      const payload = c.map(r => Object.assign({ id: r.id, data: r.data }, extraColsFn ? extraColsFn(r) : {}));
+      const { error } = await sb.from(table).upsert(payload, { onConflict: 'id' });
+      if (error) throw new Error(`Supabase upsert ke "${table}" gagal: ${error.message}`);
     }
   }
 
-  function formatTimecode(totalSec){
-    if(totalSec<0) totalSec=0;
-    var hh = Math.floor(totalSec/3600);
-    var mm = Math.floor((totalSec%3600)/60);
-    var ss = Math.floor(totalSec%60);
-    var ff = Math.floor((totalSec - Math.floor(totalSec))*60);
-    function pad(n){ return (n<10?'0':'')+n; }
-    return pad(hh)+':'+pad(mm)+':'+pad(ss)+':'+pad(ff);
+  async function countSupabaseRows(table) {
+    try {
+      const { count, error } = await sb.from(table).select('*', { count: 'exact', head: true });
+      if (error) return 'err';
+      return count;
+    } catch (e) { return 'err'; }
   }
 
-  /* ============ Start flow ============ */
-  function beginSession(){
-    startOverlay.classList.add('hidden');
-    state.started = true;
-    state.startTime = performance.now();
-    try{ if(!glReady) initGL(); }catch(e){
-      console.error(e);
-      startOverlay.classList.remove('hidden');
-      startError.style.display='block';
-      startError.textContent = 'Gagal menginisialisasi WebGL. Coba refresh halaman.';
-      return;
+  // ── Per-collection migration ────────────────────────────────────────────────
+  async function migrateCollection(appId, fsName, table) {
+    log(`→ ${fsName}  →  ${table}`, 'hd');
+    const collRef = collection(db, 'artifacts', appId, 'public', 'data', fsName);
+    let lastLogged = 0;
+    const total = await fetchAllDocs(
+      async (afterDoc, pageSize) => {
+        let q = afterDoc
+          ? query(collRef, orderBy('__name__'), startAfter(afterDoc), limit(pageSize))
+          : query(collRef, orderBy('__name__'), limit(pageSize));
+        return await getDocs(q);
+      },
+      async (rows, rawDocs) => {
+        await upsertRows(table, rows);
+        lastLogged += rows.length;
+        log(`   ...${lastLogged} dokumen`);
+      },
+      PAGE_SIZE
+    );
+    log(`✓ ${table}: ${total} dokumen tersalin`, 'ok');
+    return total;
+  }
+
+  async function migrateSingletonDoc(appId, fsName, table, docId) {
+    const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', fsName, docId));
+    if (!snap.exists()) {
+      log(`   (${table}/${docId}: tidak ada data di Firebase, dilewati)`, 'warn');
+      return 0;
     }
-    requestAnimationFrame(loop);
+    await upsertRows(table, [{ id: docId, data: transformValue(snap.data()) }]);
+    log(`✓ ${table}/${docId}: tersalin`, 'ok');
+    return 1;
   }
 
-  function startCamera(){
-    startError.style.display='none';
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      startFallback('Browser ini tidak mendukung akses kamera. Menjalankan mode demo.');
-      return;
+  async function migrateCatatan(appId) {
+    const publicCount = await migrateCollection(appId, 'catatan', 'catatan');
+
+    let privateCount = 0;
+    try {
+      const cgRef = collectionGroup(db, 'catatan');
+      await fetchAllDocs(
+        async (afterDoc, pageSize) => {
+          let q = afterDoc
+            ? query(cgRef, orderBy('__name__'), startAfter(afterDoc), limit(pageSize))
+            : query(cgRef, orderBy('__name__'), limit(pageSize));
+          return await getDocs(q);
+        },
+        async (rows, rawDocs) => {
+          const privateRows = [];
+          rawDocs.forEach((d, i) => {
+            const cat = categorizeCatatanPath(d.ref.path);
+            if (cat.kind === 'private') privateRows.push({ id: rows[i].id, data: rows[i].data, owner_uid: cat.ownerUid });
+          });
+          if (privateRows.length) {
+            for (const c of chunkArr(privateRows, CHUNK_SIZE)) {
+              const { error } = await sb.from('catatan_private').upsert(c, { onConflict: 'id' });
+              if (error) throw new Error('Supabase upsert catatan_private gagal: ' + error.message);
+            }
+            privateCount += privateRows.length;
+            log(`   ...${privateCount} catatan pribadi`);
+          }
+        },
+        PAGE_SIZE
+      );
+      log(`✓ catatan_private: ${privateCount} dokumen tersalin`, 'ok');
+    } catch (e) {
+      log(`⚠ Catatan pribadi (lintas-user) tidak bisa diambil otomatis: ${e.message}`, 'warn');
+      log(`   Ini WAJAR jika query "collection group" perlu index tambahan di Firebase.`, 'warn');
+      log(`   Kalau pesan error di atas ada link ke console.firebase.google.com, klik link itu,`, 'warn');
+      log(`   tunggu ±1 menit sampai index selesai dibuat, lalu klik "Mulai Migrasi Penuh" lagi (aman diulang).`, 'warn');
     }
-    navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false })
-      .then(function(stream){
-        videoEl.srcObject = stream;
-        videoEl.play().catch(function(){});
-        state.usingFallback = false;
-        beginSession();
-      })
-      .catch(function(err){
-        console.error(err);
-        startFallback('Akses kamera ditolak / tidak tersedia. Menjalankan mode demo — semua kontrol tetap bisa dicoba.');
-      });
+    return { publicCount, privateCount };
   }
 
-  function startFallback(msg){
-    state.usingFallback = true;
-    if(msg){
-      startError.style.display='block';
-      startError.textContent = msg;
+  const REGULAR_COLLECTIONS = [
+    ['active_carts', 'active_carts'], ['cashflow', 'cashflow'], ['changelog', 'changelog'],
+    ['daily_revenue', 'daily_revenue'], ['dokter_list', 'dokter_list'], ['feedback', 'feedback'],
+    ['inventory', 'inventory'], ['otp_reset', 'otp_reset'], ['paket_barang', 'paket_barang'],
+    ['pasien_list', 'pasien_list'], ['pending_carts', 'pending_carts'], ['priceHistory', 'price_history'],
+    ['purchases', 'purchases'], ['shift_absensi', 'shift_absensi'], ['shift_config', 'shift_config'],
+    ['shift_jadwal', 'shift_jadwal'], ['shift_karyawan', 'shift_karyawan'], ['shift_lokasi', 'shift_lokasi'],
+    ['stock_opname', 'stock_opname'], ['suppliers', 'suppliers'], ['transactions', 'transactions'],
+    ['transfer_barang', 'transfer_barang'], ['users', 'users'],
+  ];
+  const SINGLETON_DOCS = [
+    ['settings', 'settings', 'global'],
+    ['config', 'config', 'tierNames'],
+    ['system_codes', 'system_codes', 'codes'],
+  ];
+
+  async function testConnection() {
+    testBtn.disabled = true;
+    clearLog();
+    const appId = document.getElementById('appIdInput').value.trim() || 'default-app-id';
+    try {
+      log('Login anonim ke Firebase (project: toko-husna-c6415)...', 'hd');
+      await signInAnonymously(fbAuth);
+      log('✓ Berhasil terhubung ke Firebase', 'ok');
+
+      log(`Mengecek data di App ID "${appId}"...`, 'hd');
+      const invSnap = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), limit(5)));
+      const userSnap = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'users'), limit(5)));
+
+      if (invSnap.empty && userSnap.empty) {
+        log('⚠ Tidak ditemukan data di App ID ini (inventory & users kosong).', 'warn');
+        log('   Coba periksa/ganti App ID di atas jika Anda tahu app ini pernah dijalankan', 'warn');
+        log('   di lingkungan sandbox khusus. Kalau tidak yakin, ini kemungkinan besar', 'warn');
+        log('   berarti Firebase project ini memang belum ada datanya.', 'warn');
+      } else {
+        log(`✓ Ditemukan data! Contoh: ${invSnap.size} item inventory, ${userSnap.size} user (dari 5 pertama yang dicek).`, 'ok');
+        log('Siap untuk migrasi penuh — klik tombol "2. Mulai Migrasi Penuh".', 'ok');
+        startBtn.disabled = false;
+      }
+    } catch (e) {
+      log('✗ GAGAL: ' + e.message, 'err');
+      log('   Periksa koneksi internet, atau apakah project Firebase ini masih aktif.', 'err');
+    } finally {
+      testBtn.disabled = false;
     }
-    beginSession();
   }
 
-  startBtn.addEventListener('click', startCamera);
-  demoBtn.addEventListener('click', function(){ startFallback(''); });
+  async function runMigration() {
+    startBtn.disabled = true;
+    testBtn.disabled = true;
+    clearLog();
+    summaryCard.style.display = 'none';
+    const appId = document.getElementById('appIdInput').value.trim() || 'default-app-id';
+    const results = {}; // table -> {fs: n, error?: msg}
 
-  window.addEventListener('resize', function(){ if(glReady) resizeGL(false); });
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize', function(){ if(glReady) resizeGL(false); });
+    try {
+      log('Login anonim ke Firebase...', 'hd');
+      await signInAnonymously(fbAuth);
+      log('✓ Terhubung. Mulai menyalin data (ini bisa makan waktu tergantung jumlah data)...', 'ok');
+      log('');
+
+      for (const [fsName, table] of REGULAR_COLLECTIONS) {
+        try {
+          results[table] = { fs: await migrateCollection(appId, fsName, table) };
+        } catch (e) {
+          log(`✗ GAGAL migrasi ${fsName}: ${e.message}`, 'err');
+          results[table] = { fs: 0, error: e.message };
+        }
+      }
+
+      for (const [fsName, table, docId] of SINGLETON_DOCS) {
+        try {
+          results[table] = { fs: await migrateSingletonDoc(appId, fsName, table, docId) };
+        } catch (e) {
+          log(`✗ GAGAL migrasi ${fsName}: ${e.message}`, 'err');
+          results[table] = { fs: 0, error: e.message };
+        }
+      }
+
+      try {
+        const { publicCount, privateCount } = await migrateCatatan(appId);
+        results['catatan'] = { fs: publicCount };
+        results['catatan_private'] = { fs: privateCount };
+      } catch (e) {
+        log(`✗ GAGAL migrasi catatan: ${e.message}`, 'err');
+      }
+
+      log('');
+      log('Memverifikasi jumlah baris di Supabase...', 'hd');
+      summaryTbody.innerHTML = '';
+      for (const table of Object.keys(results)) {
+        const sbCount = await countSupabaseRows(table);
+        const r = results[table];
+        const tr = document.createElement('tr');
+        const statusOk = !r.error && (sbCount === r.fs);
+        const statusCls = r.error ? 'status-err' : (statusOk ? 'status-ok' : 'status-warn');
+        const statusText = r.error ? 'GAGAL' : (statusOk ? 'Cocok ✓' : 'Perlu dicek');
+        tr.innerHTML = `<td>${table}</td><td class="num">${r.fs}</td><td class="num">${sbCount}</td><td class="${statusCls}">${statusText}</td>`;
+        summaryTbody.appendChild(tr);
+      }
+      summaryCard.style.display = 'block';
+      log('════════ SELESAI ════════', 'hd');
+      log('Cek tabel ringkasan di bawah. Baris berwarna kuning ("Perlu dicek") tidak selalu error —', '');
+      log('bisa juga karena ada baris lama di Supabase dari percobaan sebelumnya. Baris merah = perlu diulang.', '');
+    } catch (e) {
+      log('✗ Migrasi terhenti: ' + e.message, 'err');
+    } finally {
+      startBtn.disabled = false;
+      testBtn.disabled = false;
+    }
   }
 
-})();
+  testBtn.addEventListener('click', testConnection);
+  startBtn.addEventListener('click', runMigration);
 </script>
 </body>
 </html>
