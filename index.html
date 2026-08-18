@@ -60,6 +60,7 @@
   alter table public.stok_opname_broadcast add column if not exists music_value text;
   alter table public.stok_opname_broadcast add column if not exists music_path text;
   alter table public.stok_opname_broadcast add column if not exists video_path text;
+  alter table public.stok_opname_settings add column if not exists app_url text;
 
   -- Untuk fitur "Coret-coret" (gambar tangan dari admin, tampil live di layar
   -- stok opname, cuma tampil saja / tidak bisa disentuh di layar tersebut):
@@ -87,6 +88,9 @@
   create table if not exists public.stok_opname_settings (
     screen_code text primary key,
     sync_card_visible boolean not null default true,
+    app_url text,                             -- URL lengkap halaman stok_opname.html (kalau tidak
+                                               -- satu folder dengan panel admin ini). Dipakai untuk
+                                               -- fitur "Ambil Alih" & pratinjau coret-coret.
     updated_by text,
     updated_at timestamptz not null default now()
   );
@@ -618,6 +622,21 @@
       tidak ikut berubah). <b>Hapus</b> membuang nama dari daftar pilihan saja — tidak menghapus laporan
       mana pun.
     </div>
+
+    <div style="margin-top:16px; padding-top:14px; border-top:1px dashed rgba(10,69,62,0.18);">
+      <div class="field-label" style="margin-bottom:6px;">Alamat halaman Stok Opname (untuk fitur Ambil Alih)</div>
+      <div class="actions-row" style="margin-top:0;">
+        <input type="text" id="appUrlInput" class="field-input" placeholder="Contoh: https://tokoanda.com/stok_opname.html (kosongkan kalau satu folder dengan panel admin ini)" style="flex:1; min-width:220px; margin-bottom:0;">
+        <button type="button" class="btn-main" onclick="saveAppUrlSetting()">Simpan</button>
+      </div>
+      <div class="footnote" id="appUrlStatus">
+        Isi kotak ini dengan alamat/link lengkap tempat halaman Stok Opname (untuk petugas) di-hosting,
+        kalau filenya <b>tidak</b> berada di folder yang sama dengan Panel Admin ini — misalnya kalau
+        dihosting terpisah (Netlify, GitHub Pages, dst) atau namanya bukan persis "stok_opname.html".
+        Setelah disimpan, fitur <b>Ambil Alih</b> di atas otomatis memakai alamat ini, di semua perangkat
+        admin — tidak perlu diatur ulang di HP/komputer lain.
+      </div>
+    </div>
   </div>
 
   <div class="card connected-only">
@@ -816,7 +835,7 @@
     <div class="tab-panel" data-tab="coret" id="tabCoret">
       <div class="coret-preview-wrap" id="coretPreviewWrap">
         <span class="coret-hint-badge"><span class="dot-live"></span>Pratinjau layar — coret langsung di sini</span>
-        <iframe id="coretMirrorFrame" src="stok_opname.html" tabindex="-1"></iframe>
+        <iframe id="coretMirrorFrame" src="" tabindex="-1"></iframe>
         <canvas id="coretCanvas"></canvas>
       </div>
 
@@ -959,6 +978,41 @@ async function connectGlobal(){
 const SETTINGS_TABLE = 'stok_opname_settings';
 let settingsChannel = null;
 let syncCardVisible = true;
+let appUrlSetting = '';
+
+// Alamat dasar halaman Stok Opname yang dipakai untuk iframe pratinjau
+// coret-coret dan jendela Ambil Alih. Kalau admin sudah mengisi & menyimpan
+// alamat lengkap (appUrlSetting), pakai itu — jadi TIDAK harus satu folder/
+// nama file persis "stok_opname.html" lagi. Kalau kosong, tetap pakai path
+// relatif "stok_opname.html" seperti sebelumnya (mode satu folder).
+function stokOpnameBaseUrl(){
+  const v = (appUrlSetting || '').trim();
+  return v || 'stok_opname.html';
+}
+
+// Gabungkan base URL dengan parameter query, aman dipakai baik untuk base
+// yang sudah punya query string sendiri maupun yang belum.
+function buildStokOpnameUrl(params){
+  const base = stokOpnameBaseUrl();
+  const sep = base.includes('?') ? '&' : '?';
+  const qs = new URLSearchParams(params).toString();
+  return base + sep + qs;
+}
+
+function renderAppUrlStatus(){
+  const input = document.getElementById('appUrlInput');
+  if(input && document.activeElement !== input) input.value = appUrlSetting || '';
+  // Perbarui juga src iframe pratinjau coret-coret supaya ikut memakai
+  // alamat yang baru disimpan, tanpa perlu muat ulang halaman panel admin.
+  const mirror = document.getElementById('coretMirrorFrame');
+  if(mirror){
+    const wanted = stokOpnameBaseUrl();
+    if(mirror.getAttribute('data-base') !== wanted){
+      mirror.setAttribute('data-base', wanted);
+      mirror.src = wanted;
+    }
+  }
+}
 
 function renderSyncCardStatus(){
   const dot = document.getElementById('syncCardDot');
@@ -979,7 +1033,9 @@ async function loadSyncCardSetting(){
     const { data, error } = await sb.from(SETTINGS_TABLE).select('*').eq('screen_code', BROADCAST_SCREEN_CODE).maybeSingle();
     if(error) throw error;
     syncCardVisible = data ? data.sync_card_visible !== false : true;
+    appUrlSetting = data ? (data.app_url || '') : '';
     renderSyncCardStatus();
+    renderAppUrlStatus();
     subscribeSettingsChannel();
   } catch(err){
     console.error('Gagal memuat status modal sinkronisasi:', err);
@@ -996,9 +1052,35 @@ function subscribeSettingsChannel(){
       event: '*', schema: 'public', table: SETTINGS_TABLE, filter: `screen_code=eq.${BROADCAST_SCREEN_CODE}`
     }, payload => {
       syncCardVisible = payload.new ? payload.new.sync_card_visible !== false : true;
+      appUrlSetting = payload.new ? (payload.new.app_url || '') : '';
       renderSyncCardStatus();
+      renderAppUrlStatus();
     })
     .subscribe();
+}
+
+async function saveAppUrlSetting(){
+  if(!sb) return;
+  const input = document.getElementById('appUrlInput');
+  const status = document.getElementById('appUrlStatus');
+  const value = input ? input.value.trim() : '';
+  try{
+    const { error } = await sb.from(SETTINGS_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      sync_card_visible: syncCardVisible,
+      app_url: value,
+      updated_by: CLIENT_ID,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'screen_code' });
+    if(error) throw error;
+    appUrlSetting = value;
+    if(status) status.textContent = value
+      ? ('Tersimpan. Fitur Ambil Alih sekarang memakai: ' + value)
+      : 'Tersimpan. Fitur Ambil Alih memakai path relatif "stok_opname.html" (satu folder).';
+  } catch(err){
+    console.error('Gagal menyimpan alamat halaman Stok Opname:', err);
+    alert('Gagal menyimpan. Cek koneksi internet lalu coba lagi.');
+  }
 }
 
 async function setSyncCardVisibility(visible){
@@ -1287,7 +1369,7 @@ function openTakeover(nama){
   if(sub) sub.textContent = isPetugasOnline(nama)
     ? 'Petugas sedang online • menghubungkan live…'
     : 'Petugas sedang offline • memuat data terakhir…';
-  if(frame) frame.src = 'stok_opname.html?admin_takeover=' + encodeURIComponent(slug) + '&nama=' + encodeURIComponent(nama);
+  if(frame) frame.src = buildStokOpnameUrl({ admin_takeover: slug, nama: nama });
   if(overlay) overlay.classList.add('show');
   document.body.style.overflow = 'hidden';
 }
