@@ -3,846 +3,2593 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RETROLENS — Hand Portal Filter</title>
+<title>Panel Admin — Kontrol Layar</title>
+<!--
+  ====================================================================
+  SETUP SEKALI SAJA di Supabase (project yang sama dengan stok_opname.html):
+  Buka SQL Editor di dashboard Supabase, lalu jalankan:
+
+  create table if not exists public.stok_opname_broadcast (
+    screen_code text primary key,
+    type text not null default 'none',        -- 'none' | 'html' | 'video' | 'foto'
+    html_content text,
+    video_source text,                        -- 'url' | 'local' | 'upload'
+    video_value text,                         -- URL video (link/unggahan), atau nama file lokal
+    video_path text,                          -- path file video di Storage kalau diunggah (dipakai untuk hapus permanen nanti)
+    photo_source text,                        -- 'upload' | 'url' | 'local'
+    photo_value text,                         -- URL publik foto yang diunggah
+    photo_path text,                          -- path file foto di Storage (dipakai untuk hapus permanen nanti)
+    music_source text,                        -- 'url' | 'local' | 'upload'
+    music_value text,                         -- URL musik (link/unggahan), atau nama file lokal
+    music_path text,                          -- path file musik di Storage kalau diunggah (dipakai untuk hapus permanen nanti)
+    active boolean not null default false,
+    updated_by text,
+    updated_at timestamptz not null default now()
+  );
+
+  alter table public.stok_opname_broadcast enable row level security;
+
+  create policy "anon select broadcast" on public.stok_opname_broadcast
+    for select using (true);
+  create policy "anon insert broadcast" on public.stok_opname_broadcast
+    for insert with check (true);
+  create policy "anon update broadcast" on public.stok_opname_broadcast
+    for update using (true) with check (true);
+
+  alter publication supabase_realtime add table public.stok_opname_broadcast;
+
+  -- Foto, video, dan musik bisa diunggah langsung dari panel admin, jadi perlu
+  -- bucket Storage (satu bucket dipakai bersama untuk ketiganya). Jalankan ini juga:
+  insert into storage.buckets (id, name, public)
+    values ('broadcast-foto', 'broadcast-foto', true)
+    on conflict (id) do nothing;
+
+  create policy "anon insert broadcast-foto" on storage.objects
+    for insert to anon with check (bucket_id = 'broadcast-foto');
+  create policy "anon select broadcast-foto" on storage.objects
+    for select to anon using (bucket_id = 'broadcast-foto');
+  create policy "anon delete broadcast-foto" on storage.objects
+    for delete to anon using (bucket_id = 'broadcast-foto');
+
+  -- KALAU TABEL/BUCKET SUDAH ADA SEBELUMNYA (dibuat sebelum fitur upload video & musik ini),
+  -- cukup jalankan baris-baris ALTER TABLE + bucket & policy di atas yang belum pernah dijalankan:
+  alter table public.stok_opname_broadcast add column if not exists photo_source text;
+  alter table public.stok_opname_broadcast add column if not exists photo_value text;
+  alter table public.stok_opname_broadcast add column if not exists photo_path text;
+  alter table public.stok_opname_broadcast add column if not exists music_source text;
+  alter table public.stok_opname_broadcast add column if not exists music_value text;
+  alter table public.stok_opname_broadcast add column if not exists music_path text;
+  alter table public.stok_opname_broadcast add column if not exists video_path text;
+
+  -- Untuk fitur "Coret-coret" (gambar tangan dari admin, tampil live di layar
+  -- stok opname, cuma tampil saja / tidak bisa disentuh di layar tersebut):
+  create table if not exists public.stok_opname_draw (
+    screen_code text primary key,
+    strokes jsonb not null default '[]'::jsonb,
+    updated_by text,
+    updated_at timestamptz not null default now()
+  );
+
+  alter table public.stok_opname_draw enable row level security;
+
+  create policy "anon select draw" on public.stok_opname_draw
+    for select using (true);
+  create policy "anon insert draw" on public.stok_opname_draw
+    for insert with check (true);
+  create policy "anon update draw" on public.stok_opname_draw
+    for update using (true) with check (true);
+
+  alter publication supabase_realtime add table public.stok_opname_draw;
+
+  -- Untuk kontrol "Modal Sinkronisasi Tim" (bisa disembunyikan/ditampilkan
+  -- dari panel admin ini, berlaku di semua HP yang membuka halaman stok
+  -- opname):
+  create table if not exists public.stok_opname_settings (
+    screen_code text primary key,
+    sync_card_visible boolean not null default true,
+    updated_by text,
+    updated_at timestamptz not null default now()
+  );
+
+  alter table public.stok_opname_settings enable row level security;
+
+  create policy "anon select settings" on public.stok_opname_settings
+    for select using (true);
+  create policy "anon insert settings" on public.stok_opname_settings
+    for insert with check (true);
+  create policy "anon update settings" on public.stok_opname_settings
+    for update using (true) with check (true);
+
+  alter publication supabase_realtime add table public.stok_opname_settings;
+
+  -- Tabel yang dipakai fitur "Sinkronisasi Tim" (room) di halaman utama —
+  -- kemungkinan besar SUDAH ada dari sebelumnya. Baris-baris di bawah ini
+  -- aman dijalankan ulang (idempotent) dan diperlukan supaya panel admin
+  -- ini bisa memonitor, menghentikan, dan menghapus room — khususnya
+  -- kebijakan DELETE yang biasanya belum pernah dibuat:
+  create table if not exists public.stok_opname_rooms (
+    room_code text primary key,
+    state jsonb not null default '{}'::jsonb,
+    updated_by text,
+    updated_at timestamptz not null default now()
+  );
+
+  alter table public.stok_opname_rooms enable row level security;
+
+  drop policy if exists "anon select rooms" on public.stok_opname_rooms;
+  create policy "anon select rooms" on public.stok_opname_rooms
+    for select using (true);
+  drop policy if exists "anon insert rooms" on public.stok_opname_rooms;
+  create policy "anon insert rooms" on public.stok_opname_rooms
+    for insert with check (true);
+  drop policy if exists "anon update rooms" on public.stok_opname_rooms;
+  create policy "anon update rooms" on public.stok_opname_rooms
+    for update using (true) with check (true);
+  drop policy if exists "anon delete rooms" on public.stok_opname_rooms;
+  create policy "anon delete rooms" on public.stok_opname_rooms
+    for delete using (true);
+
+  -- Kalau baris di bawah error "already member of publication" saat dijalankan,
+  -- abaikan saja — artinya realtime untuk tabel ini sudah aktif sebelumnya:
+  alter publication supabase_realtime add table public.stok_opname_rooms;
+
+  -- Untuk fitur "Kelola Nama Petugas" di panel admin ini, dan pop up wajib
+  -- "Siapa yang bertugas?" di halaman stok opname (muncul begitu HP pertama
+  -- kali membuka halaman itu, lalu diingat otomatis di HP tersebut):
+  create table if not exists public.stok_opname_petugas (
+    id bigint generated by default as identity primary key,
+    nama text not null unique,
+    created_at timestamptz not null default now()
+  );
+
+  alter table public.stok_opname_petugas enable row level security;
+
+  drop policy if exists "anon select petugas" on public.stok_opname_petugas;
+  create policy "anon select petugas" on public.stok_opname_petugas
+    for select using (true);
+  drop policy if exists "anon insert petugas" on public.stok_opname_petugas;
+  create policy "anon insert petugas" on public.stok_opname_petugas
+    for insert with check (true);
+  drop policy if exists "anon update petugas" on public.stok_opname_petugas;
+  create policy "anon update petugas" on public.stok_opname_petugas
+    for update using (true) with check (true);
+  drop policy if exists "anon delete petugas" on public.stok_opname_petugas;
+  create policy "anon delete petugas" on public.stok_opname_petugas
+    for delete using (true);
+
+  alter publication supabase_realtime add table public.stok_opname_petugas;
+
+  -- Untuk fitur "Ambil Alih" di panel admin ini (klik nama petugas di kartu
+  -- "Kelola Nama Petugas" -> langsung masuk ke tampilan stok opname petugas
+  -- itu secara live, dan bisa mengambil alih/mengedit dari sini). BEDA dari
+  -- "Sinkronisasi Tim" (room, manual pakai kode): sesi ini OTOMATIS aktif
+  -- begitu HP petugas mengisi nama di pop up "Siapa yang bertugas?", jadi
+  -- selalu ada data terbaru di sini meskipun petugas tidak pernah mengaktifkan
+  -- room apa pun — dan tetap bisa dibuka/diambil alih walau petugas-nya
+  -- sedang offline (data terakhir tetap tersimpan; perubahan dari admin akan
+  -- otomatis diterapkan ke HP petugas begitu online lagi):
+  create table if not exists public.stok_opname_petugas_session (
+    petugas_slug text primary key,
+    petugas_nama text,
+    state jsonb not null default '{}'::jsonb,
+    updated_by text,
+    updated_at timestamptz not null default now()
+  );
+
+  alter table public.stok_opname_petugas_session enable row level security;
+
+  drop policy if exists "anon select petugas session" on public.stok_opname_petugas_session;
+  create policy "anon select petugas session" on public.stok_opname_petugas_session
+    for select using (true);
+  drop policy if exists "anon insert petugas session" on public.stok_opname_petugas_session;
+  create policy "anon insert petugas session" on public.stok_opname_petugas_session
+    for insert with check (true);
+  drop policy if exists "anon update petugas session" on public.stok_opname_petugas_session;
+  create policy "anon update petugas session" on public.stok_opname_petugas_session
+    for update using (true) with check (true);
+
+  alter publication supabase_realtime add table public.stok_opname_petugas_session;
+
+  -- Untuk fitur "Daftar Nama Barang Master" (diimpor dari Excel di panel admin
+  -- ini, dipakai sebagai pegangan nama saat mengetik nama barang di halaman
+  -- stok opname, dan untuk menyesuaikan ejaan nama lewat AI Agent):
+  create table if not exists public.stok_opname_item_master (
+    screen_code text primary key,
+    names jsonb not null default '[]'::jsonb,
+    updated_by text,
+    updated_at timestamptz not null default now()
+  );
+
+  alter table public.stok_opname_item_master enable row level security;
+
+  create policy "anon select item master" on public.stok_opname_item_master
+    for select using (true);
+  create policy "anon insert item master" on public.stok_opname_item_master
+    for insert with check (true);
+  create policy "anon update item master" on public.stok_opname_item_master
+    for update using (true) with check (true);
+
+  alter publication supabase_realtime add table public.stok_opname_item_master;
+
+  -- Untuk fitur "Import Sisa Stok (Web/Apk)" (diimpor dari Excel di panel admin
+  -- ini, langsung mengisi kolom Web/Apk di baris-baris yang namanya cocok
+  -- di halaman stok opname, berlaku live di semua HP yang sedang membuka
+  -- halaman tersebut):
+  create table if not exists public.stok_opname_stock_import (
+    screen_code text primary key,
+    items jsonb not null default '[]'::jsonb,
+    mode text not null default 'fill_empty',   -- 'fill_empty' | 'overwrite'
+    updated_by text,
+    updated_at timestamptz not null default now()
+  );
+
+  alter table public.stok_opname_stock_import enable row level security;
+
+  create policy "anon select stock import" on public.stok_opname_stock_import
+    for select using (true);
+  create policy "anon insert stock import" on public.stok_opname_stock_import
+    for insert with check (true);
+  create policy "anon update stock import" on public.stok_opname_stock_import
+    for update using (true) with check (true);
+
+  alter publication supabase_realtime add table public.stok_opname_stock_import;
+
+  -- Untuk fitur "Pengguna Aktif Sekarang" di panel admin ini: murni
+  -- Supabase Realtime Presence, tidak butuh tabel database apa pun.
+  ====================================================================
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
-
   :root{
-    --void: #0a0710;
-    --panel: #130f1f;
-    --panel-line: #2a2140;
-    --cyan: #4ef2e6;
-    --magenta: #ff3cac;
-    --amber: #ffd166;
-    --ink: #eae6f7;
-    --ink-dim: #8f87ab;
+    --ink:#173b36; --ink-soft:#4b6b65; --paper:#f6f4ee; --card:#ffffff;
+    --teal:#0d5c52; --teal-deep:#0a453e; --mint:#e4f2ec; --line:#dde3dd;
+    --minus:#c0503a; --minus-bg:#fbebe6; --klop:#3c8a5c; --klop-bg:#e9f6ee; --amber:#b8863b;
   }
-
-  *{ box-sizing:border-box; }
-
+  *{box-sizing:border-box;}
+  html{overflow-x:hidden;}
   body{
-    margin:0;
-    min-height:100vh;
-    background:
-      radial-gradient(ellipse 60% 40% at 15% 0%, rgba(78,242,230,0.10), transparent 60%),
-      radial-gradient(ellipse 50% 40% at 100% 20%, rgba(255,60,172,0.10), transparent 60%),
-      var(--void);
-    color:var(--ink);
-    font-family:'Space Grotesk', sans-serif;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    padding:28px 16px 60px;
+    overflow-x:hidden; max-width:100vw; margin:0; background:var(--paper);
+    background-image:radial-gradient(circle at 1px 1px, rgba(13,92,82,0.07) 1px, transparent 0);
+    background-size:22px 22px;
+    font-family:'Plus Jakarta Sans', system-ui, sans-serif; color:var(--ink);
+    padding:28px 16px 80px;
   }
+  .wrap{max-width:640px; margin:0 auto;}
+  @media(max-width:480px){ body{padding:18px 12px 60px;} }
 
-  header{
-    width:100%;
-    max-width:1180px;
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
-    gap:16px;
-    flex-wrap:wrap;
-    margin-bottom:22px;
-    border-bottom:1px solid var(--panel-line);
-    padding-bottom:16px;
+  .masthead{display:flex; align-items:center; gap:14px; margin-bottom:22px;}
+  .pill{
+    width:42px; height:42px; border-radius:11px; background:var(--teal);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    box-shadow:0 4px 10px rgba(13,92,82,0.25);
   }
+  .pill svg{width:22px;height:22px;}
+  .masthead h1{font-size:19px; font-weight:800; margin:0; letter-spacing:-0.01em;}
+  .masthead p{margin:1px 0 0; font-size:12.5px; color:var(--ink-soft); font-weight:500;}
 
-  .brand{
-    display:flex;
-    align-items:baseline;
-    gap:12px;
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:20px; margin-bottom:16px; box-shadow:0 1px 2px rgba(23,59,54,0.04);
   }
-
-  .brand h1{
-    margin:0;
-    font-size:26px;
-    letter-spacing:0.08em;
-    font-weight:700;
+  @media(max-width:480px){ .card{padding:14px;} }
+  .card h2{
+    font-size:11px; text-transform:uppercase; letter-spacing:.09em; color:var(--teal);
+    font-weight:700; margin:0 0 14px;
   }
-  .brand h1 span{ color:var(--cyan); }
+  .footnote{font-size:11.5px; color:var(--ink-soft); line-height:1.6; margin-top:12px;}
 
-  .brand .tag{
-    font-family:'JetBrains Mono', monospace;
-    font-size:11px;
-    letter-spacing:0.14em;
-    color:var(--ink-dim);
-    text-transform:uppercase;
-    border:1px solid var(--panel-line);
-    padding:3px 8px;
-    border-radius:3px;
+  .join-row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .join-row input{
+    flex:1; min-width:160px; padding:10px 12px; border:1.5px solid var(--line); border-radius:9px;
+    font-family:inherit; font-size:13.5px; color:var(--ink); background:var(--card);
   }
+  .join-row input:focus{outline:none; border-color:var(--teal);}
 
-  header .sub{
-    font-family:'JetBrains Mono', monospace;
-    font-size:12px;
-    color:var(--ink-dim);
-    max-width:420px;
-    text-align:right;
+  .btn-main{
+    background:var(--teal); color:#fff; border:none; padding:10px 18px; border-radius:10px;
+    font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;
+    display:inline-flex; align-items:center; gap:8px;
   }
-
-  main{
-    width:100%;
-    max-width:1180px;
-    display:grid;
-    grid-template-columns:1fr 320px;
-    gap:22px;
+  .btn-main:hover{background:var(--teal-deep);}
+  .btn-main:disabled{opacity:.45; cursor:not-allowed;}
+  .btn-stop{
+    background:var(--minus-bg); color:var(--minus); border:1.5px solid #e4b8ab; padding:10px 18px;
+    border-radius:10px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit;
   }
+  .btn-stop:hover{background:#f6dbd2;}
+  .btn-stop:disabled{opacity:.45; cursor:not-allowed;}
+  .link-btn{background:none; border:none; font-size:11.5px; font-weight:700; text-decoration:underline; padding:2px 0; cursor:pointer; color:var(--ink-soft);}
 
-  @media (max-width:880px){
-    main{ grid-template-columns:1fr; }
+  .status-line{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-top:10px;}
+  .dot{width:8px; height:8px; border-radius:50%; background:#c2c9c4; flex-shrink:0;}
+  .dot.on{background:var(--klop);}
+  .dot.warn{background:var(--amber);}
+  .dot.off{background:#c2c9c4;}
+
+  .connected-only{display:none;}
+  body.connected .connected-only{display:block;}
+  body.connected .need-connect{display:none;}
+
+  .screen-badge{font-family:'JetBrains Mono', monospace; color:var(--teal-deep); font-weight:700;}
+
+  .tabs{display:flex; gap:8px; margin-bottom:14px;}
+  .tab-btn{
+    flex:1; padding:9px 10px; border-radius:9px; border:1.5px solid var(--line); background:var(--card);
+    color:var(--ink-soft); font-weight:700; font-size:12.5px; cursor:pointer; font-family:inherit;
   }
+  .tab-btn.active{background:var(--mint); color:var(--teal-deep); border-color:#a9c9c0;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
 
-  .stage{
-    position:relative;
-    background:#000;
-    border:1px solid var(--panel-line);
-    border-radius:10px;
-    overflow:hidden;
-    aspect-ratio:4/3;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+  textarea{
+    width:100%; min-height:180px; padding:10px 12px; border:1.5px solid var(--line);
+    border-radius:10px; font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.6;
+    color:var(--ink); background:var(--card); resize:vertical;
   }
+  textarea:focus{outline:none; border-color:var(--teal);}
 
-  .stage::before{
-    content:"";
-    position:absolute; inset:0;
-    pointer-events:none;
-    box-shadow: inset 0 0 0 1px rgba(78,242,230,0.08);
-    z-index:5;
-  }
-
-  video{ display:none; }
-
-  canvas{
-    width:100%;
-    height:100%;
-    display:block;
-  }
-
-  .idle-panel{
-    position:absolute;
-    inset:0;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:18px;
-    text-align:center;
-    padding:20px;
-    background:radial-gradient(circle at 50% 40%, rgba(78,242,230,0.06), transparent 65%);
-    z-index:4;
-  }
-
-  .portal-ring{
-    width:88px; height:88px;
-    border-radius:50%;
-    border:2px solid var(--cyan);
-    box-shadow:0 0 24px rgba(78,242,230,0.55), inset 0 0 24px rgba(78,242,230,0.35);
-    animation:spin 6s linear infinite;
-  }
-  .portal-ring::after{
-    content:"";
-    display:block;
-    width:100%; height:100%;
-    border-radius:50%;
-    border:2px dashed var(--magenta);
-    transform:scale(0.7);
-    opacity:0.7;
-  }
-  @keyframes spin{ to{ transform:rotate(360deg); } }
-
-  #startBtn{
-    font-family:'JetBrains Mono', monospace;
-    font-size:13px;
-    letter-spacing:0.08em;
-    text-transform:uppercase;
-    background:var(--cyan);
-    color:#04201d;
-    border:none;
-    padding:12px 26px;
-    border-radius:5px;
-    font-weight:700;
+  .radio-row{display:flex; gap:16px; margin-bottom:10px; flex-wrap:wrap;}
+  .radio-row label{
+    display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--ink);
     cursor:pointer;
-    transition:transform 0.15s ease, box-shadow 0.15s ease;
-    box-shadow:0 0 0 rgba(78,242,230,0);
   }
-  #startBtn:hover{ transform:translateY(-1px); box-shadow:0 6px 22px rgba(78,242,230,0.25); }
-  #startBtn:active{ transform:translateY(0); }
-  #startBtn:disabled{ opacity:0.5; cursor:default; transform:none; box-shadow:none; }
+  .field-input{
+    width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:9px;
+    font-family:inherit; font-size:13px; color:var(--ink); background:var(--card); margin-bottom:4px;
+  }
+  .field-input:focus{outline:none; border-color:var(--teal);}
+  .field-hint{font-size:11px; color:var(--ink-soft); margin-bottom:10px; line-height:1.5;}
 
-  .idle-panel p{
-    color:var(--ink-dim);
-    font-size:13px;
-    max-width:320px;
-    margin:0;
-  }
+  .actions-row{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;}
 
-  #statusMsg{
-    font-family:'JetBrains Mono', monospace;
-    font-size:11.5px;
-    color:var(--magenta);
-    min-height:16px;
-  }
+  .foto-musik-section{margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--line);}
+  .foto-musik-section:last-of-type{border-bottom:none; padding-bottom:0; margin-bottom:10px;}
+  .foto-musik-label{font-size:11.5px; font-weight:800; color:var(--teal-deep); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;}
 
-  .hud{
-    position:absolute;
-    top:12px; left:12px; right:12px;
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    z-index:3;
-    pointer-events:none;
-    font-family:'JetBrains Mono', monospace;
+  .upload-drop{
+    display:flex; align-items:center; justify-content:center; gap:8px; text-align:center;
+    border:1.5px dashed #a9c9c0; border-radius:10px; background:var(--mint);
+    color:var(--teal-deep); font-size:13px; font-weight:700; padding:22px 14px;
+    cursor:pointer; margin-bottom:4px;
   }
+  .upload-drop:hover{background:#d7ece2;}
+  .upload-drop svg{width:17px; height:17px; flex-shrink:0;}
+  .photo-preview-wrap{margin-bottom:4px;}
+  .photo-preview-img{
+    width:100%; max-height:220px; object-fit:contain; border-radius:10px;
+    border:1.5px solid var(--line); background:#11201d; display:block; margin-bottom:8px;
+  }
+  .media-preview-video{
+    width:100%; max-height:220px; border-radius:10px;
+    border:1.5px solid var(--line); background:#11201d; display:block; margin-bottom:8px;
+  }
+  .media-preview-audio{width:100%; display:block; margin-bottom:8px;}
 
-  .hud .rec{
-    display:flex; align-items:center; gap:6px;
-    font-size:11px; letter-spacing:0.1em; color:var(--ink-dim);
+  .now-showing{
+    margin-top:16px; padding:12px 14px; border-radius:10px; background:#fafaf6;
+    border:1.5px solid var(--line); font-size:12.5px; line-height:1.6; color:var(--ink);
   }
-  .hud .rec .dot{
-    width:7px; height:7px; border-radius:50%;
-    background:var(--magenta);
-    box-shadow:0 0 8px var(--magenta);
-    animation:pulse 1.4s ease-in-out infinite;
-  }
-  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+  .now-showing b{color:var(--teal-deep);}
 
-  .hud .fps{
-    font-size:11px; color:var(--ink-dim);
+  .master-status{
+    padding:12px 14px; border-radius:10px; background:#fafaf6;
+    border:1.5px solid var(--line); font-size:12.5px; line-height:1.6; color:var(--ink);
   }
+  .master-status b{color:var(--teal-deep);}
+  .master-preview{margin-top:14px;}
+  .master-preview-count{font-size:12.5px; font-weight:700; color:var(--teal-deep); margin-bottom:6px;}
+  .master-preview-list{
+    max-height:170px; overflow-y:auto; border:1.5px solid var(--line); border-radius:10px;
+    background:var(--card); padding:8px 10px; font-size:12px; line-height:1.9; color:var(--ink-soft);
+  }
+  .master-preview-list .mp-item{padding:1px 0;}
+  .master-preview-list .mp-more{font-style:italic; padding-top:4px;}
 
-  aside{
-    display:flex;
-    flex-direction:column;
-    gap:14px;
+  /* ===== Tab Coret-coret ===== */
+  .coret-preview-wrap{
+    position:relative; width:100%; max-width:340px; aspect-ratio:9/17.5;
+    margin:0 auto 14px; border-radius:14px; overflow:hidden; background:#11201d;
+    border:1.5px solid var(--line); box-shadow:0 2px 8px rgba(23,59,54,0.10);
   }
+  .coret-preview-wrap iframe{
+    position:absolute; inset:0; width:100%; height:100%; border:none; pointer-events:none; background:#f6f4ee;
+  }
+  .coret-preview-wrap canvas{
+    position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:crosshair;
+  }
+  .coret-hint-badge{
+    position:absolute; top:8px; left:8px; z-index:5; background:rgba(10,69,62,0.82); color:#fff;
+    font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:20px; pointer-events:none;
+    display:flex; align-items:center; gap:5px;
+  }
+  .coret-hint-badge .dot-live{width:6px; height:6px; border-radius:50%; background:#4fd587; flex-shrink:0;}
 
-  .panel{
-    background:var(--panel);
-    border:1px solid var(--panel-line);
-    border-radius:10px;
-    padding:16px 18px;
+  .coret-controls{display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;}
+  .coret-color-field{display:flex; flex-direction:column; gap:6px;}
+  .coret-color-field label{font-size:11px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em;}
+  .coret-swatches{display:flex; gap:6px; align-items:center;}
+  .coret-swatch{
+    width:24px; height:24px; border-radius:50%; border:2px solid transparent; cursor:pointer;
+    padding:0; box-shadow:0 0 0 1px var(--line);
   }
+  .coret-swatch.active{border-color:var(--ink); box-shadow:0 0 0 1px var(--ink);}
+  .coret-color-custom{
+    width:30px; height:30px; padding:0; border:1.5px solid var(--line); border-radius:8px;
+    cursor:pointer; background:none;
+  }
+  .coret-thickness-field{display:flex; flex-direction:column; gap:6px; flex:1; min-width:150px;}
+  .coret-thickness-field label{font-size:11px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em;}
+  .coret-thickness-row{display:flex; align-items:center; gap:10px;}
+  .coret-thickness-row input[type="range"]{flex:1; accent-color:var(--teal);}
+  .coret-thickness-preview{
+    width:34px; height:34px; border-radius:8px; background:var(--mint); border:1.5px solid var(--line);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .coret-thickness-dot{border-radius:50%; background:var(--ink);}
+  .coret-tools-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .btn-tool{
+    background:var(--card); color:var(--ink); border:1.5px solid var(--line); padding:8px 14px;
+    border-radius:9px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-tool:hover{background:var(--mint);}
+  .btn-tool:disabled{opacity:.45; cursor:not-allowed;}
+  .btn-tool svg{width:14px; height:14px;}
 
-  .panel h2{
-    margin:0 0 10px;
-    font-size:12px;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    color:var(--ink-dim);
-    font-family:'JetBrains Mono', monospace;
-    display:flex;
-    align-items:center;
-    gap:8px;
+  /* ===== Monitoring Room Tim ===== */
+  .rooms-empty{font-size:12.5px; color:var(--ink-soft); padding:10px 2px;}
+  .room-item{
+    border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:10px;
+    background:var(--card);
   }
-  .panel h2::before{
-    content:"";
-    width:6px; height:6px;
-    background:var(--cyan);
-    display:inline-block;
-    transform:rotate(45deg);
+  .room-item:last-child{margin-bottom:0;}
+  .room-item-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .room-item-code{font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; color:var(--ink);}
+  .room-item-status{font-size:11px; font-weight:700; color:var(--ink-soft);}
+  .room-item-badge{
+    font-size:10.5px; font-weight:700; color:var(--teal-deep); background:var(--mint);
+    border-radius:20px; padding:2px 9px;
   }
+  .room-item-sub{font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
+  .room-item-actions{display:flex; gap:14px; margin-top:8px; flex-wrap:wrap;}
+  .link-btn-danger{color:var(--minus);}
+  .link-btn:disabled{opacity:.4; cursor:not-allowed; text-decoration:none;}
 
-  .gesture-row{
-    display:flex;
-    gap:10px;
-    align-items:flex-start;
-    padding:9px 0;
-    border-bottom:1px solid var(--panel-line);
-    font-size:13px;
-    line-height:1.4;
+  /* ===== Pengguna Aktif Sekarang ===== */
+  .presence-count-badge{
+    font-size:10.5px; font-weight:700; color:var(--teal-deep); background:var(--mint);
+    border-radius:20px; padding:2px 9px; margin-left:auto;
   }
-  .gesture-row:last-child{ border-bottom:none; }
-  .gesture-row b{ color:var(--cyan); font-weight:600; }
-  .gesture-row span{ color:var(--ink-dim); }
+  .presence-item{
+    display:flex; align-items:center; gap:10px; border:1.5px solid var(--line); border-radius:12px;
+    padding:10px 14px; margin-bottom:8px; background:var(--card);
+  }
+  .presence-item:last-child{margin-bottom:0;}
+  .presence-avatar{
+    width:32px; height:32px; border-radius:50%; background:var(--teal); color:#fff; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;
+    position:relative;
+  }
+  .presence-avatar .live-dot{
+    position:absolute; right:-1px; bottom:-1px; width:9px; height:9px; border-radius:50%;
+    background:var(--klop); border:2px solid var(--card);
+  }
+  .presence-name{font-weight:700; font-size:13px; color:var(--ink);}
+  .presence-sub{font-size:11.5px; color:var(--ink-soft); margin-top:1px;}
+  .presence-empty{font-size:12.5px; color:var(--ink-soft); padding:10px 2px;}
 
-  .filter-grid{
-    display:flex;
-    flex-wrap:wrap;
-    gap:6px;
+  /* ===== Kelola Nama Petugas ===== */
+  .petugas-empty{font-size:12.5px; color:var(--ink-soft); padding:10px 2px;}
+  .petugas-item-name-btn{
+    display:flex; align-items:center; gap:7px; flex:1; min-width:0; background:none; border:none;
+    padding:0; margin:0; cursor:pointer; text-align:left; font-family:inherit;
   }
+  .petugas-item-name-btn:hover .petugas-item-name{text-decoration:underline; color:var(--teal-deep);}
+  .petugas-online-dot{
+    width:8px; height:8px; border-radius:50%; background:#c7cdc9; flex-shrink:0;
+  }
+  .petugas-online-dot.on{background:#3c8a5c; box-shadow:0 0 0 3px rgba(60,138,92,0.18);}
+  .petugas-online-label{font-size:10.5px; color:var(--ink-soft); font-weight:600; flex-shrink:0; white-space:nowrap;}
 
-  .chip{
-    font-family:'JetBrains Mono', monospace;
-    font-size:10.5px;
-    letter-spacing:0.05em;
-    padding:5px 9px;
-    border:1px solid var(--panel-line);
-    border-radius:4px;
-    color:var(--ink-dim);
-    transition:all 0.15s ease;
+  .takeover-overlay{
+    display:none; position:fixed; inset:0; z-index:100000; background:rgba(10,20,18,0.55);
+    padding:0; align-items:stretch; justify-content:center;
   }
-  .chip.active{
-    color:#04201d;
-    background:var(--amber);
-    border-color:var(--amber);
-    font-weight:700;
+  .takeover-overlay.show{display:flex;}
+  .takeover-panel{
+    background:var(--paper); width:100%; height:100%; display:flex; flex-direction:column;
+    max-width:520px; margin:0 auto; box-shadow:0 0 40px rgba(0,0,0,0.35);
   }
-
-  .current-filter{
-    font-family:'JetBrains Mono', monospace;
-    font-size:28px;
-    font-weight:700;
-    color:var(--amber);
-    letter-spacing:0.02em;
-    margin:2px 0 4px;
+  @media(min-width:560px){ .takeover-panel{ margin:16px auto; height:calc(100% - 32px); border-radius:18px; overflow:hidden; } }
+  .takeover-header{
+    display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--teal-deep);
+    color:#fff; flex-shrink:0;
   }
-  .current-filter-label{
-    font-size:11px;
-    color:var(--ink-dim);
-    letter-spacing:0.1em;
-    text-transform:uppercase;
-    font-family:'JetBrains Mono', monospace;
+  .takeover-header-info{flex:1; min-width:0;}
+  .takeover-header-title{font-size:13.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .takeover-header-sub{font-size:11px; opacity:.85; font-weight:500;}
+  .takeover-close-btn{
+    background:rgba(255,255,255,0.15); border:none; color:#fff; width:32px; height:32px; border-radius:9px;
+    font-size:16px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
   }
-
-  footer{
-    max-width:1180px;
-    width:100%;
-    margin-top:20px;
-    font-family:'JetBrains Mono', monospace;
-    font-size:11px;
-    color:var(--ink-dim);
-    display:flex;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    gap:8px;
+  .takeover-close-btn:hover{background:rgba(255,255,255,0.28);}
+  .takeover-body{flex:1; min-height:0; position:relative; background:#fff;}
+  .takeover-body iframe{width:100%; height:100%; border:none; display:block;}
+  .petugas-item{
+    display:flex; align-items:center; gap:10px; border:1.5px solid var(--line); border-radius:12px;
+    padding:9px 14px; margin-bottom:8px; background:var(--card);
   }
-
-  a{ color:var(--cyan); }
+  .petugas-item:last-child{margin-bottom:0;}
+  .petugas-item-avatar{
+    width:30px; height:30px; border-radius:50%; background:var(--teal); color:#fff; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12.5px;
+  }
+  .petugas-item-name{font-weight:700; font-size:13px; color:var(--ink); flex:1; min-width:0; word-break:break-word;}
+  .petugas-item-actions{display:flex; gap:12px; flex-shrink:0;}
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<header>
-  <div class="brand">
-    <h1>RETRO<span>LENS</span></h1>
-    <div class="tag">Hand Portal Filter · Web Edition</div>
-  </div>
-  <div class="sub">Buka portal dengan jari Anda, terapkan filter visual, dan ganti efek hanya dengan gestur tangan — semuanya langsung di browser.</div>
-</header>
-
-<main>
-  <div class="stage" id="stage">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas"></canvas>
-
-    <div class="hud" id="hud" style="display:none;">
-      <div class="rec"><span class="dot"></span>LIVE</div>
-      <div class="fps" id="fpsCounter">0 FPS</div>
+  <div class="masthead">
+    <div class="pill">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="13" rx="2" stroke="#fff" stroke-width="1.8"/><path d="M8 21h8M12 17v4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
     </div>
-
-    <div class="idle-panel" id="idlePanel">
-      <div class="portal-ring"></div>
-      <div>
-        <button id="startBtn">Buka Kamera</button>
-      </div>
-      <p>Butuh akses webcam. Semua pemrosesan berjalan lokal di browser Anda — video tidak dikirim ke server manapun.</p>
-      <div id="statusMsg"></div>
+    <div>
+      <h1>Panel Admin — Kontrol Layar</h1>
+      <p>Tampilkan HTML, video, atau foto &amp; musik di layar stok opname dari jarak jauh</p>
     </div>
   </div>
 
-  <aside>
-    <div class="panel">
-      <h2>Filter Aktif</h2>
-      <div class="current-filter" id="currentFilterName">—</div>
-      <div class="current-filter-label" id="filterIndexLabel">Belum dimulai</div>
-      <div class="filter-grid" id="filterGrid"></div>
+  <div class="card">
+    <h2>Status</h2>
+    <div class="status-line"><span class="dot" id="statusDot"></span><span id="statusText">Menghubungkan…</span></div>
+    <div class="footnote">
+      Apa pun yang ditampilkan dari sini akan langsung muncul di <b>semua</b> layar/perangkat yang
+      sedang membuka halaman stok opname — tidak perlu kode apa pun, otomatis tersambung.
+    </div>
+  </div>
+
+  <div class="card connected-only">
+    <h2>Modal Sinkronisasi Tim</h2>
+    <div class="status-line"><span class="dot" id="syncCardDot"></span><span id="syncCardStatusText">Memuat status…</span></div>
+    <div class="actions-row">
+      <button type="button" class="btn-main" id="btnShowSyncCard" onclick="setSyncCardVisibility(true)">Tampilkan</button>
+      <button type="button" class="btn-stop" id="btnHideSyncCard" onclick="setSyncCardVisibility(false)">Sembunyikan</button>
+    </div>
+    <div class="footnote">
+      Kontrol apakah kotak "Sinkronisasi Tim (Realtime)" (tempat gabung/buat room) tampil di halaman
+      stok opname pada semua HP. Room yang sudah aktif tetap jalan seperti biasa kalau disembunyikan —
+      cuma kotaknya saja yang hilang dari tampilan.
+    </div>
+  </div>
+
+  <div class="card connected-only">
+    <h2>Monitoring Room Tim (Sinkronisasi)</h2>
+    <div class="status-line"><span class="dot" id="roomsDot"></span><span id="roomsStatusText">Memuat daftar room…</span></div>
+    <div id="roomsList" style="margin-top:12px;"></div>
+    <div class="actions-row">
+      <button type="button" class="link-btn" onclick="loadRooms()">Muat ulang</button>
+    </div>
+    <div class="footnote">
+      Semua room sinkronisasi tim yang pernah dibuat lewat kotak "Sinkronisasi Tim" di halaman stok
+      opname. <b>Hentikan</b> mengunci room supaya rekan tim tidak bisa melihat/mengedit data sampai
+      dijalankan lagi (sama seperti host yang menghentikannya sendiri). <b>Hapus</b> menghapus room
+      beserta seluruh data yang tersimpan di dalamnya secara permanen dan tidak bisa dibatalkan.
+    </div>
+  </div>
+
+  <div class="card connected-only">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <h2 style="margin:0;">Pengguna Aktif Sekarang</h2>
+      <span class="presence-count-badge" id="presenceCountBadge">0 online</span>
+    </div>
+    <div id="presenceList" style="margin-top:12px;"><div class="presence-empty">Memuat…</div></div>
+    <div class="footnote">
+      Menampilkan semua perangkat yang sedang membuka halaman stok opname secara live, termasuk yang
+      field Petugas-nya belum diisi (ditampilkan sebagai "Anonim" beserta identitas HP/browsernya). Begitu
+      tab ditutup atau koneksinya putus, otomatis hilang dari daftar ini. <b>Tidak ada kaitannya dengan
+      fitur "Sinkronisasi Tim"</b> — dipakai sendirian atau lewat room, tetap terlihat di sini.
+    </div>
+  </div>
+
+  <div class="card connected-only">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <h2 style="margin:0;">Kelola Nama Petugas</h2>
+      <span class="presence-count-badge" id="petugasCountBadge">0 nama</span>
+    </div>
+    <div class="status-line" style="margin-top:6px;"><span class="dot" id="petugasDot"></span><span id="petugasStatusText">Memuat daftar petugas…</span></div>
+    <div id="petugasAdminList" style="margin-top:12px;"></div>
+    <div class="actions-row" style="margin-top:12px;">
+      <input type="text" id="petugasAddInput" class="field-input" placeholder="Tambah nama petugas baru…" style="flex:1; min-width:160px; margin-bottom:0;" onkeydown="if(event.key==='Enter'){ event.preventDefault(); adminAddPetugas(); }">
+      <button type="button" class="btn-main" onclick="adminAddPetugas()">Tambah</button>
+    </div>
+    <div class="footnote">
+      Nama-nama ini otomatis muncul di pop up "Siapa yang bertugas?" (wajib diisi begitu HP pertama kali
+      membuka halaman Stok Opname, lalu diingat otomatis di HP itu) dan di dropdown Petugas pada form.
+      <b>Ketuk nama petugas</b> untuk langsung masuk ke tampilan stok opname petugas itu secara live (tampilan
+      sama persis seperti aslinya) dan mengambil alih dari sini — berlaku real-time dua arah, <b>bukan</b>
+      lewat "Sinkronisasi Tim", dan tetap bisa dibuka/diambil alih walau petugas-nya sedang offline (data
+      terakhir tetap dimuat; perubahan dari admin otomatis diterapkan ke HP petugas begitu online lagi).
+      <b>Ubah</b> mengganti nama di daftar pilihan untuk semua HP (laporan yang sudah tersimpan sebelumnya
+      tidak ikut berubah). <b>Hapus</b> membuang nama dari daftar pilihan saja — tidak menghapus laporan
+      mana pun.
+    </div>
+  </div>
+
+  <div class="card connected-only">
+    <h2>Daftar Nama Barang Master</h2>
+    <div class="master-status" id="masterStatusBox">Memuat status daftar master…</div>
+
+    <label class="upload-drop" id="masterDropLabel" for="masterFileInput" style="margin-top:12px;">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span id="masterDropText">Ketuk untuk pilih file Excel (.xlsx/.xls/.csv)…</span>
+    </label>
+    <input type="file" id="masterFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleMasterFileChange(event)">
+    <div class="field-hint">
+      Otomatis mendeteksi kolom mana yang berisi <b>nama barang</b> — dari judul kolom (mis. "Nama
+      Barang"/"Nama Obat") kalau ada, atau dari isinya kalau tidak ada judul. Kolom lain seperti
+      "No", "Kode", "Qty", dst akan dilewati otomatis, jadi urutan kolom di file bebas.
     </div>
 
-    <div class="panel">
-      <h2>Cara Pakai</h2>
-      <div class="gesture-row">
-        <b>4 jari</b>
-        <span>Angkat jempol &amp; telunjuk dari <b>kedua tangan</b> — portal segi empat muncul di antara keempat titik, filter aktif tampil di dalamnya.</span>
+    <div class="master-preview" id="masterPreviewWrap" style="display:none;">
+      <div class="master-preview-count" id="masterPreviewCount"></div>
+      <div class="master-preview-list" id="masterPreviewList"></div>
+      <div class="radio-row" style="margin-top:10px;">
+        <label><input type="radio" name="masterImportMode" value="merge" checked> Gabungkan ke daftar yang ada (lewati nama yang sama)</label>
+        <label><input type="radio" name="masterImportMode" value="replace"> Ganti seluruh daftar dengan file ini</label>
       </div>
-      <div class="gesture-row">
-        <b>Ganti filter</b>
-        <span>Dekatkan jempol ke kelingking pada satu tangan, atau dekatkan telunjuk kedua tangan satu sama lain.</span>
-      </div>
-      <div class="gesture-row">
-        <b>Galaxy</b>
-        <span>Filter ini memisahkan Anda dari latar belakang dan mengganti latarnya dengan galaksi buatan.</span>
+      <div class="actions-row">
+        <button type="button" class="btn-main" id="btnSaveMaster" onclick="saveMasterImport()">Simpan ke Daftar Master</button>
+        <button type="button" class="link-btn" onclick="cancelMasterPreview()">Batalkan</button>
       </div>
     </div>
-  </aside>
-</main>
 
-<footer>
-  <span>Diporting dari skrip Python (OpenCV + MediaPipe) ke satu file HTML — berjalan sepenuhnya di sisi klien.</span>
-  <span>Tekan tombol di bawah stage untuk berhenti kapan saja.</span>
-</footer>
+    <div class="actions-row" style="margin-top:14px;">
+      <button type="button" class="btn-stop" id="btnClearMaster" onclick="clearMasterList()">Hapus Semua Daftar Master</button>
+    </div>
 
-<script type="module">
-import {
-  HandLandmarker,
-  ImageSegmenter,
-  FilesetResolver
-} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.20";
+    <div class="footnote">
+      Daftar ini <b>tidak langsung muncul</b> di tabel stok opname — cuma jadi "pegangan nama". Di
+      halaman stok opname, saat petugas mengetik nama barang, nama-nama dari daftar ini akan muncul
+      sebagai saran di bawah kolom dan bisa langsung diklik untuk dipilih. AI Agent juga otomatis
+      menyesuaikan ejaan nama barang yang ditambahkannya ke ejaan yang ada di daftar ini kalau cocok
+      atau mirip.
+    </div>
+  </div>
 
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', { willReadFrequently: true });
-const startBtn = document.getElementById('startBtn');
-const idlePanel = document.getElementById('idlePanel');
-const hud = document.getElementById('hud');
-const statusMsg = document.getElementById('statusMsg');
-const fpsCounter = document.getElementById('fpsCounter');
-const currentFilterName = document.getElementById('currentFilterName');
-const filterIndexLabel = document.getElementById('filterIndexLabel');
-const filterGrid = document.getElementById('filterGrid');
+  <div class="card connected-only">
+    <h2>Import Sisa Stok (Web/Apk)</h2>
+    <div class="master-status" id="stockImportStatusBox">Memuat status import sisa stok…</div>
 
-const filters = ["MONO", "DUAL-TONE", "PIXELATE", "INVERT", "SEPIA", "BLUR", "THERMAL", "SKETCH", "GLITCH", "NEON", "GALAXY"];
-let currentFilter = 0;
-let gestureTriggered = false;
+    <label class="upload-drop" id="stockImportDropLabel" for="stockImportFileInput" style="margin-top:12px;">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span id="stockImportDropText">Ketuk untuk pilih file Excel (.xlsx/.xls/.csv)…</span>
+    </label>
+    <input type="file" id="stockImportFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleStockImportFileChange(event)">
+    <div class="field-hint">
+      Otomatis mendeteksi kolom <b>nama barang</b> dan kolom <b>sisa stok</b> — dari judul kolom (mis.
+      "Nama Barang", "Sisa Stok"/"Stok"/"Qty"/"Jumlah") kalau ada, atau dari isinya kalau tidak ada
+      judul. Kolom sisa stok harus berupa angka (kalau di selnya ikut ada satuan seperti "pcs", itu
+      akan diabaikan otomatis dan yang dipakai cuma angkanya).
+    </div>
 
-filters.forEach((f) => {
-  const chip = document.createElement('div');
-  chip.className = 'chip';
-  chip.textContent = f;
-  chip.dataset.name = f;
-  filterGrid.appendChild(chip);
+    <div class="master-preview" id="stockImportPreviewWrap" style="display:none;">
+      <div class="master-preview-count" id="stockImportPreviewCount"></div>
+      <div class="master-preview-list" id="stockImportPreviewList"></div>
+      <div class="radio-row" style="margin-top:10px;">
+        <label><input type="radio" name="stockImportMode" value="fill_empty" checked> Isi kolom Web/Apk yang masih kosong saja</label>
+        <label><input type="radio" name="stockImportMode" value="overwrite"> Timpa juga yang sudah terisi</label>
+      </div>
+      <div class="actions-row">
+        <button type="button" class="btn-main" id="btnSaveStockImport" onclick="saveStockImportImport()">Kirim ke Halaman Stok Opname</button>
+        <button type="button" class="link-btn" onclick="cancelStockImportPreview()">Batalkan</button>
+      </div>
+    </div>
+
+    <div class="actions-row" style="margin-top:14px;">
+      <button type="button" class="btn-stop" id="btnClearStockImport" onclick="clearStockImport()">Hapus Data Import Terakhir</button>
+    </div>
+
+    <div class="footnote">
+      Sisa stok dicocokkan dengan <b>nama barang</b> yang sudah ada di baris tabel halaman stok
+      opname (cocok persis, tidak peka huruf besar/kecil/spasi), lalu otomatis mengisi kolom
+      <b>Web/Apk</b>-nya — berlaku langsung di semua HP yang sedang membuka halaman tersebut, tanpa
+      perlu memuat ulang. Barang di file yang namanya <b>tidak ditemukan</b> di baris manapun akan
+      dilewati (baris baru tidak otomatis dibuat, harus ditambahkan manual dulu di halaman stok
+      opname atau lewat Daftar Nama Barang Master di atas). Tombol <b>Hapus Data Import Terakhir</b>
+      hanya membersihkan catatan di panel admin ini — angka Web/Apk yang <b>sudah</b> terisi di
+      halaman stok opname tidak ikut terhapus/berubah.
+    </div>
+  </div>
+
+
+  <div class="card connected-only">
+    <h2>Tampilkan di Layar</h2>
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-tab="html" onclick="switchTab('html')">Kode HTML</button>
+      <button type="button" class="tab-btn" data-tab="video" onclick="switchTab('video')">Video</button>
+      <button type="button" class="tab-btn" data-tab="foto" onclick="switchTab('foto')">Foto &amp; Musik</button>
+      <button type="button" class="tab-btn" data-tab="coret" onclick="switchTab('coret')">Coret-coret</button>
+    </div>
+
+    <div class="tab-panel active" data-tab="html" id="tabHtml">
+      <textarea id="htmlInput" placeholder="&lt;div style=&quot;color:white;font-size:40px;text-align:center;padding-top:40vh;&quot;&gt;Promo hari ini!&lt;/div&gt;"></textarea>
+      <div class="field-hint">Tempel kode HTML lengkap (boleh pakai CSS/JS di dalamnya). Akan tampil satu layar penuh di layar stok opname, menimpa tampilan biasa, sampai dihentikan.</div>
+      <div class="actions-row">
+        <button type="button" class="btn-main" onclick="showHtml()">Tampilkan di Layar</button>
+      </div>
+    </div>
+
+    <div class="tab-panel" data-tab="video" id="tabVideo">
+      <div class="radio-row">
+        <label><input type="radio" name="videoSource" value="url" checked onchange="updateVideoFieldUI()"> Link (YouTube/Vimeo/URL video)</label>
+        <label><input type="radio" name="videoSource" value="upload" onchange="updateVideoFieldUI()"> Unggah dari perangkat</label>
+        <label><input type="radio" name="videoSource" value="local" onchange="updateVideoFieldUI()"> File lokal (folder sama)</label>
+      </div>
+
+      <div id="videoUploadField" style="display:none;">
+        <label class="upload-drop" id="videoDropLabel" for="videoFileInput">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="videoDropText">Ketuk untuk pilih &amp; unggah video…</span>
+        </label>
+        <input type="file" id="videoFileInput" accept="video/*" style="display:none;" onchange="handleVideoFileChange(event)">
+        <div class="photo-preview-wrap" id="videoPreviewWrap" style="display:none;">
+          <video id="videoPreviewVideo" class="media-preview-video" controls muted></video>
+          <button type="button" class="link-btn" onclick="clearSelectedVideo()">Ganti video</button>
+        </div>
+        <div class="field-hint">Video diunggah langsung dari sini. Video akan otomatis <b>dihapus permanen</b> dari penyimpanan begitu tampilan dihentikan atau diganti. Pilih file video berukuran kecil/sedang supaya unggahan cepat.</div>
+      </div>
+
+      <div id="videoLinkField">
+        <input type="text" id="videoValueInput" class="field-input" placeholder="https://www.youtube.com/watch?v=... atau link mp4">
+        <div class="field-hint" id="videoHint">Bisa link YouTube/Vimeo biasa, atau link langsung ke file video (.mp4, dll).</div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn-main" id="btnShowVideo" onclick="showVideo()">Tampilkan di Layar</button>
+      </div>
+    </div>
+
+    <div class="tab-panel" data-tab="foto" id="tabFoto">
+      <div class="foto-musik-section">
+        <div class="foto-musik-label">Foto</div>
+        <div class="radio-row">
+          <label><input type="radio" name="photoSource" value="upload" checked onchange="updatePhotoSourceUI()"> Unggah dari perangkat</label>
+          <label><input type="radio" name="photoSource" value="url" onchange="updatePhotoSourceUI()"> Link (URL gambar)</label>
+          <label><input type="radio" name="photoSource" value="local" onchange="updatePhotoSourceUI()"> File lokal (folder sama)</label>
+        </div>
+
+        <div id="photoUploadField">
+          <label class="upload-drop" id="photoDropLabel" for="photoFileInput">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="photoDropText">Ketuk untuk pilih &amp; unggah foto…</span>
+          </label>
+          <input type="file" id="photoFileInput" accept="image/*" style="display:none;" onchange="handlePhotoFileChange(event)">
+          <div class="photo-preview-wrap" id="photoPreviewWrap" style="display:none;">
+            <img id="photoPreviewImg" class="photo-preview-img" alt="Pratinjau foto">
+            <button type="button" class="link-btn" onclick="clearSelectedPhoto()">Ganti foto</button>
+          </div>
+          <div class="field-hint">Foto diunggah langsung dari sini. Foto akan otomatis <b>dihapus permanen</b> dari penyimpanan begitu tampilan dihentikan atau diganti.</div>
+        </div>
+
+        <div id="photoLinkField" style="display:none;">
+          <input type="text" id="photoValueInput" class="field-input" placeholder="https://... atau nama file (foto.jpg)">
+          <div class="field-hint" id="photoHint">Bisa link gambar langsung, atau nama file gambar di folder yang sama dengan stok_opname.html.</div>
+        </div>
+      </div>
+      <div class="foto-musik-section">
+        <div class="foto-musik-label">Musik</div>
+        <div class="radio-row">
+          <label><input type="radio" name="musicSource" value="url" checked onchange="updateMusicFieldUI()"> Link (URL audio)</label>
+          <label><input type="radio" name="musicSource" value="upload" onchange="updateMusicFieldUI()"> Unggah dari perangkat</label>
+          <label><input type="radio" name="musicSource" value="local" onchange="updateMusicFieldUI()"> File lokal (folder sama)</label>
+        </div>
+
+        <div id="musicUploadField" style="display:none;">
+          <label class="upload-drop" id="musicDropLabel" for="musicFileInput">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#0a453e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="musicDropText">Ketuk untuk pilih &amp; unggah musik…</span>
+          </label>
+          <input type="file" id="musicFileInput" accept="audio/*" style="display:none;" onchange="handleMusicFileChange(event)">
+          <div class="photo-preview-wrap" id="musicPreviewWrap" style="display:none;">
+            <audio id="musicPreviewAudio" class="media-preview-audio" controls></audio>
+            <button type="button" class="link-btn" onclick="clearSelectedMusic()">Ganti musik</button>
+          </div>
+          <div class="field-hint">Musik diunggah langsung dari sini. Musik akan otomatis <b>dihapus permanen</b> dari penyimpanan begitu tampilan dihentikan atau diganti.</div>
+        </div>
+
+        <div id="musicLinkField">
+          <input type="text" id="musicValueInput" class="field-input" placeholder="https://... atau nama file (lagu.mp3)">
+          <div class="field-hint" id="musicHint">Bisa link audio langsung (.mp3, dll), atau nama file audio di folder yang sama dengan stok_opname.html. Musik akan diputar berulang selama foto tampil.</div>
+        </div>
+      </div>
+      <div class="field-hint">Isi foto saja, musik saja, atau keduanya sekaligus — keduanya akan tampil/berbunyi bersamaan di layar. Kalau musik-saja (tanpa foto), layar tidak akan menjadi hitam/blank — tetap tampilan stok opname biasa, dan musik otomatis mulai diputar begitu ada yang menyentuh layar.</div>
+      <div class="actions-row">
+        <button type="button" class="btn-main" id="btnShowFoto" onclick="showFoto()">Tampilkan di Layar</button>
+      </div>
+    </div>
+
+    <div class="tab-panel" data-tab="coret" id="tabCoret">
+      <div class="coret-preview-wrap" id="coretPreviewWrap">
+        <span class="coret-hint-badge"><span class="dot-live"></span>Pratinjau layar — coret langsung di sini</span>
+        <iframe id="coretMirrorFrame" src="stok_opname.html" tabindex="-1"></iframe>
+        <canvas id="coretCanvas"></canvas>
+      </div>
+
+      <div class="coret-tools-row">
+        <button type="button" class="btn-tool" id="btnCoretUndo" onclick="undoCoretStroke()">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M9 14l-4-4 4-4M5 10h9a5 5 0 010 10h-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Urungkan
+        </button>
+        <button type="button" class="btn-tool" id="btnCoretClear" onclick="clearCoret()">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Hapus Semua Coretan
+        </button>
+      </div>
+
+      <div class="coret-controls">
+        <div class="coret-color-field">
+          <label>Warna</label>
+          <div class="coret-swatches" id="coretSwatches">
+            <button type="button" class="coret-swatch active" style="background:#e0393e" data-color="#e0393e" onclick="pickCoretColor('#e0393e', this)"></button>
+            <button type="button" class="coret-swatch" style="background:#0d5c52" data-color="#0d5c52" onclick="pickCoretColor('#0d5c52', this)"></button>
+            <button type="button" class="coret-swatch" style="background:#2f6fae" data-color="#2f6fae" onclick="pickCoretColor('#2f6fae', this)"></button>
+            <button type="button" class="coret-swatch" style="background:#f2b705" data-color="#f2b705" onclick="pickCoretColor('#f2b705', this)"></button>
+            <button type="button" class="coret-swatch" style="background:#111111" data-color="#111111" onclick="pickCoretColor('#111111', this)"></button>
+            <button type="button" class="coret-swatch" style="background:#ffffff" data-color="#ffffff" onclick="pickCoretColor('#ffffff', this)"></button>
+            <input type="color" class="coret-color-custom" id="coretColorCustom" value="#e0393e" oninput="pickCoretColor(this.value, null)">
+          </div>
+        </div>
+        <div class="coret-thickness-field">
+          <label>Ketebalan</label>
+          <div class="coret-thickness-row">
+            <input type="range" id="coretThickness" min="2" max="30" value="6" oninput="updateCoretThickness(this.value)">
+            <div class="coret-thickness-preview"><div class="coret-thickness-dot" id="coretThicknessDot" style="width:6px;height:6px;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-hint">Coret langsung di atas pratinjau layar. Coretan langsung tampil di semua layar stok opname secara live — di layar tersebut coretan cuma tampil saja, tidak bisa disentuh/diedit.</div>
+    </div>
+
+    <div class="now-showing" id="nowShowing">Layar belum menampilkan apa pun dari admin — masih menampilkan stok opname seperti biasa.</div>
+    <div class="actions-row">
+      <button type="button" class="btn-stop" id="btnStop" onclick="stopBroadcast()" disabled>Hentikan Tampilan (kembali ke stok opname)</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="takeover-overlay" id="takeoverOverlay">
+  <div class="takeover-panel">
+    <div class="takeover-header">
+      <div class="takeover-header-info">
+        <div class="takeover-header-title" id="takeoverTitle">Ambil Alih — Petugas</div>
+        <div class="takeover-header-sub" id="takeoverSub">Menghubungkan…</div>
+      </div>
+      <button type="button" class="takeover-close-btn" onclick="closeTakeover()" title="Tutup">✕</button>
+    </div>
+    <div class="takeover-body">
+      <iframe id="takeoverFrame" src="about:blank"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hoyframcjysrpkbjmfit.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhveWZyYW1janlzcnBrYmptZml0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA2MTYsImV4cCI6MjEwMDEwNjYxNn0.FZHy-qnZxltXNtHzkQ-bLyEiiW5Kp2fxK9ry5oA-cTY';
+const CLIENT_ID_KEY = 'stok-opname-admin-client-id';
+
+let sb = null;
+const BROADCAST_SCREEN_CODE = 'semua-layar';
+const PHOTO_BUCKET = 'broadcast-foto';
+let channel = null;
+let currentRow = null;
+let selectedPhotoFile = null;
+let selectedVideoFile = null;
+let selectedMusicFile = null;
+// Path file yang sedang aktif di Storage untuk masing-masing jenis media
+// (dipakai untuk menghapus permanen begitu diganti/dihentikan).
+let activeMediaPaths = { photo: null, video: null, music: null };
+
+function initSupabaseClient(){
+  if(!sb && window.supabase && typeof window.supabase.createClient === 'function'){
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return sb;
+}
+
+function getClientId(){
+  try{
+    let id = localStorage.getItem(CLIENT_ID_KEY);
+    if(!id){
+      id = (crypto.randomUUID ? crypto.randomUUID() : ('a-' + Date.now() + '-' + Math.random().toString(16).slice(2)));
+      localStorage.setItem(CLIENT_ID_KEY, id);
+    }
+    return id;
+  } catch(e){
+    return 'a-' + Date.now();
+  }
+}
+const CLIENT_ID = getClientId();
+
+function setStatus(text, mode){
+  const el = document.getElementById('statusText');
+  if(el) el.textContent = text;
+  const dot = document.getElementById('statusDot');
+  if(dot) dot.className = 'dot' + (mode ? (' ' + mode) : '');
+}
+
+async function connectGlobal(){
+  const client = initSupabaseClient();
+  if(!client){ setStatus('Gagal memuat modul sinkronisasi. Cek koneksi internet.', 'warn'); return; }
+
+  document.body.classList.add('connected');
+  setStatus('Menghubungkan…');
+
+  try{
+    const { data, error } = await sb.from('stok_opname_broadcast').select('*').eq('screen_code', BROADCAST_SCREEN_CODE).maybeSingle();
+    if(error) throw error;
+    currentRow = data || null;
+    activeMediaPaths = {
+      photo: currentRow && currentRow.photo_path ? currentRow.photo_path : null,
+      video: currentRow && currentRow.video_path ? currentRow.video_path : null,
+      music: currentRow && currentRow.music_path ? currentRow.music_path : null
+    };
+    renderStatus();
+    subscribeChannel();
+  } catch(err){
+    console.error('Gagal sambung:', err);
+    setStatus('Gagal terhubung. Pastikan tabel stok_opname_broadcast sudah dibuat (lihat komentar di atas file ini).', 'warn');
+  }
+
+  loadSyncCardSetting();
+  loadRooms();
+  loadPetugasAdmin();
+  loadItemMaster();
+  loadStockImportStatus();
+  subscribePresenceChannel();
+}
+
+// ====== Kontrol Modal Sinkronisasi Tim ======
+const SETTINGS_TABLE = 'stok_opname_settings';
+let settingsChannel = null;
+let syncCardVisible = true;
+
+function renderSyncCardStatus(){
+  const dot = document.getElementById('syncCardDot');
+  const text = document.getElementById('syncCardStatusText');
+  const btnShow = document.getElementById('btnShowSyncCard');
+  const btnHide = document.getElementById('btnHideSyncCard');
+  if(dot) dot.className = 'dot' + (syncCardVisible ? ' on' : '');
+  if(text) text.textContent = syncCardVisible
+    ? 'Sedang ditampilkan di semua HP.'
+    : 'Sedang disembunyikan dari semua HP.';
+  if(btnShow) btnShow.disabled = syncCardVisible;
+  if(btnHide) btnHide.disabled = !syncCardVisible;
+}
+
+async function loadSyncCardSetting(){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.from(SETTINGS_TABLE).select('*').eq('screen_code', BROADCAST_SCREEN_CODE).maybeSingle();
+    if(error) throw error;
+    syncCardVisible = data ? data.sync_card_visible !== false : true;
+    renderSyncCardStatus();
+    subscribeSettingsChannel();
+  } catch(err){
+    console.error('Gagal memuat status modal sinkronisasi:', err);
+    const text = document.getElementById('syncCardStatusText');
+    if(text) text.textContent = 'Gagal memuat status. Pastikan tabel stok_opname_settings sudah dibuat (lihat komentar di atas file ini).';
+  }
+}
+
+function subscribeSettingsChannel(){
+  if(!sb) return;
+  if(settingsChannel){ try{ sb.removeChannel(settingsChannel); }catch(e){} settingsChannel = null; }
+  settingsChannel = sb.channel('settings-admin-' + BROADCAST_SCREEN_CODE)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: SETTINGS_TABLE, filter: `screen_code=eq.${BROADCAST_SCREEN_CODE}`
+    }, payload => {
+      syncCardVisible = payload.new ? payload.new.sync_card_visible !== false : true;
+      renderSyncCardStatus();
+    })
+    .subscribe();
+}
+
+async function setSyncCardVisibility(visible){
+  if(!sb) return;
+  const btnShow = document.getElementById('btnShowSyncCard');
+  const btnHide = document.getElementById('btnHideSyncCard');
+  if(btnShow) btnShow.disabled = true;
+  if(btnHide) btnHide.disabled = true;
+  try{
+    const { error } = await sb.from(SETTINGS_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      sync_card_visible: visible,
+      updated_by: CLIENT_ID,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'screen_code' });
+    if(error) throw error;
+    syncCardVisible = visible;
+    renderSyncCardStatus();
+  } catch(err){
+    console.error('Gagal mengubah status modal sinkronisasi:', err);
+    renderSyncCardStatus();
+    alert('Gagal menyimpan perubahan. Cek koneksi internet lalu coba lagi.');
+  }
+}
+
+// ====== Monitoring Room Tim (stok_opname_rooms) ======
+const ROOMS_TABLE = 'stok_opname_rooms';
+let roomsChannel = null;
+let monitoredRooms = [];
+
+function relativeTimeFromNow(iso){
+  if(!iso) return '-';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffSec = Math.round(diffMs / 1000);
+  if(diffSec < 60) return 'baru saja';
+  const diffMin = Math.round(diffSec / 60);
+  if(diffMin < 60) return diffMin + ' menit lalu';
+  const diffHour = Math.round(diffMin / 60);
+  if(diffHour < 24) return diffHour + ' jam lalu';
+  const diffDay = Math.round(diffHour / 24);
+  return diffDay + ' hari lalu';
+}
+
+async function loadRooms(){
+  if(!sb) return;
+  const statusText = document.getElementById('roomsStatusText');
+  const dot = document.getElementById('roomsDot');
+  if(statusText) statusText.textContent = 'Memuat daftar room…';
+  try{
+    const { data, error } = await sb.from(ROOMS_TABLE).select('*').order('updated_at', { ascending: false });
+    if(error) throw error;
+    monitoredRooms = data || [];
+    if(dot) dot.className = 'dot on';
+    if(statusText) statusText.textContent = monitoredRooms.length
+      ? (monitoredRooms.length + ' room ditemukan.')
+      : 'Belum ada room yang pernah dibuat.';
+    renderRoomsList();
+    subscribeRoomsChannel();
+  } catch(err){
+    console.error('Gagal memuat daftar room:', err);
+    if(dot) dot.className = 'dot warn';
+    if(statusText) statusText.textContent = 'Gagal memuat daftar room. Pastikan tabel stok_opname_rooms & kebijakan aksesnya sudah dibuat (lihat komentar di atas file ini).';
+  }
+}
+
+function subscribeRoomsChannel(){
+  if(!sb) return;
+  if(roomsChannel){ try{ sb.removeChannel(roomsChannel); }catch(e){} roomsChannel = null; }
+  roomsChannel = sb.channel('rooms-admin-monitor')
+    .on('postgres_changes', { event: '*', schema: 'public', table: ROOMS_TABLE }, payload => {
+      if(payload.eventType === 'DELETE'){
+        const oldCode = payload.old && payload.old.room_code;
+        monitoredRooms = monitoredRooms.filter(r => r.room_code !== oldCode);
+      } else {
+        const idx = monitoredRooms.findIndex(r => r.room_code === payload.new.room_code);
+        if(idx >= 0) monitoredRooms[idx] = payload.new; else monitoredRooms.unshift(payload.new);
+      }
+      renderRoomsList();
+    })
+    .subscribe();
+}
+
+function renderRoomsList(){
+  const list = document.getElementById('roomsList');
+  if(!list) return;
+  if(!monitoredRooms.length){
+    list.innerHTML = '<div class="rooms-empty">Belum ada room yang aktif.</div>';
+    return;
+  }
+  list.innerHTML = monitoredRooms.map(row => {
+    const state = row.state || {};
+    const session = state.session || {};
+    const active = session.active !== false;
+    const viewOnly = !!session.viewOnly;
+    const rowsCount = Array.isArray(state.rows) ? state.rows.length : 0;
+    const toko = state.meta && state.meta.toko ? state.meta.toko : '-';
+    const statusClass = active ? 'on' : 'warn';
+    const statusLabel = active ? 'Berjalan' : 'Dihentikan';
+    const code = escapeHtml(row.room_code);
+    return `
+      <div class="room-item">
+        <div class="room-item-head">
+          <span class="dot ${statusClass}"></span>
+          <span class="room-item-code">${code}</span>
+          <span class="room-item-status">${statusLabel}</span>
+          ${viewOnly ? '<span class="room-item-badge">Lihat saja</span>' : ''}
+        </div>
+        <div class="room-item-sub">${escapeHtml(toko)} • ${rowsCount} baris • diperbarui ${relativeTimeFromNow(row.updated_at)}</div>
+        <div class="room-item-actions">
+          <button type="button" class="link-btn" data-action="stop" data-room="${code}" ${!active ? 'disabled' : ''}>Hentikan</button>
+          <button type="button" class="link-btn" data-action="resume" data-room="${code}" ${active ? 'disabled' : ''}>Jalankan lagi</button>
+          <button type="button" class="link-btn link-btn-danger" data-action="delete" data-room="${code}">Hapus</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+document.addEventListener('click', evt => {
+  const btn = evt.target.closest('[data-action][data-room]');
+  if(!btn) return;
+  const room = btn.dataset.room;
+  const action = btn.dataset.action;
+  if(action === 'stop') adminStopRoom(room);
+  else if(action === 'resume') adminResumeRoom(room);
+  else if(action === 'delete') adminDeleteRoom(room);
 });
 
-function updateFilterUI() {
-  currentFilterName.textContent = filters[currentFilter];
-  filterIndexLabel.textContent = `Filter ${currentFilter + 1} dari ${filters.length}`;
-  [...filterGrid.children].forEach((chip) => {
-    chip.classList.toggle('active', chip.dataset.name === filters[currentFilter]);
-  });
-}
-updateFilterUI();
-
-let handLandmarker = null;
-let imageSegmenter = null;
-let running = false;
-
-// Offscreen mirrored source canvas (equivalent to python's cv2.flip(img,1))
-const flipCanvas = document.createElement('canvas');
-const flipCtx = flipCanvas.getContext('2d', { willReadFrequently: true });
-
-// Precompute galaxy background (equivalent to galaxy_bg in python)
-const GALAXY_W = 1920, GALAXY_H = 1080;
-const galaxyCanvas = document.createElement('canvas');
-galaxyCanvas.width = GALAXY_W;
-galaxyCanvas.height = GALAXY_H;
-(function buildGalaxy() {
-  const gctx = galaxyCanvas.getContext('2d');
-  gctx.fillStyle = 'rgb(40,30,50)'; // space purple (RGB order, not BGR)
-  gctx.fillRect(0, 0, GALAXY_W, GALAXY_H);
-  for (let i = 0; i < 800; i++) {
-    const sx = Math.random() * GALAXY_W, sy = Math.random() * GALAXY_H;
-    gctx.fillStyle = 'rgb(255,255,255)';
-    gctx.fillRect(sx, sy, 1, 1);
-  }
-  for (let i = 0; i < 100; i++) {
-    const sx = Math.random() * GALAXY_W, sy = Math.random() * GALAXY_H;
-    const r = 2 + Math.random() * 4;
-    const cr = 100 + Math.random() * 155;
-    const cg = 150 + Math.random() * 105;
-    gctx.fillStyle = `rgb(${cr|0},${cg|0},255)`;
-    gctx.beginPath(); gctx.arc(sx, sy, r, 0, Math.PI * 2); gctx.fill();
-  }
-})();
-let galaxyImgData = null; // filled lazily once needed
-
-function getGalaxyData() {
-  if (!galaxyImgData) {
-    galaxyImgData = galaxyCanvas.getContext('2d').getImageData(0, 0, GALAXY_W, GALAXY_H).data;
-  }
-  return galaxyImgData;
-}
-function galaxyPixel(x, y) {
-  const gx = Math.min(GALAXY_W - 1, Math.max(0, x | 0));
-  const gy = Math.min(GALAXY_H - 1, Math.max(0, y | 0));
-  const d = getGalaxyData();
-  const idx = (gy * GALAXY_W + gx) * 4;
-  return [d[idx], d[idx + 1], d[idx + 2]];
-}
-
-function clamp01(v) { return Math.min(1, Math.max(0, v)); }
-function jetColor(gray) {
-  const v = gray / 255;
-  const r = clamp01(1.5 - Math.abs(4 * v - 3)) * 255;
-  const g = clamp01(1.5 - Math.abs(4 * v - 2)) * 255;
-  const b = clamp01(1.5 - Math.abs(4 * v - 1)) * 255;
-  return [r, g, b];
-}
-
-function applyFilter(roiCanvas, filterName, originX, originY, maskSampler) {
-  const w = roiCanvas.width, h = roiCanvas.height;
-  const out = document.createElement('canvas');
-  out.width = w; out.height = h;
-  const octx = out.getContext('2d', { willReadFrequently: true });
-
-  if (w === 0 || h === 0) return out;
-
-  switch (filterName) {
-    case 'MONO':
-      octx.filter = 'grayscale(100%)';
-      octx.drawImage(roiCanvas, 0, 0);
-      break;
-
-    case 'INVERT':
-      octx.filter = 'invert(100%)';
-      octx.drawImage(roiCanvas, 0, 0);
-      break;
-
-    case 'SEPIA':
-      octx.filter = 'sepia(100%)';
-      octx.drawImage(roiCanvas, 0, 0);
-      break;
-
-    case 'BLUR':
-      octx.filter = 'blur(9px)';
-      octx.drawImage(roiCanvas, -4, -4, w + 8, h + 8);
-      break;
-
-    case 'PIXELATE': {
-      const sw = Math.max(1, Math.floor(w / 10)), sh = Math.max(1, Math.floor(h / 10));
-      const small = document.createElement('canvas');
-      small.width = sw; small.height = sh;
-      const sctx = small.getContext('2d');
-      sctx.imageSmoothingEnabled = true;
-      sctx.drawImage(roiCanvas, 0, 0, sw, sh);
-      octx.imageSmoothingEnabled = false;
-      octx.drawImage(small, 0, 0, sw, sh, 0, 0, w, h);
-      break;
-    }
-
-    case 'THERMAL': {
-      octx.drawImage(roiCanvas, 0, 0);
-      const imgData = octx.getImageData(0, 0, w, h);
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-        const [r, g, b] = jetColor(gray);
-        d[i] = r; d[i + 1] = g; d[i + 2] = b;
-      }
-      octx.putImageData(imgData, 0, 0);
-      break;
-    }
-
-    case 'SKETCH': {
-      octx.filter = 'grayscale(100%)';
-      octx.drawImage(roiCanvas, 0, 0);
-      octx.filter = 'none';
-      const blurred = document.createElement('canvas');
-      blurred.width = w; blurred.height = h;
-      const bctx = blurred.getContext('2d');
-      bctx.filter = 'grayscale(100%) invert(100%) blur(7px)';
-      bctx.drawImage(roiCanvas, 0, 0);
-      octx.globalCompositeOperation = 'color-dodge';
-      octx.drawImage(blurred, 0, 0);
-      octx.globalCompositeOperation = 'source-over';
-      break;
-    }
-
-    case 'DUAL-TONE': {
-      octx.drawImage(roiCanvas, 0, 0);
-      const imgData = octx.getImageData(0, 0, w, h);
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-        if (gray > 127) { d[i] = 255; d[i + 1] = 165; d[i + 2] = 0; }
-        else { d[i] = 255; d[i + 1] = 20; d[i + 2] = 147; }
-      }
-      octx.putImageData(imgData, 0, 0);
-      break;
-    }
-
-    case 'GLITCH': {
-      octx.drawImage(roiCanvas, 0, 0);
-      const imgData = octx.getImageData(0, 0, w, h);
-      const src = new Uint8ClampedArray(imgData.data);
-      const d = imgData.data;
-      const shift = Math.max(5, Math.floor(w / 20));
-      for (let yy = 0; yy < h; yy++) {
-        const row = yy * w;
-        for (let xx = 0; xx < w - shift; xx++) {
-          d[(row + xx) * 4] = src[(row + xx + shift) * 4]; // R shift left
-        }
-        for (let xx = shift; xx < w; xx++) {
-          d[(row + xx) * 4 + 2] = src[(row + xx - shift) * 4 + 2]; // B shift right
-        }
-      }
-      octx.putImageData(imgData, 0, 0);
-      break;
-    }
-
-    case 'NEON': {
-      const g = document.createElement('canvas');
-      g.width = w; g.height = h;
-      const gctx = g.getContext('2d');
-      gctx.filter = 'grayscale(100%) blur(1px)';
-      gctx.drawImage(roiCanvas, 0, 0);
-      const gd = gctx.getImageData(0, 0, w, h).data;
-      const outData = octx.createImageData(w, h);
-      const od = outData.data;
-      const gray = (xx, yy) => gd[(yy * w + xx) * 4];
-      for (let yy = 1; yy < h - 1; yy++) {
-        for (let xx = 1; xx < w - 1; xx++) {
-          const gx = -gray(xx - 1, yy - 1) - 2 * gray(xx - 1, yy) - gray(xx - 1, yy + 1)
-                   +  gray(xx + 1, yy - 1) + 2 * gray(xx + 1, yy) + gray(xx + 1, yy + 1);
-          const gy = -gray(xx - 1, yy - 1) - 2 * gray(xx, yy - 1) - gray(xx + 1, yy - 1)
-                   +  gray(xx - 1, yy + 1) + 2 * gray(xx, yy + 1) + gray(xx + 1, yy + 1);
-          const mag = Math.sqrt(gx * gx + gy * gy);
-          const idx = (yy * w + xx) * 4;
-          if (mag > 70) { od[idx] = 0; od[idx + 1] = 255; od[idx + 2] = 255; od[idx + 3] = 255; }
-          else { od[idx + 3] = 255; }
-        }
-      }
-      octx.putImageData(outData, 0, 0);
-      break;
-    }
-
-    case 'GALAXY': {
-      octx.drawImage(roiCanvas, 0, 0);
-      if (maskSampler) {
-        const imgData = octx.getImageData(0, 0, w, h);
-        const d = imgData.data;
-        for (let yy = 0; yy < h; yy++) {
-          for (let xx = 0; xx < w; xx++) {
-            const gx = originX + xx, gy = originY + yy;
-            if (maskSampler(gx, gy) === 0) {
-              const [r, g, b] = galaxyPixel(gx, gy);
-              const idx = (yy * w + xx) * 4;
-              d[idx] = r; d[idx + 1] = g; d[idx + 2] = b;
-            }
-          }
-        }
-        octx.putImageData(imgData, 0, 0);
-      }
-      break;
-    }
-
-    default:
-      octx.drawImage(roiCanvas, 0, 0);
-  }
-  return out;
-}
-
-async function setup() {
-  statusMsg.textContent = 'Memuat model MediaPipe…';
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.20/wasm"
-  );
-
-  handLandmarker = await HandLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-    },
-    runningMode: "VIDEO",
-    numHands: 2,
-    minHandDetectionConfidence: 0.7,
-    minHandPresenceConfidence: 0.7,
-    minTrackingConfidence: 0.7
-  });
-
-  try {
-    imageSegmenter = await ImageSegmenter.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite",
-      },
-      runningMode: "VIDEO",
-      outputCategoryMask: true,
-      outputConfidenceMasks: false
-    });
-  } catch (e) {
-    console.warn("Segmenter tidak tersedia (filter GALAXY akan tampil tanpa efek background).", e);
-    imageSegmenter = null;
+async function adminSetRoomActive(roomCode, active){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.from(ROOMS_TABLE).select('*').eq('room_code', roomCode).maybeSingle();
+    if(error) throw error;
+    if(!data) return;
+    const state = data.state || {};
+    state.session = Object.assign({}, state.session, { active });
+    const { error: updErr } = await sb.from(ROOMS_TABLE)
+      .update({ state, updated_by: 'admin-' + CLIENT_ID, updated_at: new Date().toISOString() })
+      .eq('room_code', roomCode);
+    if(updErr) throw updErr;
+  } catch(err){
+    console.error('Gagal mengubah status room:', err);
+    alert('Gagal mengubah status room. Cek koneksi internet lalu coba lagi.');
   }
 }
 
-async function startCamera() {
-  startBtn.disabled = true;
-  statusMsg.textContent = 'Meminta izin kamera…';
-  try {
-    if (!handLandmarker) await setup();
+async function adminStopRoom(roomCode){
+  if(!confirm('Hentikan room "' + roomCode + '"? Rekan tim tidak akan bisa melihat/mengedit data sampai dijalankan lagi.')) return;
+  await adminSetRoomActive(roomCode, false);
+}
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 960 }, height: { ideal: 720 }, facingMode: 'user' },
-      audio: false
-    });
-    video.srcObject = stream;
-    await new Promise((resolve) => { video.onloadedmetadata = resolve; });
-    await video.play();
+async function adminResumeRoom(roomCode){
+  await adminSetRoomActive(roomCode, true);
+}
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    flipCanvas.width = video.videoWidth;
-    flipCanvas.height = video.videoHeight;
-
-    idlePanel.style.display = 'none';
-    hud.style.display = 'flex';
-    running = true;
-    requestAnimationFrame(loop);
-  } catch (e) {
-    console.error(e);
-    statusMsg.textContent = 'Gagal mengakses kamera: ' + e.message;
-    startBtn.disabled = false;
+async function adminDeleteRoom(roomCode){
+  if(!confirm('Hapus room "' + roomCode + '" secara permanen? Semua data stok opname yang tersimpan di room ini akan hilang dan tidak bisa dikembalikan.')) return;
+  try{
+    const { error } = await sb.from(ROOMS_TABLE).delete().eq('room_code', roomCode);
+    if(error) throw error;
+    monitoredRooms = monitoredRooms.filter(r => r.room_code !== roomCode);
+    renderRoomsList();
+  } catch(err){
+    console.error('Gagal menghapus room:', err);
+    alert('Gagal menghapus room. Cek koneksi internet lalu coba lagi.');
   }
 }
 
-let lastFrameTime = performance.now();
-let fpsSmooth = 0;
+// ====== Kelola Nama Petugas ======
+// Daftar nama petugas yang dipakai di pop up "Siapa yang bertugas?" dan
+// dropdown Petugas pada halaman Stok Opname (lihat PETUGAS_TABLE di file
+// itu). Di sini admin bisa melihat, menambah, mengubah, dan menghapus nama —
+// perubahan langsung tersinkron realtime ke semua HP.
+const PETUGAS_TABLE = 'stok_opname_petugas';
+let petugasChannel = null;
+let petugasRows = [];
 
-function loop(now) {
-  if (!running) return;
+async function loadPetugasAdmin(){
+  if(!sb) return;
+  const statusText = document.getElementById('petugasStatusText');
+  const dot = document.getElementById('petugasDot');
+  if(statusText) statusText.textContent = 'Memuat daftar petugas…';
+  try{
+    const { data, error } = await sb.from(PETUGAS_TABLE).select('*').order('nama', { ascending: true });
+    if(error) throw error;
+    petugasRows = data || [];
+    if(dot) dot.className = 'dot on';
+    if(statusText) statusText.textContent = petugasRows.length
+      ? (petugasRows.length + ' nama petugas terdaftar.')
+      : 'Belum ada nama petugas yang tersimpan.';
+    renderPetugasAdminList();
+    subscribePetugasChannel();
+  } catch(err){
+    console.error('Gagal memuat daftar petugas:', err);
+    if(dot) dot.className = 'dot warn';
+    if(statusText) statusText.textContent = 'Gagal memuat daftar petugas. Pastikan tabel stok_opname_petugas sudah dibuat (lihat komentar di atas file ini).';
+  }
+}
 
-  if (video.readyState >= 2) {
-    const w = flipCanvas.width, h = flipCanvas.height;
-
-    // Mirror the frame, matching python's cv2.flip(img, 1)
-    flipCtx.save();
-    flipCtx.translate(w, 0);
-    flipCtx.scale(-1, 1);
-    flipCtx.drawImage(video, 0, 0, w, h);
-    flipCtx.restore();
-
-    const timestampMs = now;
-    const handResults = handLandmarker.detectForVideo(flipCanvas, timestampMs);
-    const filterName = filters[currentFilter];
-
-    let maskSampler = null;
-    if (filterName === 'GALAXY' && imageSegmenter) {
-      const segResult = imageSegmenter.segmentForVideo(flipCanvas, timestampMs);
-      if (segResult.categoryMask) {
-        const maskData = segResult.categoryMask.getAsUint8Array();
-        const maskW = segResult.categoryMask.width;
-        const maskH = segResult.categoryMask.height;
-        maskSampler = (x, y) => {
-          const mx = Math.floor((x * maskW) / w);
-          const my = Math.floor((y * maskH) / h);
-          if (mx < 0 || my < 0 || mx >= maskW || my >= maskH) return 1;
-          return maskData[my * maskW + mx];
-        };
-        segResult.categoryMask.close?.();
-      }
-    }
-
-    // Draw base mirrored frame
-    ctx.drawImage(flipCanvas, 0, 0);
-
-    const ptsPortal = [];
-    let changeFilter = false;
-
-    if (handResults.landmarks && handResults.landmarks.length > 0) {
-      const hands = handResults.landmarks;
-
-      if (hands.length >= 2) {
-        const idx0 = hands[0][8], idx1 = hands[1][8];
-        const pt0 = [idx0.x * w, idx0.y * h];
-        const pt1 = [idx1.x * w, idx1.y * h];
-        if (Math.hypot(pt0[0] - pt1[0], pt0[1] - pt1[1]) < 40) changeFilter = true;
-      }
-
-      for (const lm of hands) {
-        const thumb = lm[4], pinky = lm[20];
-        const tx = thumb.x * w, ty = thumb.y * h;
-        const px = pinky.x * w, py = pinky.y * h;
-        if (Math.hypot(tx - px, ty - py) < 40) changeFilter = true;
-      }
-
-      if (changeFilter) {
-        if (!gestureTriggered) {
-          currentFilter = (currentFilter + 1) % filters.length;
-          gestureTriggered = true;
-          updateFilterUI();
-        }
+function subscribePetugasChannel(){
+  if(!sb) return;
+  if(petugasChannel){ try{ sb.removeChannel(petugasChannel); }catch(e){} petugasChannel = null; }
+  petugasChannel = sb.channel('petugas-admin-monitor')
+    .on('postgres_changes', { event: '*', schema: 'public', table: PETUGAS_TABLE }, payload => {
+      if(payload.eventType === 'DELETE'){
+        const oldId = payload.old && payload.old.id;
+        petugasRows = petugasRows.filter(r => r.id !== oldId);
       } else {
-        gestureTriggered = false;
+        const idx = petugasRows.findIndex(r => r.id === payload.new.id);
+        if(idx >= 0) petugasRows[idx] = payload.new; else petugasRows.push(payload.new);
+        petugasRows.sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id'));
       }
-
-      for (const lm of hands) {
-        for (let id = 0; id < lm.length; id++) {
-          const cx = lm[id].x * w, cy = lm[id].y * h;
-          if (id === 4 || id === 8) {
-            ptsPortal.push([cx, cy]);
-            ctx.fillStyle = '#00FFFF';
-            ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.fill();
-          }
-        }
-      }
-
-      if (ptsPortal.length === 4) {
-        ptsPortal.sort((a, b) => a[1] - b[1]);
-        const topPts = ptsPortal.slice(0, 2).sort((a, b) => a[0] - b[0]);
-        const bottomPts = ptsPortal.slice(2, 4).sort((a, b) => a[0] - b[0]);
-        const poly = [topPts[0], topPts[1], bottomPts[1], bottomPts[0]];
-
-        const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
-        let x = Math.max(0, Math.min(...xs));
-        let y = Math.max(0, Math.min(...ys));
-        let bw = Math.min(...[w - x, Math.max(...xs) - x]);
-        let bh = Math.min(...[h - y, Math.max(...ys) - y]);
-        x = Math.round(x); y = Math.round(y);
-        bw = Math.round(bw); bh = Math.round(bh);
-
-        if (bw > 4 && bh > 4) {
-          const roiCanvas = document.createElement('canvas');
-          roiCanvas.width = bw; roiCanvas.height = bh;
-          roiCanvas.getContext('2d').drawImage(flipCanvas, x, y, bw, bh, 0, 0, bw, bh);
-
-          const filteredCanvas = applyFilter(roiCanvas, filterName, x, y, maskSampler);
-
-          ctx.save();
-          ctx.beginPath();
-          ctx.moveTo(poly[0][0], poly[0][1]);
-          for (let i = 1; i < 4; i++) ctx.lineTo(poly[i][0], poly[i][1]);
-          ctx.closePath();
-          ctx.clip();
-          ctx.drawImage(filteredCanvas, x, y);
-          ctx.restore();
-
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(poly[0][0], poly[0][1]);
-          for (let i = 1; i < 4; i++) ctx.lineTo(poly[i][0], poly[i][1]);
-          ctx.closePath();
-          ctx.stroke();
-
-          for (let i = 0; i < 4; i++) {
-            const p1 = poly[i], p2 = poly[(i + 1) % 4];
-            for (let k = 0; k < 5; k++) {
-              const alpha = Math.random();
-              const rx = p1[0] * alpha + p2[0] * (1 - alpha) + (Math.random() * 30 - 15);
-              const ry = p1[1] * alpha + p2[1] * (1 - alpha) + (Math.random() * 30 - 15);
-              ctx.fillStyle = '#FFFF00';
-              ctx.beginPath();
-              ctx.arc(rx, ry, 1 + Math.random() * 3, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
-
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = '15px "JetBrains Mono", monospace';
-          ctx.fillText(`PORTAL: ${filterName}`, topPts[0][0], Math.max(14, topPts[0][1] - 10));
-        }
-      }
-    }
-
-    // Overlay instructions
-    ctx.font = '16px "Space Grotesk", sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.fillText('Ganti Filter: Jempol & Kelingking', 10, 26);
-    ctx.fillStyle = '#FFFF00';
-    ctx.fillText(`Filter Aktif: ${filters[currentFilter]}`, 10, 50);
-  }
-
-  const nowT = performance.now();
-  const dt = nowT - lastFrameTime;
-  lastFrameTime = nowT;
-  const fps = 1000 / dt;
-  fpsSmooth = fpsSmooth ? fpsSmooth * 0.9 + fps * 0.1 : fps;
-  fpsCounter.textContent = `${fpsSmooth.toFixed(0)} FPS`;
-
-  requestAnimationFrame(loop);
+      const statusText = document.getElementById('petugasStatusText');
+      if(statusText) statusText.textContent = petugasRows.length
+        ? (petugasRows.length + ' nama petugas terdaftar.')
+        : 'Belum ada nama petugas yang tersimpan.';
+      renderPetugasAdminList();
+    })
+    .subscribe();
 }
 
-startBtn.addEventListener('click', startCamera);
+function renderPetugasAdminList(){
+  const list = document.getElementById('petugasAdminList');
+  const badge = document.getElementById('petugasCountBadge');
+  if(badge) badge.textContent = petugasRows.length + ' nama';
+  if(!list) return;
+  if(!petugasRows.length){
+    list.innerHTML = '<div class="petugas-empty">Belum ada nama petugas. Tambahkan lewat kotak di bawah.</div>';
+    return;
+  }
+  list.innerHTML = petugasRows.map(row => {
+    const namaRaw = row.nama || '-';
+    const nama = escapeHtml(namaRaw);
+    const inisial = (row.nama || '?').trim().charAt(0).toUpperCase();
+    const online = isPetugasOnline(namaRaw);
+    return `
+      <div class="petugas-item">
+        <div class="petugas-item-avatar">${escapeHtml(inisial)}</div>
+        <button type="button" class="petugas-item-name-btn" onclick="openTakeover('${namaRaw.replace(/'/g, "\\'")}')" title="Buka & ambil alih layar stok opname petugas ini">
+          <span class="petugas-online-dot ${online ? 'on' : ''}"></span>
+          <span class="petugas-item-name">${nama}</span>
+          <span class="petugas-online-label">${online ? 'Online' : 'Offline'}</span>
+        </button>
+        <div class="petugas-item-actions">
+          <button type="button" class="link-btn" data-petugas-action="edit" data-petugas-id="${row.id}">Ubah</button>
+          <button type="button" class="link-btn link-btn-danger" data-petugas-action="delete" data-petugas-id="${row.id}">Hapus</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ====== Ambil Alih Layar Petugas (real-time, lewat sesi live per-petugas) ======
+// Berbeda dari "Sinkronisasi Tim": tidak perlu petugas mengaktifkan apa pun,
+// dan tetap bisa dibuka walau petugas-nya sedang offline (memuat data
+// terakhir yang tersimpan di server). Selama jendela ini terbuka, ini adalah
+// tampilan LIVE dua arah — perubahan di sini langsung terkirim ke HP
+// petugas (kalau online), dan perubahan dari HP petugas langsung muncul di
+// sini juga.
+function slugifyPetugasAdmin(name){
+  return (name || '').toString().trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || '';
+}
+
+function isPetugasOnline(nama){
+  if(!presenceChannel) return false;
+  try{
+    const slug = slugifyPetugasAdmin(nama);
+    if(!slug) return false;
+    const state = presenceChannel.presenceState();
+    return Object.keys(state).some(key => (state[key] || []).some(m => m && slugifyPetugasAdmin(m.petugas || '') === slug));
+  } catch(e){
+    return false;
+  }
+}
+
+function openTakeover(nama){
+  const slug = slugifyPetugasAdmin(nama);
+  if(!slug){ alert('Nama petugas tidak valid.'); return; }
+  const overlay = document.getElementById('takeoverOverlay');
+  const frame = document.getElementById('takeoverFrame');
+  const title = document.getElementById('takeoverTitle');
+  const sub = document.getElementById('takeoverSub');
+  if(title) title.textContent = 'Ambil Alih — ' + nama;
+  if(sub) sub.textContent = isPetugasOnline(nama)
+    ? 'Petugas sedang online • menghubungkan live…'
+    : 'Petugas sedang offline • memuat data terakhir…';
+  if(frame) frame.src = 'stok_opname.html?admin_takeover=' + encodeURIComponent(slug) + '&nama=' + encodeURIComponent(nama);
+  if(overlay) overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeTakeover(){
+  const overlay = document.getElementById('takeoverOverlay');
+  const frame = document.getElementById('takeoverFrame');
+  if(overlay) overlay.classList.remove('show');
+  // Kosongkan src supaya koneksi realtime di dalam iframe benar-benar
+  // terputus begitu jendela ambil alih ditutup (bukan cuma disembunyikan).
+  if(frame) frame.src = 'about:blank';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('click', evt => {
+  const btn = evt.target.closest('[data-petugas-action][data-petugas-id]');
+  if(!btn) return;
+  const id = Number(btn.dataset.petugasId);
+  const action = btn.dataset.petugasAction;
+  if(action === 'edit') adminEditPetugas(id);
+  else if(action === 'delete') adminDeletePetugas(id);
+});
+
+async function adminAddPetugas(){
+  const input = document.getElementById('petugasAddInput');
+  const nama = input ? input.value.trim() : '';
+  if(!nama){ if(input) input.focus(); return; }
+  if(!sb) return;
+  const already = petugasRows.some(r => (r.nama || '').toLowerCase() === nama.toLowerCase());
+  if(already){
+    alert('Nama "' + nama + '" sudah ada di daftar.');
+    return;
+  }
+  try{
+    const { error } = await sb.from(PETUGAS_TABLE).insert({ nama });
+    if(error) throw error;
+    if(input) input.value = '';
+  } catch(err){
+    console.error('Gagal menambah nama petugas:', err);
+    alert('Gagal menambah nama petugas. Cek koneksi internet lalu coba lagi.');
+  }
+}
+
+async function adminEditPetugas(id){
+  if(!sb) return;
+  const row = petugasRows.find(r => r.id === id);
+  if(!row) return;
+  const namaBaru = prompt('Ubah nama petugas:', row.nama || '');
+  if(namaBaru === null) return;
+  const trimmed = namaBaru.trim();
+  if(!trimmed || trimmed === row.nama) return;
+  const already = petugasRows.some(r => r.id !== id && (r.nama || '').toLowerCase() === trimmed.toLowerCase());
+  if(already){
+    alert('Nama "' + trimmed + '" sudah ada di daftar.');
+    return;
+  }
+  try{
+    const { error } = await sb.from(PETUGAS_TABLE).update({ nama: trimmed }).eq('id', id);
+    if(error) throw error;
+  } catch(err){
+    console.error('Gagal mengubah nama petugas:', err);
+    alert('Gagal mengubah nama petugas. Cek koneksi internet lalu coba lagi.');
+  }
+}
+
+async function adminDeletePetugas(id){
+  if(!sb) return;
+  const row = petugasRows.find(r => r.id === id);
+  const nama = row ? row.nama : '';
+  if(!confirm('Hapus nama petugas "' + nama + '" dari daftar pilihan? Laporan yang sudah tersimpan dengan nama ini tidak akan ikut terhapus.')) return;
+  try{
+    const { error } = await sb.from(PETUGAS_TABLE).delete().eq('id', id);
+    if(error) throw error;
+    petugasRows = petugasRows.filter(r => r.id !== id);
+    renderPetugasAdminList();
+  } catch(err){
+    console.error('Gagal menghapus nama petugas:', err);
+    alert('Gagal menghapus nama petugas. Cek koneksi internet lalu coba lagi.');
+  }
+}
+
+// ====== Pengguna Aktif Sekarang (Presence) ======
+// Memantau channel Realtime Presence yang sama dipakai halaman stok opname
+// (lihat PRESENCE_CHANNEL_NAME di stok_opname.html). Murni koneksi realtime,
+// tidak butuh tabel database — begitu perangkat tim menutup tab / koneksinya
+// putus, otomatis hilang dari daftar ini.
+const PRESENCE_CHANNEL_NAME = 'presence-stok-opname';
+let presenceChannel = null;
+// Presence-nya cuma jendela pemantau (bukan peserta), jadi tidak pernah track()
+// data sendiri ke channel ini — cukup dengarkan siapa saja yang track().
+
+function subscribePresenceChannel(){
+  if(!sb) return;
+  if(presenceChannel){ try{ sb.removeChannel(presenceChannel); }catch(e){} presenceChannel = null; }
+  presenceChannel = sb.channel(PRESENCE_CHANNEL_NAME, { config: { presence: { key: 'admin-' + CLIENT_ID } } });
+  presenceChannel
+    .on('presence', { event: 'sync' }, renderPresenceList)
+    .on('presence', { event: 'join' }, renderPresenceList)
+    .on('presence', { event: 'leave' }, renderPresenceList)
+    .subscribe();
+}
+
+function renderPresenceList(){
+  const list = document.getElementById('presenceList');
+  const badge = document.getElementById('presenceCountBadge');
+  if(!list || !presenceChannel) return;
+  const state = presenceChannel.presenceState();
+  // Setiap key presence bisa punya lebih dari satu "meta" kalau perangkat yang
+  // sama sempat reconnect — ambil yang paling baru (online_at terbesar) saja.
+  const entries = Object.keys(state).map(key => {
+    const metas = state[key] || [];
+    let latest = metas[0];
+    metas.forEach(m => { if(m && m.online_at && (!latest || m.online_at > latest.online_at)) latest = m; });
+    return latest;
+  }).filter(Boolean).sort((a, b) => (b.online_at || '').localeCompare(a.online_at || ''));
+
+  if(badge) badge.textContent = entries.length + ' online';
+
+  if(!entries.length){
+    list.innerHTML = '<div class="presence-empty">Belum ada yang membuka halaman stok opname saat ini.</div>';
+    return;
+  }
+
+  list.innerHTML = entries.map(e => {
+    const nama = (e.petugas || '').trim();
+    // Belum ada nama petugas yang diisi -> tetap tampil, label "Anonim".
+    const namaLabel = nama || 'Anonim';
+    const inisial = nama ? nama.charAt(0).toUpperCase() : '?';
+    const toko = (e.toko || '').trim();
+    const room = (e.room_code || '').trim();
+    const device = (e.device || '').trim();
+    const subParts = [];
+    if(toko) subParts.push(escapeHtml(toko));
+    if(device) subParts.push(escapeHtml(device));
+    subParts.push(room ? ('Room: ' + escapeHtml(room)) : 'Tidak di room mana pun');
+    subParts.push('Sejak ' + relativeTimeFromNow(e.online_at));
+    return `
+      <div class="presence-item">
+        <div class="presence-avatar">${escapeHtml(inisial)}<span class="live-dot"></span></div>
+        <div>
+          <div class="presence-name">${escapeHtml(namaLabel)}</div>
+          <div class="presence-sub">${subParts.join(' • ')}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Ikut perbarui titik online/offline di kartu "Kelola Nama Petugas" setiap
+  // kali data presence berubah, supaya statusnya selalu sesuai kondisi live.
+  if(typeof renderPetugasAdminList === 'function' && petugasRows.length) renderPetugasAdminList();
+}
+function subscribeChannel(){
+  if(!sb) return;
+  if(channel){ try{ sb.removeChannel(channel); }catch(e){} channel = null; }
+  channel = sb.channel('broadcast-admin-' + BROADCAST_SCREEN_CODE)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'stok_opname_broadcast', filter: `screen_code=eq.${BROADCAST_SCREEN_CODE}`
+    }, payload => {
+      currentRow = payload.new || null;
+      activeMediaPaths = {
+        photo: currentRow && currentRow.photo_path ? currentRow.photo_path : null,
+        video: currentRow && currentRow.video_path ? currentRow.video_path : null,
+        music: currentRow && currentRow.music_path ? currentRow.music_path : null
+      };
+      renderStatus();
+    })
+    .subscribe();
+}
+
+function renderStatus(){
+  const nowShowing = document.getElementById('nowShowing');
+  const btnStop = document.getElementById('btnStop');
+  if(!currentRow || !currentRow.active || currentRow.type === 'none'){
+    setStatus('Tersambung • layar menampilkan stok opname seperti biasa', 'on');
+    nowShowing.innerHTML = 'Layar belum menampilkan apa pun dari admin — masih menampilkan stok opname seperti biasa.';
+    btnStop.disabled = true;
+    return;
+  }
+  setStatus('Tersambung • layar sedang menampilkan konten dari admin', 'on');
+  btnStop.disabled = false;
+  if(currentRow.type === 'html'){
+    nowShowing.innerHTML = `Layar sedang menampilkan <b>HTML custom</b> yang ditempel dari admin.`;
+  } else if(currentRow.type === 'video'){
+    const srcLabel = currentRow.video_source === 'upload' ? 'diunggah' : (currentRow.video_source === 'local' ? 'file lokal' : 'link');
+    if(currentRow.video_source === 'upload'){
+      nowShowing.innerHTML = `Layar sedang menampilkan <b>video</b> yang diunggah.`;
+    } else {
+      nowShowing.innerHTML = `Layar sedang menampilkan <b>video</b> (${srcLabel}): <code>${escapeHtml(currentRow.video_value || '')}</code>`;
+    }
+  } else if(currentRow.type === 'foto'){
+    const hasPhoto = !!(currentRow.photo_value && currentRow.photo_value.trim());
+    const hasMusic = !!(currentRow.music_value && currentRow.music_value.trim());
+    let parts = [];
+    if(hasPhoto){
+      if(currentRow.photo_source === 'upload'){
+        parts.push(`<b>foto</b> yang diunggah`);
+      } else {
+        const srcLabel = currentRow.photo_source === 'local' ? 'file lokal' : 'link';
+        parts.push(`<b>foto</b> (${srcLabel}): <code>${escapeHtml(currentRow.photo_value)}</code>`);
+      }
+    }
+    if(hasMusic){
+      if(currentRow.music_source === 'upload'){
+        parts.push(`<b>musik</b> yang diunggah`);
+      } else {
+        const srcLabel = currentRow.music_source === 'local' ? 'file lokal' : 'link';
+        parts.push(`<b>musik</b> (${srcLabel}): <code>${escapeHtml(currentRow.music_value)}</code>`);
+      }
+    }
+    nowShowing.innerHTML = `Layar sedang menampilkan ${parts.join(' sekaligus ')}.`;
+  }
+}
+
+function escapeHtml(s){
+  return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.dataset.tab === name));
+  if(name === 'coret'){
+    // Kanvas punya ukuran 0 selagi tab-nya tersembunyi (display:none), jadi
+    // begitu tab ini dibuka, ukur ulang supaya coretan pas dengan pratinjau.
+    requestAnimationFrame(resizeCoretCanvas);
+  }
+}
+
+function updateVideoFieldUI(){
+  const source = document.querySelector('input[name="videoSource"]:checked').value;
+  const uploadField = document.getElementById('videoUploadField');
+  const linkField = document.getElementById('videoLinkField');
+  if(source === 'upload'){
+    uploadField.style.display = 'block';
+    linkField.style.display = 'none';
+    return;
+  }
+  uploadField.style.display = 'none';
+  linkField.style.display = 'block';
+  const input = document.getElementById('videoValueInput');
+  const hint = document.getElementById('videoHint');
+  if(source === 'local'){
+    input.placeholder = 'promo.mp4';
+    hint.textContent = 'Ketik nama file video-nya saja (mis. "promo.mp4"). File ini harus ada di folder yang sama dengan stok_opname.html di perangkat/hosting layar tersebut.';
+  } else {
+    input.placeholder = 'https://www.youtube.com/watch?v=... atau link mp4';
+    hint.textContent = 'Bisa link YouTube/Vimeo biasa, atau link langsung ke file video (.mp4, dll).';
+  }
+}
+
+function handleVideoFileChange(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('video/')){
+    alert('File yang dipilih harus berupa video.');
+    e.target.value = '';
+    return;
+  }
+  selectedVideoFile = file;
+  const url = URL.createObjectURL(file);
+  const videoEl = document.getElementById('videoPreviewVideo');
+  videoEl.src = url;
+  document.getElementById('videoPreviewWrap').style.display = 'block';
+  document.getElementById('videoDropLabel').style.display = 'none';
+}
+
+function clearSelectedVideo(){
+  selectedVideoFile = null;
+  const input = document.getElementById('videoFileInput');
+  if(input) input.value = '';
+  const videoEl = document.getElementById('videoPreviewVideo');
+  if(videoEl){ videoEl.pause(); videoEl.removeAttribute('src'); videoEl.load(); }
+  document.getElementById('videoPreviewWrap').style.display = 'none';
+  document.getElementById('videoDropLabel').style.display = 'flex';
+}
+
+function updatePhotoSourceUI(){
+  const source = document.querySelector('input[name="photoSource"]:checked').value;
+  const uploadField = document.getElementById('photoUploadField');
+  const linkField = document.getElementById('photoLinkField');
+  if(source === 'upload'){
+    uploadField.style.display = 'block';
+    linkField.style.display = 'none';
+    return;
+  }
+  uploadField.style.display = 'none';
+  linkField.style.display = 'block';
+  const input = document.getElementById('photoValueInput');
+  const hint = document.getElementById('photoHint');
+  if(source === 'local'){
+    input.placeholder = 'foto.jpg';
+    hint.textContent = 'Ketik nama file gambarnya saja (mis. "foto.jpg"). File ini harus ada di folder yang sama dengan stok_opname.html di perangkat/hosting layar tersebut.';
+  } else {
+    input.placeholder = 'https://... atau nama file (foto.jpg)';
+    hint.textContent = 'Bisa link gambar langsung, atau nama file gambar di folder yang sama dengan stok_opname.html.';
+  }
+}
+
+function handlePhotoFileChange(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    alert('File yang dipilih harus berupa gambar.');
+    e.target.value = '';
+    return;
+  }
+  selectedPhotoFile = file;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('photoPreviewImg').src = reader.result;
+    document.getElementById('photoPreviewWrap').style.display = 'block';
+    document.getElementById('photoDropLabel').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearSelectedPhoto(){
+  selectedPhotoFile = null;
+  const input = document.getElementById('photoFileInput');
+  if(input) input.value = '';
+  document.getElementById('photoPreviewWrap').style.display = 'none';
+  document.getElementById('photoDropLabel').style.display = 'flex';
+}
+
+async function uploadMediaFile(file, folder, extFallback){
+  if(!sb) throw new Error('Belum tersambung ke Supabase.');
+  const ext = ((file.name.split('.').pop() || extFallback).toLowerCase().replace(/[^a-z0-9]/g, '')) || extFallback;
+  const path = `${folder}/${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`;
+  const { error } = await sb.storage.from(PHOTO_BUCKET).upload(path, file, { upsert: false, contentType: file.type || undefined });
+  if(error) throw error;
+  const { data } = sb.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+  return { path, url: data.publicUrl };
+}
+// Alias supaya kompatibel dengan pemanggilan foto yang sudah ada.
+const uploadPhotoFile = (file) => uploadMediaFile(file, 'foto', 'jpg');
+const uploadVideoFile = (file) => uploadMediaFile(file, 'video', 'mp4');
+const uploadMusicFile = (file) => uploadMediaFile(file, 'musik', 'mp3');
+
+async function deleteMediaPath(path){
+  if(!sb || !path) return;
+  try{
+    await sb.storage.from(PHOTO_BUCKET).remove([path]);
+  } catch(e){
+    console.error('Gagal menghapus file lama dari penyimpanan:', e);
+  }
+}
+
+// Sinkronkan path media yang sedang aktif (foto/video/musik) dengan yang baru.
+// Path lama yang berbeda dari yang baru akan otomatis dihapus permanen dari Storage.
+// newPaths: { photo, video, music } — isi null untuk jenis yang tidak dipakai.
+async function syncActiveMediaPaths(newPaths){
+  const kinds = ['photo', 'video', 'music'];
+  for(const kind of kinds){
+    const newPath = (newPaths && newPaths[kind]) || null;
+    const oldPath = activeMediaPaths[kind];
+    if(oldPath && oldPath !== newPath){
+      await deleteMediaPath(oldPath);
+    }
+    activeMediaPaths[kind] = newPath;
+  }
+}
+
+function updateMusicFieldUI(){
+  const source = document.querySelector('input[name="musicSource"]:checked').value;
+  const uploadField = document.getElementById('musicUploadField');
+  const linkField = document.getElementById('musicLinkField');
+  if(source === 'upload'){
+    uploadField.style.display = 'block';
+    linkField.style.display = 'none';
+    return;
+  }
+  uploadField.style.display = 'none';
+  linkField.style.display = 'block';
+  const input = document.getElementById('musicValueInput');
+  const hint = document.getElementById('musicHint');
+  if(source === 'local'){
+    input.placeholder = 'lagu.mp3';
+    hint.textContent = 'Ketik nama file audionya saja (mis. "lagu.mp3"). File ini harus ada di folder yang sama dengan stok_opname.html di perangkat/hosting layar tersebut. Musik akan diputar berulang selama foto tampil.';
+  } else {
+    input.placeholder = 'https://... atau nama file (lagu.mp3)';
+    hint.textContent = 'Bisa link audio langsung (.mp3, dll), atau nama file audio di folder yang sama dengan stok_opname.html. Musik akan diputar berulang selama foto tampil.';
+  }
+}
+
+function handleMusicFileChange(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('audio/')){
+    alert('File yang dipilih harus berupa audio/musik.');
+    e.target.value = '';
+    return;
+  }
+  selectedMusicFile = file;
+  const url = URL.createObjectURL(file);
+  const audioEl = document.getElementById('musicPreviewAudio');
+  audioEl.src = url;
+  document.getElementById('musicPreviewWrap').style.display = 'block';
+  document.getElementById('musicDropLabel').style.display = 'none';
+}
+
+function clearSelectedMusic(){
+  selectedMusicFile = null;
+  const input = document.getElementById('musicFileInput');
+  if(input) input.value = '';
+  const audioEl = document.getElementById('musicPreviewAudio');
+  if(audioEl){ audioEl.pause(); audioEl.removeAttribute('src'); audioEl.load(); }
+  document.getElementById('musicPreviewWrap').style.display = 'none';
+  document.getElementById('musicDropLabel').style.display = 'flex';
+}
+
+async function pushBroadcast(payload){
+  if(!sb){ alert('Belum tersambung. Tunggu sebentar lalu coba lagi.'); return false; }
+  try{
+    const { error } = await sb.from('stok_opname_broadcast').upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      updated_by: CLIENT_ID,
+      updated_at: new Date().toISOString(),
+      ...payload
+    }, { onConflict: 'screen_code' });
+    if(error) throw error;
+    return true;
+  } catch(err){
+    console.error('Gagal mengirim ke layar:', err);
+    alert('Gagal mengirim ke layar. Pastikan tabel stok_opname_broadcast sudah dibuat di Supabase (lihat komentar di atas file ini).');
+    return false;
+  }
+}
+
+async function showHtml(){
+  const html = document.getElementById('htmlInput').value;
+  if(!html.trim()){ alert('Tempel dulu kode HTML-nya.'); return; }
+  const ok = await pushBroadcast({
+    type: 'html', active: true, html_content: html,
+    video_source: null, video_value: null, video_path: null,
+    photo_source: null, photo_value: null, photo_path: null,
+    music_source: null, music_value: null, music_path: null
+  });
+  if(ok){
+    currentRow = { screen_code: BROADCAST_SCREEN_CODE, type: 'html', active: true, html_content: html };
+    await syncActiveMediaPaths({ photo: null, video: null, music: null });
+    renderStatus();
+  }
+}
+
+async function showVideo(){
+  const videoSource = document.querySelector('input[name="videoSource"]:checked').value;
+  const btn = document.getElementById('btnShowVideo');
+
+  let videoValue = null, videoPath = null;
+
+  if(videoSource === 'upload'){
+    if(!selectedVideoFile){ alert('Pilih dulu file video yang mau diunggah.'); return; }
+    if(btn){ btn.disabled = true; btn.textContent = 'Mengunggah…'; }
+    try{
+      const uploaded = await uploadVideoFile(selectedVideoFile);
+      videoValue = uploaded.url;
+      videoPath = uploaded.path;
+    } catch(err){
+      console.error('Gagal mengunggah video:', err);
+      alert('Gagal mengunggah video. Pastikan bucket penyimpanan "broadcast-foto" sudah dibuat di Supabase (lihat komentar di atas file ini).');
+      if(btn){ btn.disabled = false; btn.textContent = 'Tampilkan di Layar'; }
+      return;
+    }
+    if(btn){ btn.disabled = false; btn.textContent = 'Tampilkan di Layar'; }
+  } else {
+    videoValue = document.getElementById('videoValueInput').value.trim();
+    if(!videoValue){ alert('Isi dulu link atau nama file video-nya.'); return; }
+  }
+
+  const ok = await pushBroadcast({
+    type: 'video', active: true, video_source: videoSource, video_value: videoValue, video_path: videoPath,
+    html_content: null,
+    photo_source: null, photo_value: null, photo_path: null,
+    music_source: null, music_value: null, music_path: null
+  });
+  if(ok){
+    currentRow = { screen_code: BROADCAST_SCREEN_CODE, type: 'video', active: true, video_source: videoSource, video_value: videoValue, video_path: videoPath };
+    await syncActiveMediaPaths({ photo: null, video: videoPath, music: null });
+    clearSelectedVideo();
+    renderStatus();
+  }
+}
+
+async function showFoto(){
+  const photoSource = document.querySelector('input[name="photoSource"]:checked').value;
+  const musicSource = document.querySelector('input[name="musicSource"]:checked').value;
+
+  let photoValue = null, photoPath = null;
+  let musicValue = null, musicPath = null;
+  const btn = document.getElementById('btnShowFoto');
+
+  if(photoSource === 'upload'){
+    if(selectedPhotoFile){
+      if(btn){ btn.disabled = true; btn.textContent = 'Mengunggah…'; }
+      try{
+        const uploaded = await uploadPhotoFile(selectedPhotoFile);
+        photoValue = uploaded.url;
+        photoPath = uploaded.path;
+      } catch(err){
+        console.error('Gagal mengunggah foto:', err);
+        alert('Gagal mengunggah foto. Pastikan bucket penyimpanan "broadcast-foto" sudah dibuat di Supabase (lihat komentar di atas file ini).');
+        if(btn){ btn.disabled = false; btn.textContent = 'Tampilkan di Layar'; }
+        return;
+      }
+      if(btn){ btn.disabled = false; btn.textContent = 'Tampilkan di Layar'; }
+    }
+  } else {
+    const val = document.getElementById('photoValueInput').value.trim();
+    if(val) photoValue = val;
+  }
+
+  if(musicSource === 'upload'){
+    if(selectedMusicFile){
+      if(btn){ btn.disabled = true; btn.textContent = 'Mengunggah…'; }
+      try{
+        const uploaded = await uploadMusicFile(selectedMusicFile);
+        musicValue = uploaded.url;
+        musicPath = uploaded.path;
+      } catch(err){
+        console.error('Gagal mengunggah musik:', err);
+        alert('Gagal mengunggah musik. Pastikan bucket penyimpanan "broadcast-foto" sudah dibuat di Supabase (lihat komentar di atas file ini).');
+        if(btn){ btn.disabled = false; btn.textContent = 'Tampilkan di Layar'; }
+        return;
+      }
+      if(btn){ btn.disabled = false; btn.textContent = 'Tampilkan di Layar'; }
+    }
+  } else {
+    const val = document.getElementById('musicValueInput').value.trim();
+    if(val) musicValue = val;
+  }
+
+  if(!photoValue && !musicValue){
+    alert('Isi foto (unggah, link, atau nama file) dulu, atau isi musik dulu (boleh isi salah satu, atau keduanya sekaligus).');
+    return;
+  }
+
+  const ok = await pushBroadcast({
+    type: 'foto', active: true,
+    photo_source: photoValue ? photoSource : null, photo_value: photoValue, photo_path: photoPath,
+    music_source: musicValue ? musicSource : null, music_value: musicValue || null, music_path: musicPath,
+    html_content: null, video_source: null, video_value: null, video_path: null
+  });
+  if(ok){
+    currentRow = {
+      screen_code: BROADCAST_SCREEN_CODE, type: 'foto', active: true,
+      photo_source: photoValue ? photoSource : null, photo_value: photoValue, photo_path: photoPath,
+      music_source: musicValue ? musicSource : null, music_value: musicValue || null, music_path: musicPath
+    };
+    await syncActiveMediaPaths({ photo: photoPath, video: null, music: musicPath });
+    clearSelectedPhoto();
+    clearSelectedMusic();
+    renderStatus();
+  }
+}
+
+async function stopBroadcast(){
+  const ok = await pushBroadcast({
+    type: 'none', active: false,
+    photo_source: null, photo_value: null, photo_path: null,
+    video_source: null, video_value: null, video_path: null,
+    music_source: null, music_value: null, music_path: null
+  });
+  if(ok){
+    currentRow = { screen_code: BROADCAST_SCREEN_CODE, type: 'none', active: false };
+    await syncActiveMediaPaths({ photo: null, video: null, music: null }); // semua media yang sedang aktif (kalau ada) dihapus permanen di sini
+    renderStatus();
+  }
+}
+
+// ====== Daftar Nama Barang Master (stok_opname_item_master) ======
+// Diimpor dari Excel di sini, dipakai di halaman stok opname sebagai
+// "pegangan nama" (saran klik saat mengetik) dan untuk menyesuaikan ejaan
+// nama barang yang ditambahkan lewat AI Agent. TIDAK pernah otomatis
+// mengisi baris apa pun ke tabel stok opname.
+const ITEM_MASTER_TABLE = 'stok_opname_item_master';
+let masterItemNames = [];
+let masterMeta = null; // { updated_by, updated_at } dari server
+let pendingMasterNames = null; // hasil parse file yang belum disimpan
+
+function renderMasterStatus(){
+  const box = document.getElementById('masterStatusBox');
+  if(!box) return;
+  if(!masterItemNames.length){
+    box.innerHTML = 'Belum ada daftar nama barang master. Impor dari file Excel di bawah.';
+    return;
+  }
+  const when = masterMeta && masterMeta.updated_at ? relativeTimeFromNow(masterMeta.updated_at) : '-';
+  box.innerHTML = `<b>${masterItemNames.length} nama barang</b> tersimpan di daftar master. Terakhir diperbarui ${when}.`;
+}
+
+async function loadItemMaster(){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.from(ITEM_MASTER_TABLE).select('*').eq('screen_code', BROADCAST_SCREEN_CODE).maybeSingle();
+    if(error) throw error;
+    masterItemNames = (data && Array.isArray(data.names)) ? data.names : [];
+    masterMeta = data ? { updated_by: data.updated_by, updated_at: data.updated_at } : null;
+    renderMasterStatus();
+    subscribeItemMasterChannel();
+  } catch(err){
+    console.error('Gagal memuat daftar nama barang master:', err);
+    const box = document.getElementById('masterStatusBox');
+    if(box) box.textContent = 'Gagal memuat daftar master. Pastikan tabel stok_opname_item_master sudah dibuat (lihat komentar di atas file ini).';
+  }
+}
+
+let itemMasterChannel = null;
+function subscribeItemMasterChannel(){
+  if(!sb) return;
+  if(itemMasterChannel){ try{ sb.removeChannel(itemMasterChannel); }catch(e){} itemMasterChannel = null; }
+  itemMasterChannel = sb.channel('item-master-admin-' + BROADCAST_SCREEN_CODE)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: ITEM_MASTER_TABLE, filter: `screen_code=eq.${BROADCAST_SCREEN_CODE}`
+    }, payload => {
+      masterItemNames = (payload.new && Array.isArray(payload.new.names)) ? payload.new.names : [];
+      masterMeta = payload.new ? { updated_by: payload.new.updated_by, updated_at: payload.new.updated_at } : null;
+      renderMasterStatus();
+    })
+    .subscribe();
+}
+
+// Baris judul kolom generik (bukan kolom nama) — dipakai untuk mengenali
+// baris judul & kolom-kolom lain yang BUKAN kolom nama barang (No, Kode, dst).
+function looksLikeHeaderCell(text){
+  const t = String(text || '').trim().toLowerCase();
+  if(!t) return false;
+  return /^(nama( barang| obat)?|item|product|produk|no\.?|kode|qty|jumlah|stok|stock|harga|satuan|kategori|tanggal)$/.test(t);
+}
+
+function isPureNumberText(text){
+  const t = String(text || '').trim();
+  return t !== '' && /^-?\d+([.,]\d+)?$/.test(t);
+}
+
+function isLikelyNameCell(text){
+  const t = String(text || '').trim();
+  if(!t) return false;
+  if(isPureNumberText(t)) return false;
+  return t.length >= 2;
+}
+
+// Mendeteksi kolom mana yang berisi nama barang — TIDAK selalu kolom pertama,
+// karena banyak file Excel punya kolom "No" atau "Kode" duluan sebelum "Nama
+// Barang". Caranya: (1) cari baris judul yang salah satu selnya eksplisit
+// menyebut "nama" di 5 baris pertama; (2) kalau tidak ketemu, tebak dari isi
+// kolomnya — kolom yang isinya mayoritas teks (bukan angka/nomor urut)
+// kemungkinan besar itu kolom nama.
+function detectNameColumn(rows){
+  if(!rows.length) return { colIdx: 0, headerRowIdx: -1 };
+
+  const scanLimit = Math.min(rows.length, 5);
+  for(let r = 0; r < scanLimit; r++){
+    const row = rows[r] || [];
+    for(let c = 0; c < row.length; c++){
+      const cell = String(row[c] || '').trim().toLowerCase();
+      if(/nama/.test(cell)) return { colIdx: c, headerRowIdx: r };
+    }
+  }
+
+  const sampleRows = rows.slice(0, 200);
+  const maxCols = Math.max(1, ...sampleRows.map(r => (r || []).length));
+  const colLimit = Math.min(maxCols, 15);
+  let bestCol = 0, bestScore = -1;
+  for(let c = 0; c < colLimit; c++){
+    let score = 0;
+    sampleRows.forEach(row => { if(isLikelyNameCell((row || [])[c])) score++; });
+    if(score > bestScore){ bestScore = score; bestCol = c; }
+  }
+
+  const firstRow = rows[0] || [];
+  const headerLike = firstRow.some(cell => looksLikeHeaderCell(cell));
+  return { colIdx: bestCol, headerRowIdx: headerLike ? 0 : -1 };
+}
+
+function parseExcelNamesFromWorkbook(workbook){
+  const firstSheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[firstSheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+  const { colIdx, headerRowIdx } = detectNameColumn(rows);
+  const names = [];
+  rows.forEach((row, idx) => {
+    if(idx === headerRowIdx) return;
+    const cell = (row || [])[colIdx];
+    const text = (cell === null || cell === undefined) ? '' : String(cell).trim();
+    if(!text) return;
+    if(isPureNumberText(text)) return; // jaga-jaga: baris nomor urut yang lolos jangan ikut masuk
+    names.push(text);
+  });
+  // buang duplikat (tidak peka huruf besar/kecil & spasi), pertahankan urutan pertama muncul
+  const seen = new Set();
+  const uniqueNames = [];
+  names.forEach(n => {
+    const key = n.toLowerCase().replace(/\s+/g, ' ');
+    if(seen.has(key)) return;
+    seen.add(key);
+    uniqueNames.push(n);
+  });
+  return uniqueNames;
+}
+
+function handleMasterFileChange(evt){
+  const file = evt.target.files && evt.target.files[0];
+  if(!file) return;
+  const dropText = document.getElementById('masterDropText');
+  if(dropText) dropText.textContent = 'Membaca "' + file.name + '"…';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const names = parseExcelNamesFromWorkbook(workbook);
+      if(dropText) dropText.textContent = 'Ketuk untuk pilih file Excel (.xlsx/.xls/.csv)…';
+      evt.target.value = '';
+      if(!names.length){
+        alert('Tidak ada nama barang yang terbaca dari file ini. Pastikan nama barang ada di kolom pertama.');
+        return;
+      }
+      showMasterPreview(names);
+    } catch(err){
+      console.error('Gagal membaca file Excel:', err);
+      if(dropText) dropText.textContent = 'Ketuk untuk pilih file Excel (.xlsx/.xls/.csv)…';
+      evt.target.value = '';
+      alert('Gagal membaca file ini. Pastikan formatnya .xlsx, .xls, atau .csv yang valid.');
+    }
+  };
+  reader.onerror = () => {
+    if(dropText) dropText.textContent = 'Ketuk untuk pilih file Excel (.xlsx/.xls/.csv)…';
+    evt.target.value = '';
+    alert('Gagal membaca file ini.');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showMasterPreview(names){
+  pendingMasterNames = names;
+  const wrap = document.getElementById('masterPreviewWrap');
+  const countEl = document.getElementById('masterPreviewCount');
+  const listEl = document.getElementById('masterPreviewList');
+  if(!wrap || !countEl || !listEl) return;
+  countEl.textContent = `${names.length} nama barang terdeteksi dari file`;
+  const shown = names.slice(0, 40);
+  listEl.innerHTML = shown.map(n => `<div class="mp-item">${escapeHtml(n)}</div>`).join('') +
+    (names.length > shown.length ? `<div class="mp-more">…dan ${names.length - shown.length} lainnya</div>` : '');
+  wrap.style.display = 'block';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelMasterPreview(){
+  pendingMasterNames = null;
+  const wrap = document.getElementById('masterPreviewWrap');
+  if(wrap) wrap.style.display = 'none';
+}
+
+async function saveMasterImport(){
+  if(!sb || !pendingMasterNames || !pendingMasterNames.length) return;
+  const mode = (document.querySelector('input[name="masterImportMode"]:checked') || {}).value || 'merge';
+  const btn = document.getElementById('btnSaveMaster');
+  if(btn){ btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+
+  let finalNames;
+  if(mode === 'replace'){
+    finalNames = pendingMasterNames.slice();
+  } else {
+    const seen = new Set(masterItemNames.map(n => n.toLowerCase().replace(/\s+/g, ' ')));
+    finalNames = masterItemNames.slice();
+    pendingMasterNames.forEach(n => {
+      const key = n.toLowerCase().replace(/\s+/g, ' ');
+      if(seen.has(key)) return;
+      seen.add(key);
+      finalNames.push(n);
+    });
+  }
+
+  try{
+    const { error } = await sb.from(ITEM_MASTER_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      names: finalNames,
+      updated_by: CLIENT_ID,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'screen_code' });
+    if(error) throw error;
+    masterItemNames = finalNames;
+    masterMeta = { updated_by: CLIENT_ID, updated_at: new Date().toISOString() };
+    renderMasterStatus();
+    cancelMasterPreview();
+    alert(`✓ Daftar master disimpan (${finalNames.length} nama barang total).`);
+  } catch(err){
+    console.error('Gagal menyimpan daftar master:', err);
+    alert('Gagal menyimpan ke server. Cek koneksi internet lalu coba lagi.');
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = 'Simpan ke Daftar Master'; }
+  }
+}
+
+async function clearMasterList(){
+  if(!sb) return;
+  if(!masterItemNames.length){ alert('Daftar master memang sudah kosong.'); return; }
+  if(!confirm(`Hapus seluruh ${masterItemNames.length} nama barang dari daftar master? Tindakan ini tidak bisa dibatalkan.`)) return;
+  const btn = document.getElementById('btnClearMaster');
+  if(btn) btn.disabled = true;
+  try{
+    const { error } = await sb.from(ITEM_MASTER_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      names: [],
+      updated_by: CLIENT_ID,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'screen_code' });
+    if(error) throw error;
+    masterItemNames = [];
+    masterMeta = { updated_by: CLIENT_ID, updated_at: new Date().toISOString() };
+    renderMasterStatus();
+  } catch(err){
+    console.error('Gagal menghapus daftar master:', err);
+    alert('Gagal menghapus di server. Cek koneksi internet lalu coba lagi.');
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+// ====== Import Sisa Stok (Web/Apk) — stok_opname_stock_import ======
+// Diimpor dari Excel di sini (nama barang + sisa stok), lalu otomatis
+// mengisi kolom Web/Apk di baris yang namanya cocok di halaman stok opname,
+// berlaku live di semua HP yang sedang membuka halaman tersebut. TIDAK
+// pernah membuat baris baru — hanya mengisi baris yang sudah ada.
+const STOCK_IMPORT_TABLE = 'stok_opname_stock_import';
+let stockImportMeta = null; // { count, mode, updated_by, updated_at } dari server
+let pendingStockImportItems = null; // hasil parse file yang belum dikirim
+
+function renderStockImportStatus(){
+  const box = document.getElementById('stockImportStatusBox');
+  if(!box) return;
+  if(!stockImportMeta || !stockImportMeta.count){
+    box.innerHTML = 'Belum pernah mengirim data sisa stok. Impor dari file Excel di bawah.';
+    return;
+  }
+  const when = stockImportMeta.updated_at ? relativeTimeFromNow(stockImportMeta.updated_at) : '-';
+  const modeLabel = stockImportMeta.mode === 'overwrite'
+    ? 'menimpa juga yang sudah terisi'
+    : 'hanya mengisi yang masih kosong';
+  box.innerHTML = `Terakhir mengirim <b>${stockImportMeta.count} sisa stok</b> (${modeLabel}) ${when}.`;
+}
+
+async function loadStockImportStatus(){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.from(STOCK_IMPORT_TABLE).select('*').eq('screen_code', BROADCAST_SCREEN_CODE).maybeSingle();
+    if(error) throw error;
+    stockImportMeta = data ? {
+      count: Array.isArray(data.items) ? data.items.length : 0,
+      mode: data.mode,
+      updated_by: data.updated_by,
+      updated_at: data.updated_at
+    } : null;
+    renderStockImportStatus();
+  } catch(err){
+    console.error('Gagal memuat status import sisa stok:', err);
+    const box = document.getElementById('stockImportStatusBox');
+    if(box) box.textContent = 'Gagal memuat status. Pastikan tabel stok_opname_stock_import sudah dibuat (lihat komentar di atas file ini).';
+  }
+}
+
+// Header kolom sisa stok yang dikenali otomatis (di luar kolom nama barang).
+function looksLikeQtyHeaderCell(text){
+  const t = String(text || '').trim().toLowerCase();
+  if(!t) return false;
+  return /(sisa|stok|stock|qty|jumlah)/.test(t);
+}
+
+// Ambil hanya angkanya saja dari sebuah sel — buang satuan/teks/pemisah
+// ribuan (mis. "1.250 pcs" -> 1250, "  86 " -> 86). Sisa stok dianggap
+// selalu bilangan bulat (boleh negatif kalau memang isinya minus).
+function parseStockQtyCell(cell){
+  if(cell === null || cell === undefined) return null;
+  const raw = String(cell).trim();
+  if(!raw) return null;
+  const neg = /^-/.test(raw) || /^\(.*\)$/.test(raw); // "(12)" kadang dipakai Excel untuk minus
+  const digitsOnly = raw.replace(/[^0-9]/g, '');
+  if(!digitsOnly) return null;
+  const num = parseInt(digitsOnly, 10);
+  if(isNaN(num)) return null;
+  return neg ? -num : num;
+}
+
+// Mendeteksi kolom nama barang & kolom sisa stok sekaligus. Sama seperti
+// detectNameColumn (dipakai fitur Daftar Master di atas), tapi di sini juga
+// mencari kolom angka sisa stok-nya, dan kolom nama TIDAK BOLEH sama dengan
+// kolom sisa stok.
+function detectStockImportColumns(rows){
+  if(!rows.length) return { nameColIdx: 0, qtyColIdx: 1, headerRowIdx: -1 };
+
+  const scanLimit = Math.min(rows.length, 5);
+  let nameColIdx = -1, qtyColIdx = -1, headerRowIdx = -1;
+  for(let r = 0; r < scanLimit; r++){
+    const row = rows[r] || [];
+    for(let c = 0; c < row.length; c++){
+      const cell = String(row[c] || '').trim().toLowerCase();
+      if(nameColIdx === -1 && /nama/.test(cell)){ nameColIdx = c; headerRowIdx = r; }
+      if(qtyColIdx === -1 && looksLikeQtyHeaderCell(cell)){ qtyColIdx = c; headerRowIdx = r; }
+    }
+    if(nameColIdx !== -1 && qtyColIdx !== -1) break;
+  }
+
+  const sampleRows = rows.slice(0, 200);
+  const maxCols = Math.max(1, ...sampleRows.map(r => (r || []).length));
+  const colLimit = Math.min(maxCols, 15);
+
+  if(nameColIdx === -1){
+    let bestCol = 0, bestScore = -1;
+    for(let c = 0; c < colLimit; c++){
+      if(c === qtyColIdx) continue;
+      let score = 0;
+      sampleRows.forEach(row => { if(isLikelyNameCell((row || [])[c])) score++; });
+      if(score > bestScore){ bestScore = score; bestCol = c; }
+    }
+    nameColIdx = bestCol;
+  }
+
+  if(qtyColIdx === -1){
+    let bestCol = -1, bestScore = -1;
+    for(let c = 0; c < colLimit; c++){
+      if(c === nameColIdx) continue;
+      let score = 0;
+      sampleRows.forEach(row => { if(isPureNumberText((row || [])[c])) score++; });
+      if(score > bestScore){ bestScore = score; bestCol = c; }
+    }
+    qtyColIdx = bestCol;
+  }
+
+  if(headerRowIdx === -1){
+    const firstRow = rows[0] || [];
+    const headerLike = firstRow.some(cell => looksLikeHeaderCell(cell) || looksLikeQtyHeaderCell(cell));
+    headerRowIdx = headerLike ? 0 : -1;
+  }
+
+  return { nameColIdx, qtyColIdx, headerRowIdx };
+}
+
+function parseStockImportFromWorkbook(workbook){
+  const firstSheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[firstSheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+  const { nameColIdx, qtyColIdx, headerRowIdx } = detectStockImportColumns(rows);
+
+  const items = [];
+  const seen = new Set();
+  rows.forEach((row, idx) => {
+    if(idx === headerRowIdx) return;
+    const nameCell = (row || [])[nameColIdx];
+    const nama = (nameCell === null || nameCell === undefined) ? '' : String(nameCell).trim();
+    if(!nama) return;
+    if(isPureNumberText(nama)) return; // jaga-jaga: baris nomor urut yang lolos jangan ikut masuk
+
+    const qtyCell = qtyColIdx === -1 ? null : (row || [])[qtyColIdx];
+    const apk = parseStockQtyCell(qtyCell);
+    if(apk === null) return; // baris tanpa angka sisa stok yang valid dilewati
+
+    const key = nama.toLowerCase().replace(/\s+/g, ' ');
+    if(seen.has(key)) return; // nama dobel di file yang sama, pakai kemunculan pertama
+    seen.add(key);
+    items.push({ nama, apk });
+  });
+  return items;
+}
+
+function handleStockImportFileChange(evt){
+  const file = evt.target.files && evt.target.files[0];
+  if(!file) return;
+  const dropText = document.getElementById('stockImportDropText');
+  if(dropText) dropText.textContent = 'Membaca "' + file.name + '"…';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const items = parseStockImportFromWorkbook(workbook);
+      if(dropText) dropText.textContent = 'Ketuk untuk pilih file Excel (.xlsx/.xls/.csv)…';
+      evt.target.value = '';
+      if(!items.length){
+        alert('Tidak ada pasangan nama barang + sisa stok yang terbaca dari file ini. Pastikan file punya kolom nama barang dan kolom angka sisa stok.');
+        return;
+      }
+      showStockImportPreview(items);
+    } catch(err){
+      console.error('Gagal membaca file Excel:', err);
+      if(dropText) dropText.textContent = 'Ketuk untuk pilih file Excel (.xlsx/.xls/.csv)…';
+      evt.target.value = '';
+      alert('Gagal membaca file ini. Pastikan formatnya .xlsx, .xls, atau .csv yang valid.');
+    }
+  };
+  reader.onerror = () => {
+    if(dropText) dropText.textContent = 'Ketuk untuk pilih file Excel (.xlsx/.xls/.csv)…';
+    evt.target.value = '';
+    alert('Gagal membaca file ini.');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showStockImportPreview(items){
+  pendingStockImportItems = items;
+  const wrap = document.getElementById('stockImportPreviewWrap');
+  const countEl = document.getElementById('stockImportPreviewCount');
+  const listEl = document.getElementById('stockImportPreviewList');
+  if(!wrap || !countEl || !listEl) return;
+  countEl.textContent = `${items.length} barang dengan sisa stok terdeteksi dari file`;
+  const shown = items.slice(0, 40);
+  listEl.innerHTML = shown.map(it =>
+    `<div class="mp-item">${escapeHtml(it.nama)} <span style="color:var(--ink-soft);font-weight:600;">— ${it.apk}</span></div>`
+  ).join('') + (items.length > shown.length ? `<div class="mp-more">…dan ${items.length - shown.length} lainnya</div>` : '');
+  wrap.style.display = 'block';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelStockImportPreview(){
+  pendingStockImportItems = null;
+  const wrap = document.getElementById('stockImportPreviewWrap');
+  if(wrap) wrap.style.display = 'none';
+  const fileInput = document.getElementById('stockImportFileInput');
+  if(fileInput) fileInput.value = '';
+}
+
+async function saveStockImportImport(){
+  if(!sb || !pendingStockImportItems || !pendingStockImportItems.length) return;
+  const mode = (document.querySelector('input[name="stockImportMode"]:checked') || {}).value || 'fill_empty';
+  const btn = document.getElementById('btnSaveStockImport');
+  if(btn){ btn.disabled = true; btn.textContent = 'Mengirim…'; }
+
+  try{
+    const updatedAt = new Date().toISOString();
+    const { error } = await sb.from(STOCK_IMPORT_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      items: pendingStockImportItems,
+      mode,
+      updated_by: CLIENT_ID,
+      updated_at: updatedAt
+    }, { onConflict: 'screen_code' });
+    if(error) throw error;
+    stockImportMeta = { count: pendingStockImportItems.length, mode, updated_by: CLIENT_ID, updated_at: updatedAt };
+    renderStockImportStatus();
+    const sentCount = pendingStockImportItems.length;
+    cancelStockImportPreview();
+    alert(`✓ Terkirim. ${sentCount} sisa stok akan otomatis mengisi kolom Web/Apk di halaman stok opname untuk barang yang namanya cocok.`);
+  } catch(err){
+    console.error('Gagal mengirim sisa stok:', err);
+    alert('Gagal mengirim ke server. Pastikan tabel stok_opname_stock_import sudah dibuat (lihat komentar di atas file ini), lalu coba lagi.');
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = 'Kirim ke Halaman Stok Opname'; }
+  }
+}
+
+async function clearStockImport(){
+  if(!sb) return;
+  if(!stockImportMeta || !stockImportMeta.count){ alert('Belum ada data import sisa stok yang tersimpan.'); return; }
+  if(!confirm('Hapus catatan data import sisa stok terakhir? Angka Web/Apk yang sudah terisi di halaman stok opname TIDAK ikut terhapus — ini cuma membersihkan catatan di panel admin ini, supaya siap untuk import berikutnya.')) return;
+  const btn = document.getElementById('btnClearStockImport');
+  if(btn) btn.disabled = true;
+  try{
+    const { error } = await sb.from(STOCK_IMPORT_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      items: [],
+      mode: 'fill_empty',
+      updated_by: CLIENT_ID,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'screen_code' });
+    if(error) throw error;
+    stockImportMeta = null;
+    renderStockImportStatus();
+  } catch(err){
+    console.error('Gagal menghapus data import sisa stok:', err);
+    alert('Gagal menghapus di server. Cek koneksi internet lalu coba lagi.');
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+// ====== Coret-coret (gambar tangan live di layar stok opname) ======
+// Admin mencoret di atas pratinjau (iframe cermin dari stok_opname.html).
+// Titik-titik coretan disimpan sebagai koordinat relatif (0..1) supaya pas
+// diskalakan proporsional ke ukuran layar stok opname yang sebenarnya,
+// berapa pun ukurannya. Ketebalan garis juga disimpan sebagai fraksi lebar
+// kanvas dengan alasan yang sama.
+const DRAW_TABLE = 'stok_opname_draw';
+let coretStrokes = [];
+let coretCurrentStroke = null;
+let coretColor = '#e0393e';
+let coretThicknessPx = 6;
+let coretChannel = null;
+let coretPushTimer = null;
+let coretIsDrawing = false;
+
+function coretCanvasEl(){ return document.getElementById('coretCanvas'); }
+
+function resizeCoretCanvas(){
+  const canvas = coretCanvasEl();
+  const wrap = document.getElementById('coretPreviewWrap');
+  if(!canvas || !wrap) return;
+  const rect = wrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  renderCoretLocal();
+}
+
+function renderCoretLocal(){
+  const canvas = coretCanvasEl();
+  const wrap = document.getElementById('coretPreviewWrap');
+  if(!canvas || !wrap) return;
+  const rect = wrap.getBoundingClientRect();
+  const ctx = canvas.getContext('2d');
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const allStrokes = coretCurrentStroke ? [...coretStrokes, coretCurrentStroke] : coretStrokes;
+  allStrokes.forEach(stroke => {
+    const pts = stroke.points || [];
+    if(pts.length < 1) return;
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = Math.max(1, stroke.width * w);
+    if(pts.length === 1){
+      const [x, y] = pts[0];
+      ctx.beginPath();
+      ctx.arc(x * w, y * h, ctx.lineWidth / 2, 0, Math.PI * 2);
+      ctx.fillStyle = stroke.color;
+      ctx.fill();
+      return;
+    }
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      const px = p[0] * w, py = p[1] * h;
+      if(i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+  });
+}
+
+function coretPointFromEvent(evt){
+  const canvas = coretCanvasEl();
+  const rect = canvas.getBoundingClientRect();
+  const x = (evt.clientX - rect.left) / rect.width;
+  const y = (evt.clientY - rect.top) / rect.height;
+  return [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))];
+}
+
+function coretPointerDown(evt){
+  evt.preventDefault();
+  const canvas = coretCanvasEl();
+  try{ canvas.setPointerCapture(evt.pointerId); }catch(e){}
+  coretIsDrawing = true;
+  const rect = canvas.getBoundingClientRect();
+  coretCurrentStroke = {
+    color: coretColor,
+    width: coretThicknessPx / rect.width,
+    points: [coretPointFromEvent(evt)]
+  };
+  renderCoretLocal();
+  pushCoretState(true); // kirim langsung supaya titik awal coretan segera muncul di layar
+}
+
+function coretPointerMove(evt){
+  if(!coretIsDrawing || !coretCurrentStroke) return;
+  evt.preventDefault();
+  coretCurrentStroke.points.push(coretPointFromEvent(evt));
+  renderCoretLocal();
+  pushCoretState(false); // throttled: tetap terkirim berkala selagi jari/mouse terus bergerak
+}
+
+function coretPointerUp(evt){
+  if(!coretIsDrawing) return;
+  coretIsDrawing = false;
+  if(coretCurrentStroke){
+    coretStrokes.push(coretCurrentStroke);
+    coretCurrentStroke = null;
+  }
+  renderCoretLocal();
+  pushCoretState(true);
+}
+
+function setupCoretCanvasEvents(){
+  const canvas = coretCanvasEl();
+  if(!canvas) return;
+  canvas.addEventListener('pointerdown', coretPointerDown);
+  canvas.addEventListener('pointermove', coretPointerMove);
+  canvas.addEventListener('pointerup', coretPointerUp);
+  canvas.addEventListener('pointercancel', coretPointerUp);
+  canvas.addEventListener('pointerleave', evt => { if(coretIsDrawing) coretPointerUp(evt); });
+  window.addEventListener('resize', resizeCoretCanvas);
+}
+
+function pickCoretColor(hex, btn){
+  coretColor = hex;
+  document.querySelectorAll('.coret-swatch').forEach(el => el.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const customInput = document.getElementById('coretColorCustom');
+  if(customInput) customInput.value = hex;
+}
+
+function updateCoretThickness(val){
+  coretThicknessPx = Number(val);
+  const dot = document.getElementById('coretThicknessDot');
+  if(dot){
+    const size = Math.max(3, Math.min(24, coretThicknessPx));
+    dot.style.width = size + 'px';
+    dot.style.height = size + 'px';
+  }
+}
+
+function undoCoretStroke(){
+  if(!coretStrokes.length) return;
+  coretStrokes.pop();
+  renderCoretLocal();
+  pushCoretState(true);
+}
+
+function clearCoret(){
+  if(!coretStrokes.length && !coretCurrentStroke) return;
+  coretStrokes = [];
+  coretCurrentStroke = null;
+  renderCoretLocal();
+  pushCoretState(true);
+}
+
+// Data yang ikut dikirim ke server selalu termasuk coretan yang SEDANG
+// digambar (coretCurrentStroke), bukan cuma yang sudah selesai — supaya
+// layar lain melihat progresnya secara live, bukan cuma pas selesai.
+function coretStrokesToSync(){
+  return coretCurrentStroke ? [...coretStrokes, coretCurrentStroke] : coretStrokes;
+}
+
+// Throttle (bukan debounce): selagi terus mencoret, tetap dikirim secara
+// berkala setiap ~90ms, tidak menunggu sampai berhenti/lepas jari.
+let coretLastPushAt = 0;
+let coretPushScheduled = false;
+const CORET_PUSH_INTERVAL_MS = 90;
+
+function pushCoretState(immediate){
+  if(immediate){
+    clearTimeout(coretPushTimer);
+    coretPushTimer = null;
+    coretPushScheduled = false;
+    doCoretPush();
+    return;
+  }
+  if(coretPushScheduled) return; // sudah ada kiriman terjadwal, biarkan jalan
+  const elapsed = Date.now() - coretLastPushAt;
+  const wait = Math.max(0, CORET_PUSH_INTERVAL_MS - elapsed);
+  coretPushScheduled = true;
+  coretPushTimer = setTimeout(() => {
+    coretPushScheduled = false;
+    doCoretPush();
+  }, wait);
+}
+
+async function doCoretPush(){
+  coretLastPushAt = Date.now();
+  if(!sb) return;
+  try{
+    await sb.from(DRAW_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      strokes: coretStrokesToSync(),
+      updated_by: CLIENT_ID,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'screen_code' });
+  } catch(err){
+    console.error('Gagal mengirim coretan ke layar:', err);
+  }
+}
+
+async function initCoretDrawing(){
+  const client = initSupabaseClient();
+  if(!client) return;
+  resizeCoretCanvas();
+  setupCoretCanvasEvents();
+  try{
+    const { data, error } = await sb.from(DRAW_TABLE).select('*').eq('screen_code', BROADCAST_SCREEN_CODE).maybeSingle();
+    if(!error && data) coretStrokes = data.strokes || [];
+    renderCoretLocal();
+  } catch(e){
+    console.error('Gagal memuat coretan sebelumnya:', e);
+  }
+  subscribeCoretChannel();
+}
+
+function subscribeCoretChannel(){
+  if(!sb) return;
+  if(coretChannel){ try{ sb.removeChannel(coretChannel); }catch(e){} coretChannel = null; }
+  coretChannel = sb.channel('draw-admin-' + BROADCAST_SCREEN_CODE)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: DRAW_TABLE, filter: `screen_code=eq.${BROADCAST_SCREEN_CODE}`
+    }, payload => {
+      // Jangan timpa coretan yang sedang aktif digambar di perangkat ini.
+      if(coretIsDrawing) return;
+      coretStrokes = (payload.new && payload.new.strokes) || [];
+      renderCoretLocal();
+    })
+    .subscribe();
+}
+
+connectGlobal();
+initCoretDrawing();
 </script>
 </body>
 </html>
