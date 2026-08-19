@@ -194,6 +194,40 @@
 
   alter publication supabase_realtime add table public.stok_opname_petugas_session;
 
+  -- Untuk tombol "Riwayat" di header tampilan Ambil Alih (panel admin ini):
+  -- riwayat laporan tiap petugas (yang tadinya cuma tersimpan lokal di HP
+  -- masing-masing) sekarang JUGA dikirim ke sini setiap kali petugas menekan
+  -- "Salin ke WhatsApp" di stok_opname.html, supaya admin bisa melihat &
+  -- memuat ulang riwayat itu dari jarak jauh lewat jendela Ambil Alih:
+  create table if not exists public.stok_opname_petugas_history (
+    petugas_slug text not null,
+    entry_id bigint not null,
+    petugas_nama text,
+    toko text,
+    waktu text,
+    tgl text,
+    saved_at timestamptz,
+    rows jsonb not null default '[]'::jsonb,
+    hide_toko jsonb not null default '{}'::jsonb,
+    text_content text,
+    edited_from bigint,
+    updated_by text,
+    created_at timestamptz not null default now(),
+    primary key (petugas_slug, entry_id)
+  );
+
+  alter table public.stok_opname_petugas_history enable row level security;
+
+  drop policy if exists "anon select petugas history" on public.stok_opname_petugas_history;
+  create policy "anon select petugas history" on public.stok_opname_petugas_history
+    for select using (true);
+  drop policy if exists "anon insert petugas history" on public.stok_opname_petugas_history;
+  create policy "anon insert petugas history" on public.stok_opname_petugas_history
+    for insert with check (true);
+  drop policy if exists "anon delete petugas history" on public.stok_opname_petugas_history;
+  create policy "anon delete petugas history" on public.stok_opname_petugas_history
+    for delete using (true);
+
   -- Untuk fitur "Daftar Nama Barang Master" (diimpor dari Excel di panel admin
   -- ini, dipakai sebagai pegangan nama saat mengetik nama barang di halaman
   -- stok opname, dan untuk menyesuaikan ejaan nama lewat AI Agent):
@@ -250,7 +284,8 @@
   :root{
     --ink:#173b36; --ink-soft:#4b6b65; --paper:#f6f4ee; --card:#ffffff;
     --teal:#0d5c52; --teal-deep:#0a453e; --mint:#e4f2ec; --line:#dde3dd;
-    --minus:#c0503a; --minus-bg:#fbebe6; --klop:#3c8a5c; --klop-bg:#e9f6ee; --amber:#b8863b;
+    --minus:#c0503a; --minus-bg:#fbebe6; --plus:#2f6fae; --plus-bg:#e9f1fa;
+    --klop:#3c8a5c; --klop-bg:#e9f6ee; --amber:#b8863b;
   }
   *{box-sizing:border-box;}
   html{overflow-x:hidden;}
@@ -509,19 +544,443 @@
   }
   @media(min-width:560px){ .takeover-panel{ margin:16px auto; height:calc(100% - 32px); border-radius:18px; overflow:hidden; } }
   .takeover-header{
-    display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--teal-deep);
-    color:#fff; flex-shrink:0;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; position:relative;
+    background:linear-gradient(165deg, var(--teal), var(--teal-deep));
+    padding:14px 44px 12px 14px; color:#fff; flex-shrink:0;
   }
   .takeover-header-info{flex:1; min-width:0;}
-  .takeover-header-title{font-size:13.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .takeover-header-sub{font-size:11px; opacity:.85; font-weight:500;}
+  .takeover-header-title{font-size:15.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0; letter-spacing:-0.01em; color:#fff;}
+  .takeover-header-sub{margin:1px 0 0; font-size:11.5px; opacity:.85; font-weight:500; color:#cfe6df;}
   .takeover-close-btn{
-    background:rgba(255,255,255,0.15); border:none; color:#fff; width:32px; height:32px; border-radius:9px;
-    font-size:16px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    position:absolute; top:12px; right:12px;
+    background:rgba(255,255,255,0.15); border:none; color:#fff; width:30px; height:30px; border-radius:9px;
+    font-size:15px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
   }
   .takeover-close-btn:hover{background:rgba(255,255,255,0.28);}
-  .takeover-body{flex:1; min-height:0; position:relative; background:#fff;}
+  .to-mast-pill{
+    width:36px; height:36px; border-radius:11px; background:rgba(255,255,255,0.16);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    border:1px solid rgba(255,255,255,0.25);
+  }
+  .to-mast-pill svg{width:19px; height:19px;}
+  .takeover-header-btnrow{width:100%; order:3; margin-top:2px;}
+  .takeover-header-btnrow > *{display:inline-block; margin-right:12px;}
+  .takeover-header-btnrow .link-btn{color:#fff !important;}
+  .takeover-header-btnrow .to-mast-reset{color:#d8ece5 !important;}
+  .takeover-body{flex:1; min-height:0; position:relative; background:#fff; overflow-y:auto; overflow-x:hidden;}
   .takeover-body iframe{width:100%; height:100%; border:none; display:block;}
+
+  /* ====== Tombol "Browser" (mini-browser mengambang) — port persis dari
+     stok_opname.html, berdiri sendiri (tidak bergantung sesi petugas) ====== */
+  .cashier-popup{
+    display:none; position:fixed; inset:0; background:transparent; z-index:100210;
+    align-items:center; justify-content:center; padding:16px;
+    pointer-events:none;
+  }
+  .cashier-popup.show{display:flex;}
+  .cashier-popup-box{
+    width:320px; max-width:96vw; height:78vh; max-height:92vh;
+    min-width:220px; min-height:260px;
+    background:#fff; border-radius:18px; overflow:hidden; display:flex; flex-direction:column;
+    box-shadow:0 20px 50px rgba(15,30,27,0.35);
+    position:relative;
+    pointer-events:auto;
+  }
+  .cashier-resize-handle{
+    position:absolute; right:0; bottom:0; width:30px; height:30px; z-index:5;
+    cursor:nwse-resize; touch-action:none;
+    background:
+      linear-gradient(135deg, transparent 0 50%, rgba(13,92,82,0.35) 50% 58%, transparent 58% 100%),
+      linear-gradient(135deg, transparent 0 65%, rgba(13,92,82,0.35) 65% 73%, transparent 73% 100%);
+  }
+  .cashier-popup-head{
+    display:flex; flex-direction:column; gap:6px;
+    background:linear-gradient(165deg, var(--teal), var(--teal-deep)); color:#fff;
+    padding:0 0 8px; flex-shrink:0;
+  }
+  .cashier-drag-strip{
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+    padding:8px 8px 4px; cursor:move; touch-action:none;
+  }
+  .cashier-drag-strip .cashier-grip{
+    display:flex; gap:3px; align-items:center; opacity:0.85;
+  }
+  .cashier-drag-strip .cashier-grip span{
+    width:3px; height:3px; border-radius:50%; background:#fff;
+  }
+  .cashier-drag-strip .cashier-title{font-size:11.5px; font-weight:700; opacity:0.9;}
+  .cashier-addr-row{display:flex; align-items:center; gap:6px; padding:0 8px;}
+  .cashier-popup-nav{
+    display:flex; align-items:center; gap:4px;
+  }
+  .cashier-nav-btn{
+    background:rgba(255,255,255,0.16); border:none; color:#fff; width:26px; height:26px;
+    border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; line-height:1;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .cashier-nav-btn:disabled{opacity:0.4; cursor:default;}
+  .cashier-addr-form{flex:1; display:flex; align-items:center; min-width:0;}
+  .cashier-addr-bar{
+    flex:1; min-width:0; background:rgba(255,255,255,0.92); border:none; outline:none;
+    border-radius:999px; padding:6px 12px; font-size:12px; color:#123; font-weight:600;
+  }
+  .cashier-popup-close{
+    background:rgba(255,255,255,0.16); border:none; color:#fff; width:26px; height:26px;
+    border-radius:8px; font-size:15px; font-weight:700; cursor:pointer; line-height:1; flex-shrink:0;
+  }
+  .cashier-popup-body{flex:1; min-height:0; position:relative; background:#fff;}
+  .cashier-popup-body iframe{width:100%; height:100%; border:none; display:block;}
+
+  /* ====== Editor Ambil Alih (langsung ke Supabase, tanpa iframe) ====== */
+  .to-wrap{padding:14px; overflow-x:hidden;}
+  .to-meta-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;}
+  .to-field{display:flex; flex-direction:column; gap:4px; min-width:0;}
+  .to-field label{font-size:10.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.02em;}
+  .to-field input, .to-field select{
+    width:100%; border:1.5px solid var(--line); border-radius:10px; padding:8px 10px; font-size:13px;
+    font-family:inherit; color:var(--ink); background:#fff;
+  }
+  .to-field input:focus, .to-field select:focus{outline:none; border-color:var(--teal);}
+  .to-toolbar{display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
+  .to-search-wrap{position:relative; flex:1; min-width:140px;}
+  .to-search-wrap svg{position:absolute; left:9px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--ink-soft);}
+  .to-search-wrap input{
+    width:100%; border:1.5px solid var(--line); border-radius:10px; padding:8px 10px 8px 30px;
+    font-size:12.5px; font-family:inherit;
+  }
+  .to-search-wrap input:focus{outline:none; border-color:var(--teal);}
+  .to-filter-select{
+    border:1.5px solid var(--line); border-radius:10px; padding:8px 8px; font-size:12px; font-family:inherit; color:var(--ink);
+    background:#fff; max-width:120px;
+  }
+  .to-unchecked-btn{
+    border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:7px 10px; font-size:11.5px;
+    font-weight:700; color:var(--ink-soft); cursor:pointer; white-space:nowrap;
+  }
+  .to-unchecked-btn.active{background:var(--mint); border-color:var(--teal); color:var(--teal-deep);}
+  .to-status-line{font-size:11px; color:var(--ink-soft); margin-bottom:8px; display:flex; align-items:center; gap:6px;}
+  .to-status-dot{width:7px; height:7px; border-radius:50%; background:#c7cdc9; flex-shrink:0;}
+  .to-status-dot.on{background:var(--klop);}
+  .to-status-dot.warn{background:var(--amber);}
+  /* Tabel ala halaman Stok Opname */
+  .to-table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -2px 8px; padding:0 2px;}
+  .to-table-scroll table{width:100%; border-collapse:collapse; font-size:12.5px; min-width:540px;}
+  .to-table-scroll thead th{
+    text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--ink-soft); font-weight:700; padding:0 7px 8px; border-bottom:1.5px solid var(--line);
+    white-space:nowrap;
+  }
+  .to-table-scroll th.to-num, .to-table-scroll td.to-num{text-align:center;}
+  .to-table-scroll td.to-status-cell{padding-top:7px; padding-bottom:7px;}
+  .to-table-scroll tbody td{padding:6px 7px; border-bottom:1px solid #eef1ec; vertical-align:middle;}
+  .to-table-scroll tbody tr:last-child td{border-bottom:none;}
+  .to-idx{color:#a7b6b0; font-weight:600; font-size:11.5px; width:20px;}
+  .to-nama-col{width:1%; white-space:nowrap;}
+  .to-table-scroll td input{
+    width:100%; padding:6px 7px; border:1.5px solid var(--line); border-radius:8px;
+    font-family:inherit; font-size:12.5px; line-height:1.3; background:var(--card); color:var(--ink);
+  }
+  .to-table-scroll td input.to-nama-in{font-weight:700; width:auto; min-width:110px; max-width:100%;}
+  .to-table-scroll td input:focus{outline:none; border-color:var(--teal);}
+  .to-num-in{text-align:center; font-family:'JetBrains Mono', monospace;}
+  .to-fisik-val{
+    font-family:'JetBrains Mono', monospace; font-weight:700; text-align:center;
+    font-size:12.5px; line-height:1.3; color:var(--ink);
+    padding:6px 7px; border:1.5px solid transparent; border-radius:8px;
+  }
+  .to-del-btn{
+    background:none; border:none; cursor:pointer; color:#c2c9c4; padding:4px; border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .to-del-btn:hover{color:var(--minus); background:var(--minus-bg);}
+  .to-del-btn svg{width:14px;height:14px;}
+  .to-badge{
+    display:inline-flex; align-items:center; justify-content:center; gap:4px;
+    min-width:58px; padding:4px 8px; border-radius:20px; font-size:11px; font-weight:700;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .to-badge.minus{background:var(--minus-bg); color:var(--minus);}
+  .to-badge.plus{background:var(--plus-bg); color:var(--plus);}
+  .to-badge.klop{background:var(--klop-bg); color:var(--klop);}
+  .to-badge.unchecked{background:#f0efe8; color:#9aada6; font-weight:700; font-family:inherit;}
+  .to-badge.partial{background:#fbf1e0; color:var(--amber); font-family:inherit;}
+  .to-empty-msg{text-align:center; padding:28px 10px; color:var(--ink-soft); font-size:12.5px;}
+  .to-row-actions{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(128px, 1fr));
+    gap:8px; margin-top:14px;
+  }
+  .to-add-btn{
+    display:flex; align-items:center; gap:6px; background:var(--mint); color:var(--teal-deep);
+    border:1.5px dashed #a9c9c0; padding:9px 14px; border-radius:10px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+    justify-content:center; text-align:center; line-height:1.25;
+  }
+  .to-add-btn:hover{background:#d7ece2;}
+  .to-add-btn svg{width:15px;height:15px; flex-shrink:0;}
+  .to-row-actions .to-add-btn{
+    justify-content:center; text-align:center; font-size:11.5px; padding:9px 8px; line-height:1.25;
+  }
+  /* Modal Tempel Sisa Stok (Clipboard) di panel Ambil Alih */
+  .to-paste-overlay{
+    display:none; position:fixed; inset:0; z-index:100010; background:rgba(10,20,18,0.55);
+    align-items:center; justify-content:center; padding:16px;
+  }
+  .to-paste-overlay.show{display:flex;}
+  .to-paste-modal{
+    background:var(--card); width:100%; max-width:420px; border-radius:16px; padding:18px;
+    box-shadow:0 10px 40px rgba(0,0,0,0.3); max-height:90vh; overflow-y:auto;
+  }
+  .to-paste-modal h3{margin:0 0 4px; font-size:15px; font-weight:800; color:var(--ink);}
+  .to-paste-modal p.sub{margin:0 0 12px; font-size:11.5px; color:var(--ink-soft); line-height:1.4;}
+  .to-paste-modal textarea{
+    width:100%; min-height:140px; border:1.5px solid var(--line); border-radius:10px; padding:10px;
+    font-family:inherit; font-size:12.5px; resize:vertical; color:var(--ink);
+  }
+  .to-paste-modal textarea:focus{outline:none; border-color:var(--teal);}
+  .to-paste-result{margin-top:8px; font-size:11.5px; color:var(--minus); display:none;}
+  .to-paste-result.show{display:block;}
+  .to-paste-modal-btns{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
+  .to-paste-modal-btns button{
+    flex:1; min-width:100px; padding:9px 12px; border-radius:10px; font-size:12.5px; font-weight:700;
+    border:1.5px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+  }
+  .to-paste-btn-primary{background:var(--teal); border-color:var(--teal); color:#fff !important;}
+
+  /* WhatsApp format + tempel-nama/tempel-stok (dengan review) di panel Ambil
+     Alih — port persis dari stok_opname.html supaya perilaku & hasilnya
+     sama persis dengan halaman stok opname. */
+  .to-wa-block{margin-top:16px; padding-top:14px; border-top:1.5px solid var(--line);}
+  .to-wa-title{font-size:11px; text-transform:uppercase; letter-spacing:.09em; color:var(--teal); font-weight:700; margin:0 0 12px;}
+  .to-hide-toko-row{display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
+  .to-hide-toko-row .to-htr-label{font-size:11.5px; color:var(--ink-soft); font-weight:600;}
+  .to-chip-toggle{
+    display:inline-flex; align-items:center; gap:6px; background:var(--card); color:var(--ink-soft);
+    border:1.5px solid var(--line); padding:6px 12px; border-radius:20px; font-size:12px;
+    font-weight:700; font-family:inherit; cursor:pointer;
+  }
+  .to-chip-toggle:hover{border-color:#a9c9c0;}
+  .to-chip-toggle .eye{width:13px;height:13px; flex-shrink:0;}
+  .to-chip-toggle.active{background:var(--minus-bg); color:var(--minus); border-color:#e4b8ab;}
+  .to-generate-bar{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(128px, 1fr));
+    gap:8px; align-items:stretch;
+  }
+  .to-generate-bar .to-wa-main-btn{
+    width:100%; justify-content:center; align-items:center; gap:6px;
+    padding:9px 8px; font-size:11.5px; line-height:1.25; min-height:40px;
+    box-sizing:border-box;
+  }
+  .to-generate-bar .to-add-btn{
+    justify-content:center; text-align:center; gap:6px;
+    font-size:11.5px; padding:9px 8px; line-height:1.25; min-height:40px;
+    box-sizing:border-box;
+  }
+  .to-copied-msgs{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; min-height:16px;}
+  .to-copied-msg{font-size:11.5px; color:var(--klop); font-weight:700; opacity:0; transition:opacity .2s;}
+  .to-copied-msg.show{opacity:1;}
+  .to-preview{
+    margin-top:14px; background:var(--teal-deep); border-radius:14px; padding:14px 16px;
+    color:#eaf3f0; font-family:'JetBrains Mono', monospace; font-size:12px; line-height:1.6;
+    white-space:pre-wrap; max-height:380px; overflow-y:auto;
+  }
+  .to-preview.empty{color:#8fb1a9; font-style:italic;}
+  .to-preview b{color:#fff;}
+
+  /* Modal "Tempel & isi stok" / "Tempel nama barang saja" (Ambil Alih) */
+  .to-history-overlay{
+    display:none; position:fixed; inset:0; background:rgba(15,30,27,0.45); z-index:100020;
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .to-history-overlay.show{display:flex;}
+  .to-history-modal{
+    background:var(--card); border-radius:16px; width:100%; max-width:560px; max-height:82vh;
+    display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 50px rgba(15,30,27,0.3);
+  }
+  .to-history-modal.to-review-modal{max-width:600px;}
+  .to-history-modal-head{
+    display:flex; align-items:center; justify-content:space-between; padding:16px 18px;
+    border-bottom:1px solid var(--line); flex-shrink:0;
+  }
+  .to-history-modal-head h3{margin:0; font-size:15px; font-weight:800;}
+  .to-history-close{
+    background:var(--mint); border:none; color:var(--teal-deep); width:28px; height:28px;
+    border-radius:8px; font-size:15px; font-weight:700; cursor:pointer; line-height:1;
+  }
+  .to-history-close:hover{background:#d7ece2;}
+  .to-history-modal-body{overflow-y:auto; padding:14px 18px 18px;}
+
+  /* ====== Riwayat (Ambil Alih) — port persis dari stok_opname.html, tapi
+     membaca dari tabel stok_opname_petugas_history via Supabase, difilter
+     per petugas yang sedang diambil alih ====== */
+  .to-hist-empty{font-size:12.5px; color:var(--ink-soft); text-align:center; padding:34px 10px; line-height:1.6;}
+  .to-hist-toko-group{margin-bottom:20px;}
+  .to-hist-toko-group:last-child{margin-bottom:0;}
+  .to-hist-toko-head{
+    display:flex; align-items:center; gap:9px; font-size:13px; font-weight:800;
+    padding:9px 12px 9px 9px; border-radius:13px; margin:0 -4px 10px; position:sticky; top:0; z-index:5;
+    color:#fff; box-shadow:0 5px 14px rgba(15,30,27,0.18);
+  }
+  .to-hist-toko-head.tk-r1{background:linear-gradient(120deg, var(--teal), var(--teal-deep));}
+  .to-hist-toko-head.tk-r2{background:linear-gradient(120deg, #3f8fd4, #1c5487);}
+  .to-hist-toko-head.tk-other{background:linear-gradient(120deg, #909ba3, #5f6b72);}
+  .to-hist-toko-ico{
+    width:27px; height:27px; border-radius:9px; background:rgba(255,255,255,0.2);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    border:1px solid rgba(255,255,255,0.28);
+  }
+  .to-hist-toko-ico svg{width:15px; height:15px;}
+  .to-hist-toko-head .cnt{
+    margin-left:auto; font-size:10.5px; font-weight:700; background:rgba(255,255,255,0.22);
+    padding:3.5px 10px; border-radius:20px; white-space:nowrap; letter-spacing:.01em;
+  }
+  .to-hist-date-group{margin-bottom:4px;}
+  .to-hist-date-head{
+    display:flex; align-items:center; gap:6px; font-size:10.5px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.045em; color:var(--ink-soft);
+    margin:14px 2px 7px;
+  }
+  .to-hist-date-group:first-of-type .to-hist-date-head{margin-top:0;}
+  .to-hist-date-head svg{width:12px; height:12px; flex-shrink:0; opacity:0.65; color:var(--teal);}
+  .to-hist-date-head::after{content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--line), transparent);}
+  .to-history-item{
+    border:1.5px solid var(--line); border-left:3.5px solid var(--line); border-radius:12px;
+    padding:11px 13px; margin-bottom:8px; background:var(--card);
+  }
+  .to-history-item:last-child{margin-bottom:0;}
+  .to-history-item.tk-r1{border-left-color:var(--teal);}
+  .to-history-item.tk-r2{border-left-color:var(--plus);}
+  .to-history-item.tk-other{border-left-color:#9aada6;}
+  .to-history-item-title{font-weight:700; font-size:13px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .to-hist-waktu-chip{
+    display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; color:var(--teal-deep);
+    background:var(--mint); padding:4px 10px 4px 8px; border-radius:20px; text-transform:capitalize;
+  }
+  .to-hist-waktu-chip svg{width:13px; height:13px; flex-shrink:0;}
+  .to-edited-badge{
+    display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700; color:var(--amber);
+    background:#fbf1e0; padding:3.5px 9px 3.5px 7px; border-radius:20px; vertical-align:middle;
+  }
+  .to-edited-badge svg{width:10px; height:10px;}
+  .to-history-item-sub{
+    font-size:11.5px; color:var(--ink-soft); margin-top:8px;
+    display:flex; align-items:center; flex-wrap:wrap; gap:7px;
+  }
+  .to-history-item-sub .sep{color:var(--line);}
+  .to-hist-avatar{
+    display:inline-flex; align-items:center; justify-content:center; width:17px; height:17px;
+    border-radius:50%; color:#fff; font-size:8.5px; font-weight:800; flex-shrink:0;
+  }
+  .to-hist-avatar.tk-r1{background:var(--teal);}
+  .to-hist-avatar.tk-r2{background:var(--plus);}
+  .to-hist-avatar.tk-other{background:#9aada6;}
+  .to-hist-petugas{display:inline-flex; align-items:center; gap:5px;}
+  .to-hist-saved{
+    font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--ink-soft);
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .to-hist-saved svg{width:11px; height:11px; opacity:0.7;}
+  .to-history-item-actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .to-history-btn{
+    font-size:12px; font-weight:700; padding:6px 10px; border-radius:8px; border:1.5px solid var(--line);
+    background:var(--card); cursor:pointer; color:var(--ink);
+  }
+  .to-history-btn.load{color:var(--teal-deep); border-color:#a9c9c0; background:var(--mint);}
+  .to-history-btn.load:hover{background:#d7ece2;}
+  .to-history-btn.del{color:var(--minus); border-color:#e4b8ab; background:var(--minus-bg);}
+  .to-history-btn.del:hover{background:#f6dbd2;}
+  .to-history-item-text{
+    margin-top:10px; background:var(--teal-deep); color:#eaf3f0; font-family:'JetBrains Mono', monospace;
+    font-size:11.5px; line-height:1.6; white-space:pre-wrap; padding:10px 12px; border-radius:10px;
+    max-height:220px; overflow-y:auto;
+  }
+  .to-paste-stok-textarea{
+    width:100%; min-height:150px; margin-top:12px; padding:10px 12px; border:1.5px solid var(--line);
+    border-radius:10px; font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.6;
+    color:var(--ink); background:var(--card); resize:vertical;
+  }
+  .to-paste-stok-textarea:focus{outline:none; border-color:var(--teal);}
+  .to-paste-stok-actions{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+  .to-paste-stok-actions .btn-main{padding:10px 16px; font-size:13px;}
+  .to-paste-stok-result{
+    display:none; margin-top:14px; font-size:12.5px; line-height:1.65; background:#fafaf6;
+    border:1.5px solid var(--line); border-radius:10px; padding:12px 14px; white-space:pre-wrap; color:var(--ink);
+  }
+  .to-paste-stok-result.show{display:block;}
+  .to-review-filter-note{
+    background:#fbf1e0; color:#8a6420; border:1.5px solid #e9d3a6; border-radius:9px;
+    padding:7px 10px; font-size:11px; line-height:1.45; margin-top:10px;
+  }
+  .to-review-summary-bar{
+    display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 8px;
+    font-size:11px; font-weight:700; color:var(--ink-soft);
+    position:sticky; top:-1px; z-index:2; background:var(--card); padding:6px 0 2px;
+  }
+  .to-review-summary-bar span{
+    display:inline-flex; align-items:center; gap:3px; background:#f4f4ee; border:1px solid var(--line);
+    border-radius:20px; padding:3px 9px 3px 7px; cursor:pointer; user-select:none;
+    transition:box-shadow .12s ease, opacity .12s ease;
+  }
+  .to-review-summary-bar span:hover{box-shadow:0 0 0 1px currentColor inset;}
+  .to-review-summary-bar span.active{box-shadow:0 0 0 1.5px currentColor inset; font-weight:800;}
+  .to-review-summary-bar.filtering span:not(.active){opacity:.5;}
+  .to-review-summary-bar span.s-exact{color:var(--klop); background:var(--klop-bg); border-color:#bcdfc9;}
+  .to-review-summary-bar span.s-fuzzy{color:var(--amber); background:#fbf1e0; border-color:#e9d3a6;}
+  .to-review-summary-bar span.s-none{color:var(--ink-soft); background:#f0efe8; border-color:var(--line);}
+  .to-review-empty-note{font-size:12px; color:var(--ink-soft); text-align:center; padding:16px 8px;}
+  .to-review-list{display:flex; flex-direction:column; gap:5px;}
+  .to-review-item{
+    border:1.5px solid var(--line); border-radius:10px; padding:7px 9px;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .to-review-item.m-exact{border-color:#bcdfc9; background:#f5fbf7;}
+  .to-review-item.m-fuzzy{border-color:#e9d3a6; background:#fffaf0;}
+  .to-review-item.m-none{border-color:var(--line); background:#fafaf6;}
+  .to-review-item-top{display:flex; align-items:center; gap:7px; flex:1 1 100%; min-width:0;}
+  .to-review-badge-ico{
+    width:19px; height:19px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:10.5px; line-height:1;
+  }
+  .to-review-badge-ico.exact{background:var(--klop-bg); color:var(--klop);}
+  .to-review-badge-ico.fuzzy{background:#fbf1e0; color:var(--amber);}
+  .to-review-badge-ico.none{background:#f0efe8; color:#9aada6;}
+  .to-review-item-nama{
+    font-weight:700; font-size:12.5px; color:var(--ink); flex:1; min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .to-review-item-qty{
+    font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-soft);
+    white-space:nowrap; flex-shrink:0;
+  }
+  .to-review-item-hint{
+    font-size:10.5px; color:var(--ink-soft); line-height:1.4; flex:1 1 100%; margin:-2px 0 0 26px;
+  }
+  .to-review-item-hint b{color:var(--ink); font-weight:700;}
+  .to-review-item-select{
+    flex:1 1 100%; margin-left:26px; width:calc(100% - 26px);
+    padding:6px 8px; border:1.5px solid var(--line); border-radius:7px;
+    font-family:inherit; font-size:11.5px; background:var(--card); color:var(--ink);
+  }
+  .to-review-item-select:focus{outline:none; border-color:var(--teal);}
+  .to-confirm-overlay{
+    display:none; position:fixed; inset:0; background:rgba(15,30,27,0.5); z-index:100030;
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .to-confirm-overlay.show{display:flex;}
+  .to-confirm-modal{
+    background:var(--card); border-radius:16px; width:100%; max-width:420px;
+    padding:20px 20px 18px; box-shadow:0 20px 50px rgba(15,30,27,0.35);
+  }
+  .to-confirm-modal-msg{font-size:13.5px; line-height:1.65; color:var(--ink); white-space:pre-wrap;}
+  .to-confirm-modal-actions{display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;}
+  .to-confirm-modal-actions button{
+    flex:1; min-width:110px; padding:10px 14px; border-radius:10px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit; border:1.5px solid var(--line);
+  }
+  .to-confirm-btn-ok{background:var(--teal); color:#fff; border-color:var(--teal) !important;}
+  .to-confirm-btn-ok:hover{background:var(--teal-deep);}
+  .to-confirm-btn-cancel{background:var(--card); color:var(--ink-soft);}
+  .to-confirm-btn-cancel:hover{background:var(--mint);}
+
   .petugas-item{
     display:flex; align-items:center; gap:10px; border:1.5px solid var(--line); border-radius:12px;
     padding:9px 14px; margin-bottom:8px; background:var(--card);
@@ -886,14 +1345,241 @@
 <div class="takeover-overlay" id="takeoverOverlay">
   <div class="takeover-panel">
     <div class="takeover-header">
+      <div class="to-mast-pill">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M9 3h6v4l4 10a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-10V3Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 14h7" stroke="#fff" stroke-width="1.8"/></svg>
+      </div>
       <div class="takeover-header-info">
         <div class="takeover-header-title" id="takeoverTitle">Ambil Alih — Petugas</div>
         <div class="takeover-header-sub" id="takeoverSub">Menghubungkan…</div>
       </div>
+      <div class="takeover-header-btnrow">
+        <a class="link-btn" href="https://rekapsetoranrafa.vercel.app/" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;">Rekap Setoran</a>
+        <button type="button" class="link-btn" onclick="toOpenHistoryModal()">Riwayat</button>
+        <button type="button" class="link-btn" onclick="openCashierPopup()">Browser</button>
+        <button type="button" class="link-btn to-mast-reset" onclick="toResetSession()">Reset data</button>
+      </div>
       <button type="button" class="takeover-close-btn" onclick="closeTakeover()" title="Tutup">✕</button>
     </div>
     <div class="takeover-body">
-      <iframe id="takeoverFrame" src="about:blank"></iframe>
+      <div class="to-wrap">
+        <div class="to-status-line"><span class="to-status-dot" id="toStatusDot"></span><span id="toStatusText">Memuat…</span></div>
+
+        <div class="to-meta-grid">
+          <div class="to-field"><label>Nama Toko</label>
+            <input id="toMetaToko" placeholder="Nama toko" oninput="toScheduleSave()">
+          </div>
+          <div class="to-field"><label>Waktu</label>
+            <select id="toMetaWaktu" onchange="toScheduleSave()">
+              <option>pagi</option><option>siang</option><option>sore</option><option>malam</option>
+            </select>
+          </div>
+          <div class="to-field"><label>Tanggal</label>
+            <input id="toMetaTgl" type="date" oninput="toScheduleSave()">
+          </div>
+          <div class="to-field"><label>Petugas</label>
+            <input id="toMetaPetugas" disabled style="opacity:.65;">
+          </div>
+        </div>
+
+        <div class="to-toolbar">
+          <div class="to-search-wrap">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="toSearchBox" placeholder="Cari nama barang..." oninput="toRenderItems()">
+          </div>
+          <button type="button" class="to-unchecked-btn" id="toUncheckedBtn" onclick="toToggleUnchecked()">Belum dicek</button>
+          <select class="to-filter-select" id="toStatusFilter" onchange="toRenderItems()">
+            <option value="all">Semua status</option>
+            <option value="minus">Minus</option>
+            <option value="plus">Plus</option>
+          </select>
+        </div>
+
+        <div class="to-table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:18px;"></th>
+              <th class="to-nama-col">Nama Barang</th>
+              <th class="to-num" style="width:64px;">Rafa 1</th>
+              <th class="to-num" style="width:64px;">Rafa 2</th>
+              <th class="to-num" style="width:56px;">Fisik</th>
+              <th class="to-num" style="width:64px;">Web/Apk</th>
+              <th class="to-num" style="width:78px;">Status</th>
+              <th style="width:26px;"></th>
+            </tr>
+          </thead>
+          <tbody id="toItemsList"></tbody>
+        </table>
+        </div>
+
+        <div class="to-row-actions">
+          <button type="button" class="to-add-btn" onclick="toAddRow()">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            Tambah barang
+          </button>
+          <button type="button" class="to-add-btn" style="border-style:solid;" onclick="toExportExcel()" id="btnToExportExcel">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M8 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/><path d="M5 3v14M9 9l3 3.5L15 9M12 12.5V17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export Excel
+          </button>
+          <button type="button" class="to-add-btn" style="border-style:solid;" onclick="document.getElementById('toImportExcelInput').click()" id="btnToImportExcel">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M8 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/><path d="M5 17V3M9 7l3-3.5L15 7M12 3.5V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Import Excel
+          </button>
+          <button type="button" class="to-add-btn" style="border-style:solid;" onclick="toManualUpdateStock()" id="btnToUpdateStock">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17 3v4h-4M7 21v-4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Update Stok Web/Apk
+          </button>
+          <button type="button" class="to-add-btn" style="border-style:solid;" onclick="document.getElementById('toStockImportUploadInput').click()" id="btnToUploadStock">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M8 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/><path d="M12 15.5V7.5M8.5 11l3.5-3.5L15.5 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Upload Sisa Stok
+          </button>
+          <button type="button" class="to-add-btn" style="border-style:solid;" onclick="toOpenPasteStokModal()" id="btnToPasteStock">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M9 5h6a1 1 0 0 1 1 1v1H8V6a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 6h-.5A1.5 1.5 0 0 0 5 7.5v13A1.5 1.5 0 0 0 6.5 22h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 6H17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Tempel Sisa Stok (Clipboard)
+          </button>
+          <input type="file" id="toImportExcelInput" accept=".xlsx,.xls" style="display:none;" onchange="toImportExcel(this.files[0]); this.value='';">
+          <input type="file" id="toStockImportUploadInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="toHandleStockImportUpload(this.files[0]); this.value='';">
+        </div>
+
+        <div class="to-wa-block">
+          <div class="to-wa-title">Format WhatsApp</div>
+          <div class="to-hide-toko-row">
+            <span class="to-htr-label">Sembunyikan nama toko di teks:</span>
+            <button type="button" class="to-chip-toggle" id="toHideT1Btn" onclick="toToggleHideToko('t1')">
+              <svg class="eye" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/></svg>
+              Rafa 1
+            </button>
+            <button type="button" class="to-chip-toggle" id="toHideT2Btn" onclick="toToggleHideToko('t2')">
+              <svg class="eye" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/></svg>
+              Rafa 2
+            </button>
+          </div>
+          <div class="to-generate-bar">
+            <button type="button" class="btn-main to-wa-main-btn" onclick="toGenerate(true)">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="#fff" stroke-width="1.8"/><path d="M5 3v14" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Salin ke WhatsApp
+            </button>
+            <button type="button" class="to-add-btn" style="border-style:solid;" onclick="toCopyNamaBarang()" id="btnToCopyNama">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/><path d="M5 3v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Salin nama barang saja
+            </button>
+            <button type="button" class="to-add-btn" style="border-style:solid;" onclick="toOpenPasteFillModal()" id="btnToPasteFill">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M9 5h6a1 1 0 0 1 1 1v1H8V6a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 6h-.5A1.5 1.5 0 0 0 5 7.5v13A1.5 1.5 0 0 0 6.5 22h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 6H17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Tempel &amp; isi stok
+            </button>
+            <button type="button" class="to-add-btn" style="border-style:solid;" onclick="toOpenPasteNamaModal()" id="btnToPasteNama">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M9 5h6a1 1 0 0 1 1 1v1H8V6a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 6h-.5A1.5 1.5 0 0 0 5 7.5v13A1.5 1.5 0 0 0 6.5 22h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 6H17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 12h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Tempel nama barang saja
+            </button>
+          </div>
+          <div class="to-copied-msgs">
+            <span class="to-copied-msg" id="toCopiedMsg">Tersalin ✓ siap ditempel di WhatsApp</span>
+            <span class="to-copied-msg" id="toCopiedMsgNama">Tersalin ✓ nama barang siap ditempel</span>
+          </div>
+          <div class="to-preview empty" id="toPreview">Isi daftar barang di atas, lalu klik "Salin ke WhatsApp" untuk melihat hasilnya di sini.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="to-history-overlay" id="toPasteFillOverlay" onclick="if(event.target===this) toClosePasteFillModal()">
+  <div class="to-history-modal">
+    <div class="to-history-modal-head">
+      <h3>Tempel &amp; Isi Stok Otomatis</h3>
+      <button class="to-history-close" onclick="toClosePasteFillModal()">✕</button>
+    </div>
+    <div class="to-history-modal-body">
+      <div class="footnote" style="margin-top:0;">
+        Tempel teks daftar barang di bawah, satu barang per baris, format <b>Nama barang : jumlah</b>
+        (nomor urut di depan seperti "1." boleh ada atau tidak). Setelah klik "Isi ke Rafa 1/2", nama
+        barang akan otomatis dicocokkan ke barang yang sudah ada di tabel sesi ini — <b>termasuk kalau
+        ada typo ringan</b> (huruf diganti/kurang/lebih) — lalu muncul halaman <b>review</b> untuk
+        mengecek satu per satu: cocok atau tidak, boleh diganti manual (pilih barang lain), atau
+        dibuang kalau memang tidak perlu, sebelum benar-benar diterapkan ke tabel.
+      </div>
+      <textarea id="toPasteFillText" class="to-paste-stok-textarea" placeholder="1. Plossa merah : 3&#10;2. Bodrex tab : 5&#10;3. Antangin jrg : 6&#10;4. Trisela : 0&#10;5. Flucadex tab : 0&#10;6. Panadol hijau : 0"></textarea>
+      <div class="to-paste-stok-actions">
+        <button type="button" class="btn-main" onclick="toApplyPasteFillConfirm('t1')">Isi ke Rafa 1</button>
+        <button type="button" class="btn-main" onclick="toApplyPasteFillConfirm('t2')">Isi ke Rafa 2</button>
+      </div>
+      <div class="to-paste-stok-result" id="toPasteFillResult"></div>
+    </div>
+  </div>
+</div>
+
+<div class="to-history-overlay" id="toPasteFillReviewOverlay" onclick="if(event.target===this) toClosePasteFillReviewModal()" style="z-index:100025;">
+  <div class="to-history-modal to-review-modal">
+    <div class="to-history-modal-head">
+      <h3>Review Sebelum Diisi</h3>
+      <button class="to-history-close" onclick="toClosePasteFillReviewModal()">✕</button>
+    </div>
+    <div class="to-history-modal-body">
+      <div class="footnote" style="margin-top:0;">
+        ✅ <b>Cocok persis</b> langsung diisi. 🟠 <b>Mirip (typo)</b> perlu dicek dulu. ➕ <b>Tidak ditemukan</b> jadi barang baru — kalau salah, ganti sendiri di dropdown atau lewati.
+      </div>
+      <div class="to-review-filter-note" id="toReviewFilterNote" style="display:none;"></div>
+      <div id="toPasteFillReviewList"></div>
+      <div class="to-paste-stok-actions">
+        <button type="button" class="to-add-btn" style="border-style:solid;" onclick="toClosePasteFillReviewModal()">Batal</button>
+        <button type="button" class="btn-main" onclick="toConfirmPasteFillReview()">Terapkan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="to-history-overlay" id="toPasteNamaOverlay" onclick="if(event.target===this) toClosePasteNamaModal()">
+  <div class="to-history-modal">
+    <div class="to-history-modal-head">
+      <h3>Tempel Nama Barang Saja</h3>
+      <button class="to-history-close" onclick="toClosePasteNamaModal()">✕</button>
+    </div>
+    <div class="to-history-modal-body">
+      <div class="footnote" style="margin-top:0;">
+        Tempel daftar nama barang di bawah, satu nama per baris. Nomor urut di depan
+        seperti "1." atau "1)" boleh ada atau tidak, otomatis menyesuaikan. Nama barang
+        yang <b>sudah ada</b> di tabel sesi ini akan dilewati (tidak dobel). Nama yang
+        <b>belum ada</b> akan diisi ke baris kosong yang tersedia dulu, baru kalau sudah habis
+        akan ditambahkan sebagai baris baru — jumlah stoknya tetap kosong, tinggal diisi manual.
+      </div>
+      <textarea id="toPasteNamaText" class="to-paste-stok-textarea" placeholder="1. Plossa merah&#10;2. Bodrex tab&#10;3. Antangin jrg&#10;4. Trisela&#10;5. Flucadex tab&#10;6. Panadol hijau"></textarea>
+      <div class="to-paste-stok-actions">
+        <button type="button" class="btn-main" onclick="toApplyPasteNamaConfirm()">Tambahkan ke daftar</button>
+      </div>
+      <div class="to-paste-stok-result" id="toPasteNamaResult"></div>
+    </div>
+  </div>
+</div>
+
+<div class="to-history-overlay" id="toHistoryOverlay" onclick="if(event.target===this) toCloseHistoryModal()">
+  <div class="to-history-modal">
+    <div class="to-history-modal-head">
+      <h3>Riwayat Laporan — <span id="toHistoryModalNama"></span></h3>
+      <button class="to-history-close" onclick="toCloseHistoryModal()">✕</button>
+    </div>
+    <div class="to-history-modal-body" id="toHistoryListBody"></div>
+  </div>
+</div>
+
+<div class="to-confirm-overlay" id="toConfirmOverlay">
+  <div class="to-confirm-modal">
+    <div class="to-confirm-modal-msg" id="toConfirmModalMsg"></div>
+    <div class="to-confirm-modal-actions">
+      <button type="button" class="to-confirm-btn-cancel" id="toConfirmBtnCancel">Batal</button>
+      <button type="button" class="to-confirm-btn-ok" id="toConfirmBtnOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="to-paste-overlay" id="toPasteStokOverlay" onclick="if(event.target===this) toClosePasteStokModal()">
+  <div class="to-paste-modal">
+    <h3>📋 Tempel Sisa Stok</h3>
+    <p class="sub">Tempel teks berisi nama barang + sisa stok (hasil copy dari Excel/Sheets/WhatsApp). Diterapkan ke kolom Web/Apk sesi ini, dicocokkan lewat nama.</p>
+    <textarea id="toPasteStokText" placeholder="Contoh:&#10;Paracetamol 500mg	120&#10;Amoxicillin 500mg	45"></textarea>
+    <div class="to-paste-result" id="toPasteStokResult"></div>
+    <div class="to-paste-modal-btns">
+      <button type="button" onclick="toClosePasteStokModal()">Batal</button>
+      <button type="button" class="to-paste-btn-primary" onclick="toApplyPasteStokConfirm()">Terapkan</button>
     </div>
   </div>
 </div>
@@ -1362,26 +2048,1493 @@ function openTakeover(nama){
   const slug = slugifyPetugasAdmin(nama);
   if(!slug){ alert('Nama petugas tidak valid.'); return; }
   const overlay = document.getElementById('takeoverOverlay');
-  const frame = document.getElementById('takeoverFrame');
   const title = document.getElementById('takeoverTitle');
   const sub = document.getElementById('takeoverSub');
   if(title) title.textContent = 'Ambil Alih — ' + nama;
   if(sub) sub.textContent = isPetugasOnline(nama)
     ? 'Petugas sedang online • menghubungkan live…'
     : 'Petugas sedang offline • memuat data terakhir…';
-  if(frame) frame.src = buildStokOpnameUrl({ admin_takeover: slug, nama: nama });
   if(overlay) overlay.classList.add('show');
   document.body.style.overflow = 'hidden';
+  toHideToko = { t1:false, t2:false };
+  const hideT1Btn = document.getElementById('toHideT1Btn');
+  const hideT2Btn = document.getElementById('toHideT2Btn');
+  if(hideT1Btn) hideT1Btn.classList.remove('active');
+  if(hideT2Btn) hideT2Btn.classList.remove('active');
+  const preview = document.getElementById('toPreview');
+  if(preview){
+    preview.classList.add('empty');
+    preview.textContent = 'Isi daftar barang di atas, lalu klik "Salin ke WhatsApp" untuk melihat hasilnya di sini.';
+  }
+  startTakeoverSession(nama, slug);
 }
 
 function closeTakeover(){
   const overlay = document.getElementById('takeoverOverlay');
-  const frame = document.getElementById('takeoverFrame');
   if(overlay) overlay.classList.remove('show');
-  // Kosongkan src supaya koneksi realtime di dalam iframe benar-benar
-  // terputus begitu jendela ambil alih ditutup (bukan cuma disembunyikan).
-  if(frame) frame.src = 'about:blank';
   document.body.style.overflow = '';
+  stopTakeoverSession();
+}
+
+// ====== Editor Ambil Alih — langsung ke Supabase, TIDAK lewat iframe/file ======
+// Jendela ini membaca & menulis langsung ke tabel `stok_opname_petugas_session`
+// (baris per nama petugas, bukan per HP), jadi tidak bergantung sama sekali
+// pada file/folder/hosting halaman stok opname manapun. Selama jendela ini
+// terbuka, ini adalah editor LIVE dua arah: apa pun yang diketik di sini
+// langsung terkirim ke sesi petugas tersebut, dan perubahan dari HP petugas
+// (kalau online) langsung muncul di sini juga.
+const PETUGAS_SESSION_TABLE = 'stok_opname_petugas_session';
+let toSlug = '';
+let toChannel = null;
+let toSaveTimer = null;
+let toApplyingRemote = false;
+let toRows = [];
+let toIdCounter = 0;
+let toHideToko = { t1:false, t2:false };
+let toEditingFromId = null;
+let toShowOnlyUnchecked = false;
+
+function todayISOAdmin(){
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function toIsChecked(r){
+  return (r.apk !== '' && r.apk !== null && r.apk !== undefined);
+}
+function toFisikOf(r){
+  const t1 = parseInt(r.t1) || 0;
+  const t2 = parseInt(r.t2) || 0;
+  return t1 + t2;
+}
+function toStatusOf(r){
+  if(r.apk === '' || r.apk === null || r.apk === undefined) return null;
+  const apk = parseInt(r.apk) || 0;
+  const fisik = toFisikOf(r);
+  const selisih = fisik - apk;
+  if(selisih === 0) return {type:'klop', selisih};
+  if(selisih < 0) return {type:'minus', selisih};
+  return {type:'plus', selisih};
+}
+function toCheckBadgeHtml(r){
+  if(!toIsChecked(r)) return '<span class="to-badge unchecked">Belum dicek</span>';
+  const st = toStatusOf(r);
+  if(!st) return '<span class="to-badge partial">Fisik terisi</span>';
+  if(st.type === 'klop') return '<span class="to-badge klop">KLOP ✓</span>';
+  if(st.type === 'minus') return `<span class="to-badge minus">${st.selisih}</span>`;
+  return `<span class="to-badge plus">+${st.selisih}</span>`;
+}
+
+function setTakeoverStatus(text, mode){
+  const sub = document.getElementById('takeoverSub');
+  if(sub) sub.textContent = text;
+  const label = document.getElementById('toStatusText');
+  if(label) label.textContent = text;
+  const dot = document.getElementById('toStatusDot');
+  if(dot) dot.className = 'to-status-dot' + (mode === 'on' ? ' on' : mode === 'warn' ? ' warn' : '');
+}
+
+function toRenderItems(){
+  const listEl = document.getElementById('toItemsList');
+  if(!listEl) return;
+  const q = (document.getElementById('toSearchBox').value || '').trim().toLowerCase();
+  const filterVal = document.getElementById('toStatusFilter').value;
+  const visible = toRows.filter(r => {
+    if(toShowOnlyUnchecked && toIsChecked(r)) return false;
+    if(filterVal !== 'all'){
+      const st = toStatusOf(r);
+      if(!st || st.type !== filterVal) return false;
+    }
+    if(q && !(r.nama || '').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if(!visible.length){
+    listEl.innerHTML = `<tr><td colspan="8"><div class="to-empty-msg">${toRows.length === 0 ? 'Belum ada barang. Klik "Tambah barang" untuk mulai.' : 'Tidak ada barang yang cocok dengan pencarian/filter ini.'}</div></td></tr>`;
+    return;
+  }
+  listEl.innerHTML = visible.map((r, i) => `
+    <tr>
+      <td class="to-idx">${i + 1}</td>
+      <td class="to-nama-col"><input class="to-nama-in" placeholder="Nama barang" size="${Math.max(14, (r.nama || '').length + 2)}" value="${escapeHtml(r.nama || '')}" oninput="toUpdateField(${r.id},'nama',this.value); this.size=Math.max(14,this.value.length+2)"></td>
+      <td class="to-num"><input class="to-num-in" type="number" placeholder="0" value="${r.t1}" oninput="toUpdateField(${r.id},'t1',this.value)"></td>
+      <td class="to-num"><input class="to-num-in" type="number" placeholder="0" value="${r.t2}" oninput="toUpdateField(${r.id},'t2',this.value)"></td>
+      <td class="to-num"><div class="to-fisik-val" id="toFisik-${r.id}">${toFisikOf(r)}</div></td>
+      <td class="to-num"><input class="to-num-in" type="number" placeholder="0" value="${r.apk}" oninput="toUpdateField(${r.id},'apk',this.value)"></td>
+      <td class="to-num to-status-cell" id="toStatus-${r.id}">${toCheckBadgeHtml(r)}</td>
+      <td><button type="button" class="to-del-btn" onclick="toDelRow(${r.id})">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button></td>
+    </tr>
+  `).join('');
+}
+
+function toUpdateField(id, field, value){
+  const r = toRows.find(r => r.id === id);
+  if(r) r[field] = value;
+  if(r && (field === 't1' || field === 't2' || field === 'apk')){
+    const fisikEl = document.getElementById('toFisik-' + id);
+    if(fisikEl) fisikEl.textContent = toFisikOf(r);
+    const statusEl = document.getElementById('toStatus-' + id);
+    if(statusEl) statusEl.innerHTML = toCheckBadgeHtml(r);
+  }
+  toScheduleSave();
+}
+
+function toAddRow(){
+  const id = toIdCounter++;
+  toRows.push({ id, nama: '', t1: '', t2: '', apk: '' });
+  toRenderItems();
+  toScheduleSave(true);
+  setTimeout(() => {
+    const items = document.querySelectorAll('#toItemsList .to-nama-in');
+    if(items.length) items[items.length - 1].focus();
+  }, 30);
+}
+
+function toDelRow(id){
+  const r = toRows.find(r => r.id === id);
+  const label = (r && r.nama && r.nama.trim()) ? `"${r.nama.trim()}"` : 'baris ini';
+  if(!confirm(`Hapus ${label}?`)) return;
+  toRows = toRows.filter(r => r.id !== id);
+  toRenderItems();
+  toScheduleSave(true);
+}
+
+function toToggleUnchecked(){
+  toShowOnlyUnchecked = !toShowOnlyUnchecked;
+  const btn = document.getElementById('toUncheckedBtn');
+  if(btn) btn.classList.toggle('active', toShowOnlyUnchecked);
+  toRenderItems();
+}
+
+// ====== Format WhatsApp, Salin Nama, Tempel & Isi Stok, Tempel Nama Saja
+// (khusus sesi "Ambil Alih") ======
+// Port persis dari stok_opname.html (generate/copyNamaBarang/paste stok
+// dengan review pencocokan mirip-typo/paste nama saja), disesuaikan supaya
+// bekerja di atas `toRows` (data sesi petugas yang sedang diambil alih)
+// dan langsung tersinkron ke Supabase lewat toScheduleSave(), sama seperti
+// mengetik langsung di tabel Ambil Alih.
+
+function toNewRow(){
+  return { id: toIdCounter++, nama:'', t1:'', t2:'', apk:'' };
+}
+
+// Modal konfirmasi custom (pengganti confirm() bawaan browser) — dipakai
+// khusus untuk alur "Tempel & isi stok" di panel Ambil Alih. Mengembalikan
+// Promise<boolean>, sama seperti customConfirm() di stok_opname.html.
+function toCustomConfirm(message, okText, cancelText){
+  return new Promise(resolve => {
+    const overlay = document.getElementById('toConfirmOverlay');
+    const msgEl = document.getElementById('toConfirmModalMsg');
+    const okBtn = document.getElementById('toConfirmBtnOk');
+    const cancelBtn = document.getElementById('toConfirmBtnCancel');
+    msgEl.textContent = message;
+    okBtn.textContent = okText || 'OK';
+    cancelBtn.textContent = cancelText || 'Batal';
+    overlay.classList.add('show');
+
+    function cleanup(result){
+      overlay.classList.remove('show');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onOverlay);
+      resolve(result);
+    }
+    function onOk(){ cleanup(true); }
+    function onCancel(){ cleanup(false); }
+    function onOverlay(e){ if(e.target === overlay) cleanup(false); }
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlay);
+  });
+}
+
+// Sama seperti getVisibleRows()/isAnyFilterActive()/getWorkingRows() di
+// stok_opname.html, tapi dijalankan di atas kotak pencarian & filter yang
+// ada di panel Ambil Alih (toSearchBox / toStatusFilter / toShowOnlyUnchecked).
+function toGetVisibleRows(){
+  const q = (document.getElementById('toSearchBox').value || '').trim().toLowerCase();
+  const filterVal = document.getElementById('toStatusFilter').value;
+  return toRows.filter(r => {
+    if(toShowOnlyUnchecked && toIsChecked(r)) return false;
+    if(filterVal !== 'all'){
+      const st = toStatusOf(r);
+      if(!st || st.type !== filterVal) return false;
+    }
+    if(q && !(r.nama || '').toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+function toIsAnyFilterActive(){
+  const q = (document.getElementById('toSearchBox').value || '').trim();
+  const filterVal = document.getElementById('toStatusFilter').value;
+  return !!q || toShowOnlyUnchecked || filterVal !== 'all';
+}
+function toGetWorkingRows(){
+  return toIsAnyFilterActive() ? toGetVisibleRows() : toRows;
+}
+
+function formatTanggal(isoDate){
+  if(!isoDate) return '-';
+  const parts = isoDate.split('-');
+  if(parts.length !== 3) return isoDate;
+  const [yyyy, mm, dd] = parts;
+  return `${dd}/${mm}/${yyyy.slice(2)}`;
+}
+
+function toBreakdownText(t1, t2){
+  const parts = [];
+  if(!toHideToko.t1) parts.push(`Rafa1:${t1}`);
+  if(!toHideToko.t2) parts.push(`Rafa2:${t2}`);
+  return parts.length ? ` (${parts.join(' ')})` : '';
+}
+
+function toToggleHideToko(key){
+  toHideToko[key] = !toHideToko[key];
+  document.getElementById('toHideT1Btn').classList.toggle('active', toHideToko.t1);
+  document.getElementById('toHideT2Btn').classList.toggle('active', toHideToko.t2);
+}
+
+// ====== "Salin ke WhatsApp" ======
+function toGenerate(doCopy){
+  const toko = (document.getElementById('toMetaToko').value || '').trim() || 'toko';
+  const waktu = document.getElementById('toMetaWaktu').value;
+  const tglRaw = document.getElementById('toMetaTgl').value;
+  const tgl = formatTanggal(tglRaw);
+  const petugas = (document.getElementById('toMetaPetugas').value || '').trim() || '-';
+
+  const named = toRows.filter(r => (r.nama || '').trim() !== '' && r.apk !== '');
+  const unchecked = toRows.filter(r => (r.nama || '').trim() !== '' && r.apk === '' && (r.t1 !== '' || r.t2 !== ''));
+  const minusList = [];
+  const plusList = [];
+  const klopList = [];
+  const belumList = [];
+
+  named.forEach(r => {
+    const st = toStatusOf(r);
+    if(!st) return;
+    const fisik = toFisikOf(r);
+    const apk = parseInt(r.apk) || 0;
+    const t1 = parseInt(r.t1) || 0;
+    const t2 = parseInt(r.t2) || 0;
+    if(st.type === 'minus') minusList.push({nama:r.nama.trim(), selisih:st.selisih, apk, fisik, t1, t2});
+    else if(st.type === 'plus') plusList.push({nama:r.nama.trim(), selisih:st.selisih, apk, fisik, t1, t2});
+    else klopList.push({nama:r.nama.trim(), t1, t2});
+  });
+
+  unchecked.forEach(r => {
+    const fisik = toFisikOf(r);
+    const t1 = parseInt(r.t1) || 0;
+    const t2 = parseInt(r.t2) || 0;
+    belumList.push({nama:r.nama.trim(), fisik, t1, t2});
+  });
+
+  let out = `update buku penjualan stok - dan + di ${toko} ${waktu} tgl ${tgl} ( ${petugas} ) : \n`;
+
+  if(minusList.length){
+    out += `\n *YANG -* \n`;
+    minusList.forEach((it, i) => {
+      out += `${i+1}. ${it.nama} (${it.selisih}) web ${it.apk} fisik ${it.fisik}${toBreakdownText(it.t1, it.t2)}\n`;
+    });
+  }
+
+  if(plusList.length){
+    out += `\n *YANG +* \n`;
+    plusList.forEach((it, i) => {
+      out += `${i+1}. ${it.nama} (+${it.selisih}) web ${it.apk} fisik ${it.fisik}${toBreakdownText(it.t1, it.t2)}\n`;
+    });
+  }
+
+  if(klopList.length){
+    out += `\n *YANG KLOP ✅*\n`;
+    klopList.forEach((it, i) => {
+      out += `${i+1}. ${it.nama}${toBreakdownText(it.t1, it.t2)}\n`;
+    });
+  }
+
+  if(belumList.length){
+    out += `\n *BELUM ADA DATA WEB/APK (fisik saja)*\n`;
+    belumList.forEach((it, i) => {
+      out += `${i+1}. ${it.nama} fisik ${it.fisik}${toBreakdownText(it.t1, it.t2)}\n`;
+    });
+  }
+
+  const preview = document.getElementById('toPreview');
+  if(named.length === 0 && belumList.length === 0){
+    preview.classList.add('empty');
+    preview.textContent = 'Belum ada barang yang diisi. Lengkapi tabel di atas dulu.';
+    return;
+  }
+  preview.classList.remove('empty');
+  preview.textContent = out.trim();
+
+  if(doCopy){
+    navigator.clipboard.writeText(out.trim()).then(() => {
+      const msg = document.getElementById('toCopiedMsg');
+      msg.classList.add('show');
+      setTimeout(() => msg.classList.remove('show'), 2500);
+    }).catch(() => {
+      const range = document.createRange();
+      range.selectNode(preview);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+    });
+  }
+}
+
+// ====== "Salin nama barang saja" ======
+function toCopyNamaBarang(){
+  const filterAktif = toIsAnyFilterActive();
+  const namaList = toGetWorkingRows()
+    .map(r => (r.nama || '').trim())
+    .filter(nama => nama !== '');
+
+  if(namaList.length === 0){
+    alert(filterAktif ? 'Tidak ada nama barang yang cocok dengan filter saat ini.' : 'Belum ada nama barang yang diisi.');
+    return;
+  }
+
+  const teks = namaList.map((nama, i) => `${i+1}. ${nama}:`).join('\n');
+
+  const showCopied = () => {
+    const msg = document.getElementById('toCopiedMsgNama');
+    msg.textContent = filterAktif ? `Tersalin ✓ ${namaList.length} nama barang (sesuai filter aktif)` : 'Tersalin ✓ nama barang siap ditempel';
+    msg.classList.add('show');
+    setTimeout(() => msg.classList.remove('show'), 2500);
+  };
+
+  navigator.clipboard.writeText(teks).then(showCopied).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = teks;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+    showCopied();
+  });
+}
+
+// ====== "Tempel nama barang saja" ======
+function toOpenPasteNamaModal(){
+  const ta = document.getElementById('toPasteNamaText');
+  if(ta) ta.value = '';
+  const resultEl = document.getElementById('toPasteNamaResult');
+  if(resultEl){ resultEl.classList.remove('show'); resultEl.textContent = ''; }
+  document.getElementById('toPasteNamaOverlay').classList.add('show');
+  setTimeout(() => { if(ta) ta.focus(); }, 50);
+}
+
+function toClosePasteNamaModal(){
+  document.getElementById('toPasteNamaOverlay').classList.remove('show');
+}
+
+// Menerima baris seperti "1. Plossa merah" atau "Plossa merah" — nomor urut
+// & tanda "." / ")" di depan opsional, otomatis menyesuaikan ada atau tidaknya.
+function toParseNamaOnlyText(text){
+  const lines = (text || '').split(/\r?\n/);
+  const names = [];
+  const lineRe = /^\s*(?:\d+[.)]\s*)?(.+?)\s*$/;
+  lines.forEach(line => {
+    if(!line.trim()) return;
+    const m = line.match(lineRe);
+    const nama = m ? m[1].trim() : line.trim();
+    if(nama) names.push(nama);
+  });
+  return names;
+}
+
+async function toApplyPasteNamaConfirm(){
+  const text = document.getElementById('toPasteNamaText').value;
+  const names = toParseNamaOnlyText(text);
+  const resultEl = document.getElementById('toPasteNamaResult');
+  if(names.length === 0){
+    resultEl.classList.add('show');
+    resultEl.textContent = 'Belum ada baris nama barang yang bisa dibaca.';
+    return;
+  }
+  const ok = await toCustomConfirm(
+    `Tambahkan ${names.length} nama barang yang ditempel ke daftar?\n\nNama yang sudah ada di tabel akan dilewati. Nama yang belum ada akan mengisi baris kosong dulu, baru kalau habis ditambahkan sebagai baris baru.`,
+    'Tambahkan sekarang', 'Batal'
+  );
+  if(!ok) return;
+  toApplyPasteNama(names);
+}
+
+function toApplyPasteNama(names){
+  const byName = new Set();
+  toRows.forEach(r => {
+    const key = toNormalizeNamaForMatch(r.nama);
+    if(key) byName.add(key);
+  });
+
+  const emptyRows = toRows.filter(r => !(r.nama || '').trim());
+  let emptyIdx = 0;
+
+  let filledEmpty = 0;
+  let added = 0;
+  let dilewati = 0;
+  const newRowsToAppend = [];
+
+  names.forEach(nama => {
+    const key = toNormalizeNamaForMatch(nama);
+    if(byName.has(key)){
+      dilewati++;
+      return;
+    }
+    byName.add(key);
+
+    let row;
+    if(emptyIdx < emptyRows.length){
+      row = emptyRows[emptyIdx++];
+      row.nama = nama;
+      filledEmpty++;
+    } else {
+      row = toNewRow();
+      row.nama = nama;
+      newRowsToAppend.push(row);
+      added++;
+    }
+  });
+
+  if(newRowsToAppend.length) toRows.push(...newRowsToAppend);
+
+  toRenderItems();
+  toScheduleSave(true);
+
+  let msg = `✓ ${filledEmpty + added} nama barang berhasil ditambahkan ke daftar.`;
+  if(filledEmpty) msg += `\n• ${filledEmpty} mengisi baris kosong yang sudah ada.`;
+  if(added) msg += `\n• ${added} ditambahkan sebagai baris baru.`;
+  if(dilewati) msg += `\n• ${dilewati} dilewati karena namanya sudah ada di daftar.`;
+  const resultEl = document.getElementById('toPasteNamaResult');
+  resultEl.classList.add('show');
+  resultEl.textContent = msg;
+}
+
+// ====== "Tempel & isi stok" (dengan review pencocokan mirip/typo) ======
+function toOpenPasteFillModal(){
+  const ta = document.getElementById('toPasteFillText');
+  if(ta) ta.value = '';
+  const resultEl = document.getElementById('toPasteFillResult');
+  if(resultEl){ resultEl.classList.remove('show'); resultEl.textContent = ''; }
+  document.getElementById('toPasteFillOverlay').classList.add('show');
+  setTimeout(() => { if(ta) ta.focus(); }, 50);
+}
+
+function toClosePasteFillModal(){
+  document.getElementById('toPasteFillOverlay').classList.remove('show');
+  toClosePasteFillReviewModal();
+  toPasteFillReviewState = null;
+}
+
+// Menerima baris seperti "1. Plossa merah : 3" atau "Plossa merah : 3"
+// (nomor urut & tanda "." / ")" di depan opsional; pemisah boleh ":" atau "-").
+function toParsePasteFillText(text){
+  const lines = (text || '').split(/\r?\n/);
+  const items = [];
+  const lineRe = /^\s*(?:\d+[.)]\s*)?(.+?)\s*[:\-]\s*(-?\d+)\s*$/;
+  lines.forEach(line => {
+    if(!line.trim()) return;
+    const m = line.match(lineRe);
+    if(m){
+      const nama = m[1].trim();
+      const qty = parseInt(m[2], 10);
+      if(nama && !isNaN(qty)) items.push({ nama, qty });
+    }
+  });
+  return items;
+}
+
+function toNormalizeNamaForMatch(s){
+  return (s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function toTokenizeNamaKey(key){
+  return (key || '').split(' ').filter(Boolean);
+}
+
+function toTokenOverlapScore(tokensA, tokensB){
+  if(!tokensA.length || !tokensB.length) return 0;
+  const sisaB = tokensB.slice();
+  let sama = 0;
+  tokensA.forEach(t => {
+    const idx = sisaB.indexOf(t);
+    if(idx !== -1){ sama++; sisaB.splice(idx, 1); }
+  });
+  return (2 * sama) / (tokensA.length + tokensB.length);
+}
+
+function toNameSimilarityScore(aKey, bKey){
+  if(!aKey || !bKey) return 0;
+  if(aKey === bKey) return 1;
+  const dist = toLevenshteinDistance(aKey, bKey);
+  const maxLen = Math.max(aKey.length, bKey.length);
+  const charScore = maxLen ? Math.max(0, 1 - (dist / maxLen)) : 0;
+  const tokensA = toTokenizeNamaKey(aKey);
+  const tokensB = toTokenizeNamaKey(bKey);
+  const tokenScore = toTokenOverlapScore(tokensA, tokensB);
+  let containScore = 0;
+  if(aKey.length >= 3 && bKey.length >= 3 && (aKey.includes(bKey) || bKey.includes(aKey))){
+    containScore = 1;
+  }
+  const skorKata = (tokenScore * 0.8) + (containScore * 0.2);
+  const skorHuruf = charScore;
+  const gabungan = (charScore * 0.4) + (tokenScore * 0.4) + (containScore * 0.2);
+  return Math.max(skorKata, skorHuruf, gabungan);
+}
+
+function toNameMatchThreshold(maxLen){
+  if(maxLen <= 6) return 0.72;
+  if(maxLen <= 12) return 0.62;
+  return 0.55;
+}
+
+function toLevenshteinDistance(a, b){
+  const m = a.length, n = b.length;
+  if(m === 0) return n;
+  if(n === 0) return m;
+  let prev = new Array(n + 1);
+  let curr = new Array(n + 1);
+  for(let j = 0; j <= n; j++) prev[j] = j;
+  for(let i = 1; i <= m; i++){
+    curr[0] = i;
+    for(let j = 1; j <= n; j++){
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+}
+
+async function toApplyPasteFillConfirm(target){
+  const text = document.getElementById('toPasteFillText').value;
+  const items = toParsePasteFillText(text);
+  const resultEl = document.getElementById('toPasteFillResult');
+  resultEl.classList.remove('show');
+  if(items.length === 0){
+    resultEl.classList.add('show');
+    resultEl.textContent = 'Belum ada baris yang bisa dibaca. Pastikan formatnya "Nama barang : angka" per baris.';
+    return;
+  }
+  toOpenPasteFillReview(target, items);
+}
+
+function toComputeBestMatch(namaBaru, scopeRows, usedIds){
+  const bKey = toNormalizeNamaForMatch(namaBaru);
+  if(!bKey) return null;
+  let best = null;
+  for(const r of scopeRows){
+    if(!(r.nama || '').trim() || usedIds.has(r.id)) continue;
+    const aKey = toNormalizeNamaForMatch(r.nama);
+    if(!aKey) continue;
+    if(aKey === bKey) return { row:r, dist:0, exact:true, score:1 };
+    const score = toNameSimilarityScore(aKey, bKey);
+    const maxLen = Math.max(aKey.length, bKey.length);
+    const ambang = toNameMatchThreshold(maxLen);
+    if(score >= ambang && (!best || score > best.score)){
+      best = { row:r, dist: toLevenshteinDistance(aKey, bKey), exact:false, score };
+    }
+  }
+  return best;
+}
+
+function toAnalyzePasteFillItems(items, scopeRows){
+  const usedIds = new Set();
+  const results = items.map((it, i) => ({ idx:i, nama:it.nama, qty:it.qty, matchType:'none', row:null, dist:null, score:null }));
+
+  results.forEach(res => {
+    const bKey = toNormalizeNamaForMatch(res.nama);
+    if(!bKey) return;
+    const row = scopeRows.find(r => !usedIds.has(r.id) && (r.nama || '').trim() && toNormalizeNamaForMatch(r.nama) === bKey);
+    if(row){
+      res.matchType = 'exact';
+      res.row = row;
+      res.dist = 0;
+      res.score = 1;
+      usedIds.add(row.id);
+    }
+  });
+
+  results.forEach(res => {
+    if(res.matchType === 'exact') return;
+    const best = toComputeBestMatch(res.nama, scopeRows, usedIds);
+    if(best){
+      res.matchType = best.exact ? 'exact' : 'fuzzy';
+      res.row = best.row;
+      res.dist = best.dist;
+      res.score = best.score;
+      usedIds.add(best.row.id);
+    }
+  });
+
+  return results;
+}
+
+let toPasteFillReviewState = null;
+
+function toOpenPasteFillReview(target, items){
+  const filterAktif = toIsAnyFilterActive();
+  const matchScope = (filterAktif ? toGetVisibleRows() : toRows).filter(r => (r.nama || '').trim() !== '');
+  const allNamedRows = toRows.filter(r => (r.nama || '').trim() !== '');
+  const results = toAnalyzePasteFillItems(items, matchScope);
+
+  toPasteFillReviewState = {
+    target,
+    filterAktif,
+    activeMatchFilter: null,
+    optionRows: [...allNamedRows].sort((a, b) => a.nama.trim().toLowerCase().localeCompare(b.nama.trim().toLowerCase(), 'id')),
+    items: results.map(res => ({
+      ...res,
+      choice: res.matchType === 'none' ? '__new__' : String(res.row.id)
+    }))
+  };
+  toRenderPasteFillReview();
+  document.getElementById('toPasteFillReviewOverlay').classList.add('show');
+}
+
+function toClosePasteFillReviewModal(){
+  const el = document.getElementById('toPasteFillReviewOverlay');
+  if(el) el.classList.remove('show');
+}
+
+function toTogglePasteFillFilter(matchType){
+  if(!toPasteFillReviewState) return;
+  toPasteFillReviewState.activeMatchFilter = (toPasteFillReviewState.activeMatchFilter === matchType) ? null : matchType;
+  toRenderPasteFillReview();
+}
+
+function toRenderPasteFillReview(){
+  if(!toPasteFillReviewState) return;
+  const { items, optionRows, filterAktif, activeMatchFilter } = toPasteFillReviewState;
+
+  const noteEl = document.getElementById('toReviewFilterNote');
+  if(noteEl){
+    if(filterAktif){
+      noteEl.style.display = 'block';
+      noteEl.textContent = 'Filter sedang aktif — saran pencocokan otomatis di bawah cuma dicari dari barang yang sesuai filter saat ini. Kalau barang yang dimaksud ada di luar filter, tetap bisa dicari & dipilih manual lewat dropdown-nya.';
+    } else {
+      noteEl.style.display = 'none';
+    }
+  }
+
+  const countExact = items.filter(it => it.matchType === 'exact').length;
+  const countFuzzy = items.filter(it => it.matchType === 'fuzzy').length;
+  const countNone = items.filter(it => it.matchType === 'none').length;
+
+  const barClass = activeMatchFilter ? 'to-review-summary-bar filtering' : 'to-review-summary-bar';
+  let html = `<div class="${barClass}">
+      <span class="s-exact${activeMatchFilter === 'exact' ? ' active' : ''}" onclick="toTogglePasteFillFilter('exact')" title="Klik untuk nampilin cuma yang cocok">✅ ${countExact} cocok</span>
+      <span class="s-fuzzy${activeMatchFilter === 'fuzzy' ? ' active' : ''}" onclick="toTogglePasteFillFilter('fuzzy')" title="Klik untuk nampilin cuma yang perlu dicek">🟠 ${countFuzzy} cek dulu</span>
+      <span class="s-none${activeMatchFilter === 'none' ? ' active' : ''}" onclick="toTogglePasteFillFilter('none')" title="Klik untuk nampilin cuma yang baru">➕ ${countNone} baru</span>
+    </div><div class="to-review-list">`;
+
+  const shownItems = activeMatchFilter ? items.filter(it => it.matchType === activeMatchFilter) : items;
+
+  if(!shownItems.length){
+    html += `<div class="to-review-empty-note">Tidak ada baris dengan status ini.</div>`;
+  }
+
+  html += shownItems.map(it => {
+    const badgeClass = it.matchType === 'exact' ? 'exact' : it.matchType === 'fuzzy' ? 'fuzzy' : 'none';
+    const badgeIco = it.matchType === 'exact' ? '✓' : it.matchType === 'fuzzy' ? '?' : '+';
+    const badgeTitle = it.matchType === 'exact' ? 'Cocok persis' : it.matchType === 'fuzzy' ? 'Mirip — cek dulu' : 'Barang baru';
+    const itemClass = it.matchType === 'exact' ? 'm-exact' : it.matchType === 'fuzzy' ? 'm-fuzzy' : 'm-none';
+
+    let optionsHtml = `<option value="__new__" ${it.choice === '__new__' ? 'selected' : ''}>➕ Tambahkan sebagai barang baru</option>`;
+    optionsHtml += `<option value="__skip__" ${it.choice === '__skip__' ? 'selected' : ''}>🗑 Lewati / buang baris ini</option>`;
+    optionsHtml += optionRows.map(r => {
+      const isSuggested = it.matchType !== 'none' && it.row && r.id === it.row.id;
+      const label = isSuggested ? `${r.nama.trim()} (disarankan)` : r.nama.trim();
+      return `<option value="${r.id}" ${it.choice === String(r.id) ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+    }).join('');
+
+    let hint = '';
+    if(it.matchType === 'fuzzy' && it.row){
+      const persen = (typeof it.score === 'number') ? ` — ${Math.round(it.score * 100)}% mirip` : '';
+      hint = `<div class="to-review-item-hint">Disarankan: <b>${escapeHtml(it.row.nama.trim())}</b>${persen} (kemungkinan typo/beda susunan kata) — cek benar/salah di bawah.</div>`;
+    } else if(it.matchType === 'none'){
+      hint = `<div class="to-review-item-hint">Tidak ada yang mirip → jadi barang baru. Kalau sebenarnya sudah ada, pilih manual di bawah.</div>`;
+    }
+
+    return `<div class="to-review-item ${itemClass}">
+        <div class="to-review-item-top">
+          <span class="to-review-badge-ico ${badgeClass}" title="${badgeTitle}">${badgeIco}</span>
+          <span class="to-review-item-nama">${escapeHtml(it.nama)}</span>
+          <span class="to-review-item-qty">jml: ${it.qty}</span>
+        </div>
+        ${hint}
+        <select class="to-review-item-select" onchange="toOnReviewChoiceChange(${it.idx}, this.value)">
+          ${optionsHtml}
+        </select>
+      </div>`;
+  }).join('');
+
+  html += `</div>`;
+  document.getElementById('toPasteFillReviewList').innerHTML = html;
+}
+
+function toOnReviewChoiceChange(idx, value){
+  if(!toPasteFillReviewState) return;
+  const it = toPasteFillReviewState.items.find(x => x.idx === idx);
+  if(it) it.choice = value;
+}
+
+async function toConfirmPasteFillReview(){
+  if(!toPasteFillReviewState) return;
+  const { target, items } = toPasteFillReviewState;
+
+  const pickCount = new Map();
+  items.forEach(it => {
+    if(it.choice !== '__new__' && it.choice !== '__skip__'){
+      pickCount.set(it.choice, (pickCount.get(it.choice) || 0) + 1);
+    }
+  });
+  const adaDuplikat = [...pickCount.values()].some(c => c > 1);
+  if(adaDuplikat){
+    const lanjut = await toCustomConfirm(
+      'Ada lebih dari satu baris yang dicocokkan ke barang yang sama. Kalau dilanjutkan, cuma angka dari baris terakhir yang akan tersimpan untuk barang tersebut.\n\nLanjutkan?',
+      'Lanjutkan', 'Batal'
+    );
+    if(!lanjut) return;
+  }
+
+  let updated = 0, added = 0, skipped = 0;
+  const newRowsToAppend = [];
+  const byId = new Map(toRows.map(r => [r.id, r]));
+
+  items.forEach(it => {
+    if(it.choice === '__skip__'){
+      skipped++;
+      return;
+    }
+    let row;
+    if(it.choice === '__new__'){
+      row = toNewRow();
+      row.nama = it.nama;
+      newRowsToAppend.push(row);
+      byId.set(row.id, row);
+      added++;
+    } else {
+      row = byId.get(parseInt(it.choice, 10));
+      if(!row) return;
+      updated++;
+    }
+    row[target] = it.qty;
+  });
+
+  if(newRowsToAppend.length) toRows.push(...newRowsToAppend);
+
+  toRenderItems();
+  toScheduleSave(true);
+
+  toClosePasteFillReviewModal();
+  toPasteFillReviewState = null;
+
+  const labelToko = target === 't1' ? 'Rafa 1' : 'Rafa 2';
+  let msg = `✓ ${updated + added} dari ${items.length} barang berhasil diisi ke kolom ${labelToko}.`;
+  if(updated) msg += `\n• ${updated} mengisi barang yang sudah ada.`;
+  if(added) msg += `\n• ${added} ditambahkan sebagai barang baru.`;
+  if(skipped) msg += `\n• ${skipped} baris dilewati / dibuang.`;
+  const resultEl = document.getElementById('toPasteFillResult');
+  resultEl.classList.add('show');
+  resultEl.textContent = msg;
+}
+
+// ====== Export / Import Excel & Sisa Stok — khusus sesi Ambil Alih ======
+// Semua fungsi ini bekerja di atas `toRows` (data sesi petugas yang sedang
+// diambil alih), BUKAN data tabel lain di panel admin ini. Setiap perubahan
+// langsung dikirim ke Supabase lewat toScheduleSave(true), sama seperti
+// mengetik langsung di tabel.
+
+function toExportExcel(){
+  const btn = document.getElementById('btnToExportExcel');
+  const namaTerisi = toRows.filter(r => (r.nama || '').trim() !== '');
+  if(!namaTerisi.length){ alert('Belum ada barang untuk di-export.'); return; }
+  if(typeof XLSX === 'undefined'){ alert('Modul export Excel belum termuat. Cek koneksi internet lalu coba lagi.'); return; }
+  if(btn) btn.disabled = true;
+  try{
+    const sorted = [...namaTerisi].sort((a, b) => (a.nama || '').trim().toLowerCase().localeCompare((b.nama || '').trim().toLowerCase(), 'id'));
+    const toko = document.getElementById('toMetaToko').value || '';
+    const petugas = document.getElementById('toMetaPetugas').value || '';
+    const tgl = document.getElementById('toMetaTgl').value || '';
+    const tglLabel = tgl ? new Date(tgl + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' }) : '-';
+
+    const aoa = [
+      ['STOK OPNAME — ' + (toko ? toko.toUpperCase() : 'APOTEK RAFA')],
+      [`Tanggal: ${tglLabel}   Petugas: ${petugas || '-'}`],
+      [],
+      ['No','Nama Barang','Rafa 1','Rafa 2','Fisik','Web/Apk','Selisih','Status']
+    ];
+    sorted.forEach((r, i) => {
+      const fisik = toFisikOf(r);
+      const st = toStatusOf(r);
+      const checked = toIsChecked(r);
+      let statusLabel = 'Belum dicek', selisih = '';
+      if(checked){
+        if(!st){ statusLabel = 'Fisik terisi'; }
+        else { selisih = st.selisih; statusLabel = st.type === 'minus' ? 'Minus' : st.type === 'plus' ? 'Plus' : 'Klop'; }
+      }
+      aoa.push([
+        i + 1, r.nama.trim(),
+        r.t1 === '' ? '' : Number(r.t1),
+        r.t2 === '' ? '' : Number(r.t2),
+        checked || fisik ? fisik : '',
+        r.apk === '' ? '' : Number(r.apk),
+        selisih, statusLabel
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:5},{wch:38},{wch:9},{wch:9},{wch:9},{wch:10},{wch:9},{wch:13}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Stok Opname');
+    const fileToko = (toko || 'stok-opname').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const fileTgl = tgl || todayISOAdmin();
+    XLSX.writeFile(wb, `stok-opname-${fileToko}-${fileTgl}.xlsx`);
+  } catch(err){
+    console.error('Gagal export Excel:', err);
+    alert('Gagal membuat file Excel. Coba lagi ya.');
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+function toCellToNumOrEmpty(v){
+  if(v === null || v === undefined || v === '') return '';
+  const n = Number(v);
+  return isNaN(n) ? '' : n;
+}
+
+function toDetectItemColumns(rows){
+  let headerRowNum = -1, colMap = {};
+  const maxScan = Math.min(rows.length, 15);
+  for(let r = 0; r < maxScan; r++){
+    const row = rows[r] || [];
+    const found = {};
+    row.forEach((cell, idx) => {
+      const t = String(cell || '').trim().toLowerCase();
+      if(!t) return;
+      if(t.includes('nama')) found.nama = idx;
+      else if(t === 'rafa 1' || t === 'rafa1' || t === 't1') found.t1 = idx;
+      else if(t === 'rafa 2' || t === 'rafa2' || t === 't2') found.t2 = idx;
+      else if(t.includes('web') || t.includes('apk')) found.apk = idx;
+    });
+    if(found.nama !== undefined){ headerRowNum = r; colMap = found; break; }
+  }
+  return { headerRowNum, colMap };
+}
+
+function toImportExcel(file){
+  if(!file) return;
+  if(typeof XLSX === 'undefined'){ alert('Modul Excel belum termuat. Cek koneksi internet lalu coba lagi.'); return; }
+  const btn = document.getElementById('btnToImportExcel');
+  if(btn) btn.disabled = true;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header:1, raw:false, defval:'' });
+      const { headerRowNum, colMap } = toDetectItemColumns(rows);
+      if(headerRowNum === -1 || colMap.nama === undefined){
+        alert('Format file tidak dikenali. Pastikan ada kolom "Nama Barang" (bisa pakai file hasil Export Excel dari aplikasi ini).');
+        return;
+      }
+      const existingByName = new Map(toRows.map(r => [(r.nama || '').trim().toLowerCase(), r]));
+      let added = 0, updated = 0;
+      for(let r = headerRowNum + 1; r < rows.length; r++){
+        const row = rows[r] || [];
+        const namaCell = colMap.nama !== undefined ? row[colMap.nama] : '';
+        const nama = String(namaCell == null ? '' : namaCell).trim();
+        if(!nama || nama.toLowerCase() === 'ringkasan') continue;
+
+        const t1 = colMap.t1 !== undefined ? toCellToNumOrEmpty(row[colMap.t1]) : '';
+        const t2 = colMap.t2 !== undefined ? toCellToNumOrEmpty(row[colMap.t2]) : '';
+        const apk = colMap.apk !== undefined ? toCellToNumOrEmpty(row[colMap.apk]) : '';
+
+        const key = nama.toLowerCase();
+        const existing = existingByName.get(key);
+        if(existing){
+          if(t1 !== '') existing.t1 = t1;
+          if(t2 !== '') existing.t2 = t2;
+          if(apk !== '') existing.apk = apk;
+          updated++;
+        } else {
+          const id = toIdCounter++;
+          const item = { id, nama, t1, t2, apk };
+          toRows.push(item);
+          existingByName.set(key, item);
+          added++;
+        }
+      }
+      toRenderItems();
+      toScheduleSave(true);
+      alert(`Import selesai. ${added} barang baru ditambahkan, ${updated} barang diperbarui.`);
+    } catch(err){
+      console.error('Gagal import Excel:', err);
+      alert('Gagal membaca file Excel. Pastikan formatnya benar (.xlsx) lalu coba lagi.');
+    } finally {
+      if(btn) btn.disabled = false;
+    }
+  };
+  reader.onerror = () => { if(btn) btn.disabled = false; alert('Gagal membaca file ini.'); };
+  reader.readAsArrayBuffer(file);
+}
+
+function toNormalizeNamaForMatch(s){
+  return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function toApplyStockImportItems(items, mode){
+  const byName = new Map();
+  toRows.forEach(r => {
+    const key = toNormalizeNamaForMatch(r.nama);
+    if(key && !byName.has(key)) byName.set(key, r);
+  });
+  let filled = 0, notFound = 0;
+  items.forEach(it => {
+    if(!it || typeof it.nama !== 'string') return;
+    const val = it.apk;
+    if(val === null || val === undefined || val === '') return;
+    const key = toNormalizeNamaForMatch(it.nama);
+    const r = byName.get(key);
+    if(!r){ notFound++; return; }
+    const isEmpty = (r.apk === '' || r.apk === null || r.apk === undefined);
+    if(mode === 'fill_empty' && !isEmpty) return;
+    r.apk = String(val);
+    filled++;
+  });
+  if(filled > 0){ toRenderItems(); toScheduleSave(true); }
+  return { filled, notFound };
+}
+
+// Tombol "Update Stok Web/Apk" — mengambil data sisa stok terakhir yang
+// pernah diimpor lewat bagian "Import Sisa Stok (Web/Apk)" di panel admin
+// ini (tabel stok_opname_stock_import), lalu menerapkannya ke kolom
+// Web/Apk khusus sesi petugas yang sedang diambil alih.
+async function toManualUpdateStock(){
+  const client = initSupabaseClient();
+  if(!client){ alert('Fitur ini butuh koneksi Supabase yang belum tersambung. Cek pengaturan koneksi dulu.'); return; }
+  const btn = document.getElementById('btnToUpdateStock');
+  if(btn) btn.disabled = true;
+  try{
+    const { data, error } = await sb.from(STOCK_IMPORT_TABLE).select('*').eq('screen_code', BROADCAST_SCREEN_CODE).maybeSingle();
+    if(error) throw error;
+    if(!data || !Array.isArray(data.items) || !data.items.length){
+      alert('Belum ada data sisa stok Web/Apk yang diimpor. Impor dulu lewat bagian "Import Sisa Stok (Web/Apk)" di panel admin.');
+      return;
+    }
+    const modeLabel = data.mode === 'overwrite'
+      ? 'MENIMPA semua nilai Web/Apk yang sudah diisi'
+      : 'hanya mengisi baris Web/Apk yang masih kosong';
+    const ok = confirm(`Perbarui kolom Web/Apk sesi ini dari data sisa stok terakhir (${data.items.length} barang, dicocokkan lewat nama, ${modeLabel})?`);
+    if(!ok) return;
+    const result = toApplyStockImportItems(data.items, data.mode === 'overwrite' ? 'overwrite' : 'fill_empty');
+    if(result.filled === 0){
+      alert(result.notFound
+        ? `Tidak ada yang diperbarui — ${result.notFound} nama dari admin tidak cocok dengan nama barang di sesi ini.`
+        : 'Tidak ada baris yang diperbarui — kolom Web/Apk sudah sesuai data admin.');
+    } else {
+      alert(`Sisa stok diterapkan ke ${result.filled} barang.${result.notFound ? ` ${result.notFound} nama tidak ditemukan.` : ''}`);
+    }
+  } catch(err){
+    console.error('Gagal memperbarui stok Web/Apk dari admin:', err);
+    alert('Gagal mengambil data sisa stok dari admin. Coba lagi nanti.');
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+// Pipeline bersama untuk "Upload Sisa Stok" (file) dan "Tempel Sisa Stok"
+// (clipboard) — keduanya cuma beda sumber datanya, hasil akhirnya sama-sama
+// array {nama, apk} yang diterapkan ke toRows lewat toApplyStockImportItems.
+function toRowsToStockImportItems(rows){
+  const { nameColIdx, qtyColIdx, headerRowIdx } = detectStockImportColumns(rows);
+  const items = [];
+  const seen = new Set();
+  rows.forEach((row, idx) => {
+    if(idx === headerRowIdx) return;
+    const nameCell = (row || [])[nameColIdx];
+    const nama = (nameCell === null || nameCell === undefined) ? '' : String(nameCell).trim();
+    if(!nama) return;
+    if(isPureNumberText(nama)) return;
+    const qtyCell = qtyColIdx === -1 ? null : (row || [])[qtyColIdx];
+    const apk = parseStockQtyCell(qtyCell);
+    if(apk === null) return;
+    const key = nama.toLowerCase().replace(/\s+/g, ' ');
+    if(seen.has(key)) return;
+    seen.add(key);
+    items.push({ nama, apk });
+  });
+  return items;
+}
+
+function toConfirmAndApplyStockItems(items, sourceLabel){
+  const preview = items.slice(0, 8).map(it => `• ${it.nama} — ${it.apk}`).join('\n');
+  const more = items.length > 8 ? `\n…dan ${items.length - 8} lainnya` : '';
+  const lanjut = confirm(`${items.length} pasangan nama barang + sisa stok terbaca dari "${sourceLabel}":\n\n${preview}${more}\n\nLanjutkan menerapkan ke kolom Web/Apk sesi ini (dicocokkan lewat nama)?`);
+  if(!lanjut) return;
+  const timpa = confirm('Timpa juga baris Web/Apk yang sudah terisi angka?\n\nOK = Timpa semua yang sudah terisi.\nBatal = Isi yang kosong saja.');
+  const mode = timpa ? 'overwrite' : 'fill_empty';
+  const result = toApplyStockImportItems(items, mode);
+  if(result.filled === 0){
+    alert(result.notFound
+      ? `Tidak ada yang diperbarui — ${result.notFound} nama tidak cocok dengan barang di sesi ini.`
+      : 'Tidak ada baris yang diperbarui — kolom Web/Apk sudah sesuai.');
+  } else {
+    alert(`Sisa stok diterapkan ke ${result.filled} barang.${result.notFound ? ` ${result.notFound} nama tidak ditemukan.` : ''}`);
+  }
+}
+
+function toHandleStockImportUpload(file){
+  if(!file) return;
+  const btn = document.getElementById('btnToUploadStock');
+  if(btn) btn.disabled = true;
+  const finishWith = (rows) => {
+    try{
+      const items = toRowsToStockImportItems(rows);
+      if(!items.length){
+        alert('Tidak ada pasangan nama barang + sisa stok yang terbaca dari file ini. Pastikan file punya kolom nama barang dan kolom angka sisa stok.');
+        return;
+      }
+      toConfirmAndApplyStockItems(items, file.name);
+    } finally {
+      if(btn) btn.disabled = false;
+    }
+  };
+  const isCsv = /\.csv$/i.test(file.name);
+  const reader = new FileReader();
+  reader.onerror = () => { if(btn) btn.disabled = false; alert('Gagal membaca file ini.'); };
+  if(isCsv){
+    reader.onload = e => {
+      try{
+        const wb = XLSX.read(e.target.result, { type:'string' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header:1, raw:false, defval:'' });
+        finishWith(rows);
+      } catch(err){ console.error(err); if(btn) btn.disabled = false; alert('Gagal membaca file CSV ini.'); }
+    };
+    reader.readAsText(file);
+  } else {
+    if(typeof XLSX === 'undefined'){ if(btn) btn.disabled = false; alert('Modul Excel belum termuat. Cek koneksi internet lalu coba lagi.'); return; }
+    reader.onload = e => {
+      try{
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type:'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header:1, raw:false, defval:'' });
+        finishWith(rows);
+      } catch(err){ console.error(err); if(btn) btn.disabled = false; alert('Gagal membaca file Excel ini.'); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+// --- Tempel Sisa Stok dari Clipboard ---
+function toClipboardTextToRows(text){
+  const lines = String(text || '').split(/\r\n|\r|\n/).map(l => l.replace(/\s+$/, '')).filter(l => l.trim() !== '');
+  return lines.map(line => {
+    if(line.includes('\t')) return line.split('\t');
+    const colonIdx = line.indexOf(':');
+    if(colonIdx > -1) return [line.slice(0, colonIdx), line.slice(colonIdx + 1)];
+    if(/ {2,}/.test(line)) return line.split(/ {2,}/);
+    if(line.includes(',')) return line.split(',');
+    return [line];
+  });
+}
+
+async function toOpenPasteStokModal(){
+  const ta = document.getElementById('toPasteStokText');
+  ta.value = '';
+  const resultEl = document.getElementById('toPasteStokResult');
+  resultEl.textContent = ''; resultEl.classList.remove('show');
+  document.getElementById('toPasteStokOverlay').classList.add('show');
+  try{
+    if(navigator.clipboard && navigator.clipboard.readText){
+      const text = await navigator.clipboard.readText();
+      if(text && text.trim()) ta.value = text;
+    }
+  } catch(e){ /* izin ditolak/tidak didukung — biarkan, user tempel manual */ }
+  setTimeout(() => ta.focus(), 50);
+}
+
+function toClosePasteStokModal(){
+  document.getElementById('toPasteStokOverlay').classList.remove('show');
+}
+
+function toApplyPasteStokConfirm(){
+  const text = document.getElementById('toPasteStokText').value;
+  const resultEl = document.getElementById('toPasteStokResult');
+  if(!text || !text.trim()){
+    resultEl.textContent = 'Belum ada teks yang ditempel.';
+    resultEl.classList.add('show');
+    return;
+  }
+  const rows = toClipboardTextToRows(text);
+  const items = toRowsToStockImportItems(rows);
+  if(!items.length){
+    resultEl.textContent = 'Tidak ada pasangan nama barang + sisa stok yang terbaca. Pastikan tiap baris punya nama barang dan angka sisa stok (mis. hasil copy dari Excel, atau format "Nama : jumlah").';
+    resultEl.classList.add('show');
+    return;
+  }
+  toClosePasteStokModal();
+  toConfirmAndApplyStockItems(items, 'clipboard');
+}
+
+function toCollectState(){
+  return {
+    meta: {
+      toko: document.getElementById('toMetaToko').value,
+      waktu: document.getElementById('toMetaWaktu').value,
+      tgl: document.getElementById('toMetaTgl').value,
+      petugas: document.getElementById('toMetaPetugas').value
+    },
+    rows: toRows,
+    idCounter: toIdCounter,
+    hideToko: toHideToko,
+    editingFromId: toEditingFromId
+  };
+}
+
+// Terapkan state yang datang dari server (baik saat pertama buka, maupun
+// dari perubahan live yang dikirim HP petugas).
+function toApplyState(state, fallbackNama){
+  toApplyingRemote = true;
+  const remoteRows = (state && state.rows) || [];
+  toRows = remoteRows;
+  toIdCounter = Math.max((state && state.idCounter) || 0, toRows.length ? Math.max(...toRows.map(r => r.id)) + 1 : 0, toIdCounter || 0);
+  const meta = (state && state.meta) || {};
+  document.getElementById('toMetaToko').value = meta.toko || '';
+  document.getElementById('toMetaWaktu').value = meta.waktu || 'siang';
+  document.getElementById('toMetaTgl').value = meta.tgl || todayISOAdmin();
+  document.getElementById('toMetaPetugas').value = meta.petugas || fallbackNama || '';
+  toHideToko = (state && state.hideToko) || { t1:false, t2:false };
+  toEditingFromId = (state && state.editingFromId) || null;
+  toRenderItems();
+  toApplyingRemote = false;
+}
+
+async function toPushNow(){
+  const client = initSupabaseClient();
+  if(!client || !toSlug) return;
+  try{
+    const { error } = await sb.from(PETUGAS_SESSION_TABLE).upsert({
+      petugas_slug: toSlug,
+      petugas_nama: document.getElementById('toMetaPetugas').value,
+      state: toCollectState(),
+      updated_by: 'admin-' + CLIENT_ID,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'petugas_slug' });
+    if(error) throw error;
+    setTakeoverStatus('Tersambung • live • tersinkron ke HP petugas', 'on');
+  } catch(err){
+    console.error('Gagal sinkron sesi ambil alih:', err);
+    setTakeoverStatus('Gagal sinkron, cek koneksi.', 'warn');
+  }
+}
+
+function toScheduleSave(immediate){
+  if(toApplyingRemote || !toSlug) return;
+  clearTimeout(toSaveTimer);
+  if(immediate){ toPushNow(); return; }
+  toSaveTimer = setTimeout(toPushNow, 500);
+}
+
+async function startTakeoverSession(nama, slug){
+  toSlug = slug;
+  toRows = []; toIdCounter = 0; toHideToko = { t1:false, t2:false }; toEditingFromId = null;
+  toShowOnlyUnchecked = false;
+  const searchBox = document.getElementById('toSearchBox'); if(searchBox) searchBox.value = '';
+  const uncheckedBtn = document.getElementById('toUncheckedBtn'); if(uncheckedBtn) uncheckedBtn.classList.remove('active');
+  const filterSel = document.getElementById('toStatusFilter'); if(filterSel) filterSel.value = 'all';
+  document.getElementById('toMetaToko').value = '';
+  document.getElementById('toMetaWaktu').value = 'siang';
+  document.getElementById('toMetaTgl').value = todayISOAdmin();
+  document.getElementById('toMetaPetugas').value = nama;
+  toRenderItems();
+  setTakeoverStatus('Memuat data petugas…');
+
+  const client = initSupabaseClient();
+  if(!client){ setTakeoverStatus('Gagal memuat modul Supabase. Cek koneksi.', 'warn'); return; }
+
+  if(toChannel){ try{ await sb.removeChannel(toChannel); }catch(e){} toChannel = null; }
+
+  try{
+    const { data, error } = await sb.from(PETUGAS_SESSION_TABLE).select('*').eq('petugas_slug', slug).maybeSingle();
+    if(error) throw error;
+    if(data && data.state){
+      toApplyState(data.state, nama);
+      setTakeoverStatus(isPetugasOnline(nama) ? 'Tersambung • live' : 'Data terakhir dimuat • petugas offline', isPetugasOnline(nama) ? 'on' : 'warn');
+    } else {
+      // Belum pernah ada sesi tersimpan untuk petugas ini -> mulai dari
+      // kosong dan buat baris sesinya, siap menerima sinkron begitu petugas
+      // online dan mengisi popup "Siapa yang bertugas?".
+      toRenderItems();
+      await toPushNow();
+      setTakeoverStatus('Sesi baru dibuat untuk ' + nama, 'on');
+    }
+  } catch(err){
+    console.error('Gagal memuat sesi ambil alih:', err);
+    setTakeoverStatus('Gagal memuat data petugas ini, cek koneksi/tabel Supabase.', 'warn');
+  }
+
+  subscribeTakeoverChannel();
+}
+
+function subscribeTakeoverChannel(){
+  if(!sb || !toSlug) return;
+  toChannel = sb.channel('petugas-session-admin-' + toSlug)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: PETUGAS_SESSION_TABLE, filter: `petugas_slug=eq.${toSlug}`
+    }, payload => {
+      if(!payload.new || payload.new.updated_by === ('admin-' + CLIENT_ID)) return;
+      toApplyState(payload.new.state, document.getElementById('toMetaPetugas').value);
+      setTakeoverStatus('Diperbarui oleh HP petugas baru saja', 'on');
+    })
+    .subscribe();
+}
+
+function stopTakeoverSession(){
+  if(toChannel){ try{ sb.removeChannel(toChannel); }catch(e){} toChannel = null; }
+  clearTimeout(toSaveTimer);
+  toSlug = '';
+  toRows = [];
+  toIdCounter = 0;
+}
+
+// Tombol "Reset data" di header Ambil Alih — mengosongkan sesi petugas yang
+// SEDANG diambil alih ini saja (bukan reset seluruh aplikasi). Perubahan
+// langsung tersinkron ke HP petugas seperti edit biasa di jendela ini.
+function toResetSession(){
+  if(!toSlug){ alert('Belum ada sesi petugas yang terbuka.'); return; }
+  const namaPetugas = document.getElementById('toMetaPetugas').value || 'petugas ini';
+  if(!confirm(`Hapus semua data sesi "${namaPetugas}" dan mulai dari kosong?\n\nData kosong ini juga akan tersinkron ke HP petugas tersebut.`)) return;
+  toRows = [];
+  toIdCounter = 0;
+  toHideToko = { t1:false, t2:false };
+  toEditingFromId = null;
+  toShowOnlyUnchecked = false;
+  const searchBox = document.getElementById('toSearchBox'); if(searchBox) searchBox.value = '';
+  const uncheckedBtn = document.getElementById('toUncheckedBtn'); if(uncheckedBtn) uncheckedBtn.classList.remove('active');
+  const filterSel = document.getElementById('toStatusFilter'); if(filterSel) filterSel.value = 'all';
+  document.getElementById('toMetaToko').value = '';
+  document.getElementById('toMetaWaktu').value = 'siang';
+  document.getElementById('toMetaTgl').value = todayISOAdmin();
+  const preview = document.getElementById('toPreview');
+  if(preview){
+    preview.classList.add('empty');
+    preview.textContent = 'Isi daftar barang di atas, lalu klik "Salin ke WhatsApp" untuk melihat hasilnya di sini.';
+  }
+  toRenderItems();
+  toScheduleSave(true);
+}
+
+// ====== Riwayat (Ambil Alih) — port persis dari stok_opname.html, tapi
+// membaca dari tabel `stok_opname_petugas_history` di Supabase (diisi oleh
+// stok_opname.html setiap kali petugas menekan "Salin ke WhatsApp"),
+// difilter ke petugas yang sedang diambil alih saja (toSlug). ======
+const PETUGAS_HISTORY_TABLE = 'stok_opname_petugas_history';
+const TO_HIST_TOKO_ORDER = ['Rafa 1', 'Rafa 2'];
+let toHistoryList = [];
+
+const TO_HIST_ICO_CLOCK = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3.3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const TO_HIST_ICO_CAL = '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M3 9.5h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const TO_HIST_ICO_PENCIL = '<svg viewBox="0 0 24 24" fill="none"><path d="M4 20l1-4.2L15.5 5.3l3.2 3.2L8.2 19 4 20Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+const TO_HIST_ICO_STORE = '<svg viewBox="0 0 24 24" fill="none"><path d="M4 10.5V20a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9.5" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 10.5 4.6 4h14.8L21 10.5" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.3 21v-6h5.4v6" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+
+function toHistWaktuIcon(w){
+  const icons = {
+    pagi: '<path d="M12 4v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.2 13.5a5.8 5.8 0 0 1 11.6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.3 6.7 12 4l2.7 2.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.5 13.5h19M4.5 17h15M7 20.3h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    siang: '<circle cx="12" cy="12" r="4.1" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.3v2M12 18.7v2M20.7 12h-2M5.3 12h-2M17.4 6.6l-1.4 1.4M8 16l-1.4 1.4M17.4 17.4 16 16M8 8 6.6 6.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    sore: '<path d="M12 8V4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.2 13.5a5.8 5.8 0 0 1 11.6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.3 5.8 12 8.5l2.7-2.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.5 13.5h19M4.5 17h15M7 20.3h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    malam: '<path d="M20.2 14.8A8.6 8.6 0 1 1 9.2 3.8a7.1 7.1 0 0 0 11 11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'
+  };
+  return `<svg viewBox="0 0 24 24" fill="none">${icons[(w || '').toLowerCase()] || icons.siang}</svg>`;
+}
+
+function toHistGroupList(list){
+  const byToko = new Map();
+  const tokoOrder = [];
+  list.forEach(entry => {
+    const t = entry.toko || '-';
+    if(!byToko.has(t)){ byToko.set(t, []); tokoOrder.push(t); }
+    byToko.get(t).push(entry);
+  });
+  tokoOrder.sort((a, b) => {
+    const ia = TO_HIST_TOKO_ORDER.indexOf(a), ib = TO_HIST_TOKO_ORDER.indexOf(b);
+    const ra = ia === -1 ? 999 : ia, rb = ib === -1 ? 999 : ib;
+    if(ra !== rb) return ra - rb;
+    return a.localeCompare(b, 'id');
+  });
+  return tokoOrder.map(toko => {
+    const entries = byToko.get(toko);
+    const byDate = new Map();
+    const dateOrder = [];
+    entries.forEach(entry => {
+      const d = entry.tgl || '';
+      if(!byDate.has(d)){ byDate.set(d, []); dateOrder.push(d); }
+      byDate.get(d).push(entry);
+    });
+    return {
+      toko, total: entries.length,
+      dateGroups: dateOrder.map(tgl => ({ tgl, entries: byDate.get(tgl) }))
+    };
+  });
+}
+
+function toHistFormatTanggalPanjang(isoDate){
+  if(!isoDate) return 'Tanpa tanggal';
+  const d = new Date(isoDate + 'T00:00:00');
+  if(isNaN(d.getTime())) return isoDate;
+  return d.toLocaleDateString('id-ID', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+}
+
+function toHistTokoClassOf(toko){
+  return toko === 'Rafa 1' ? 'tk-r1' : toko === 'Rafa 2' ? 'tk-r2' : 'tk-other';
+}
+
+function toRenderHistoryList(list){
+  const body = document.getElementById('toHistoryListBody');
+  if(!body) return;
+  if(!list.length){
+    body.innerHTML = '<div class="to-hist-empty">Belum ada riwayat untuk petugas ini.<br>Setiap kali petugas menekan "Salin ke WhatsApp" di HP-nya, laporannya otomatis tersimpan di sini dan bisa dimuat ulang untuk diedit dari Ambil Alih.</div>';
+    return;
+  }
+  const groups = toHistGroupList(list);
+  body.innerHTML = groups.map(g => {
+    const tokoClass = toHistTokoClassOf(g.toko);
+    const dateGroupsHtml = g.dateGroups.map(dg => {
+      const itemsHtml = dg.entries.map(entry => {
+        const savedDate = new Date(entry.savedAt);
+        const savedFormatted = isNaN(savedDate.getTime()) ? '-' : savedDate.toLocaleString('id-ID', {day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'});
+        const petugasNama = (entry.petugas || '-').trim() || '-';
+        const inisial = petugasNama !== '-' ? petugasNama.charAt(0).toUpperCase() : '?';
+        return `
+          <div class="to-history-item ${tokoClass}">
+            <div class="to-history-item-title">
+              <span class="to-hist-waktu-chip">${toHistWaktuIcon(entry.waktu)}${escapeHtml(entry.waktu || '-')}</span>
+              ${entry.editedFrom ? `<span class="to-edited-badge">${TO_HIST_ICO_PENCIL}Diedit</span>` : ''}
+            </div>
+            <div class="to-history-item-sub">
+              <span class="to-hist-petugas"><span class="to-hist-avatar ${tokoClass}">${escapeHtml(inisial)}</span>${escapeHtml(petugasNama)}</span>
+              <span class="sep">•</span>
+              <span class="to-hist-saved">${TO_HIST_ICO_CLOCK}${savedFormatted}</span>
+            </div>
+            <div class="to-history-item-actions">
+              <button class="to-history-btn load" onclick="toLoadHistoryEntry(${entry.id})">Muat &amp; edit</button>
+              <button class="to-history-btn" onclick="toToggleHistoryText(${entry.id})">Lihat teks</button>
+              <button class="to-history-btn del" onclick="toDeleteHistoryEntry(${entry.id})">Hapus</button>
+            </div>
+            <div class="to-history-item-text" id="toHistText-${entry.id}" style="display:none;">${escapeHtml(entry.text || '')}</div>
+          </div>
+        `;
+      }).join('');
+      return `
+        <div class="to-hist-date-group">
+          <div class="to-hist-date-head">${TO_HIST_ICO_CAL}${toHistFormatTanggalPanjang(dg.tgl)}</div>
+          ${itemsHtml}
+        </div>
+      `;
+    }).join('');
+    return `
+      <div class="to-hist-toko-group">
+        <div class="to-hist-toko-head ${tokoClass}">
+          <span class="to-hist-toko-ico">${TO_HIST_ICO_STORE}</span>${escapeHtml(g.toko)}
+          <span class="cnt">${g.total} laporan</span>
+        </div>
+        ${dateGroupsHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+function toToggleHistoryText(id){
+  const el = document.getElementById('toHistText-' + id);
+  if(!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function toOpenHistoryModal(){
+  if(!toSlug){ alert('Belum ada sesi petugas yang terbuka.'); return; }
+  const namaEl = document.getElementById('toHistoryModalNama');
+  if(namaEl) namaEl.textContent = document.getElementById('toMetaPetugas').value || '';
+  document.getElementById('toHistoryOverlay').classList.add('show');
+  const body = document.getElementById('toHistoryListBody');
+  body.innerHTML = '<div class="to-hist-empty">Memuat riwayat…</div>';
+  const client = initSupabaseClient();
+  if(!client){
+    body.innerHTML = '<div class="to-hist-empty">Gagal memuat modul Supabase. Cek koneksi.</div>';
+    return;
+  }
+  try{
+    const { data, error } = await sb.from(PETUGAS_HISTORY_TABLE).select('*').eq('petugas_slug', toSlug).order('saved_at', { ascending:false });
+    if(error) throw error;
+    toHistoryList = (data || []).map(row => ({
+      id: row.entry_id,
+      petugas: row.petugas_nama,
+      toko: row.toko,
+      waktu: row.waktu,
+      tgl: row.tgl,
+      savedAt: row.saved_at,
+      rows: row.rows || [],
+      hideToko: row.hide_toko || {},
+      text: row.text_content || '',
+      editedFrom: row.edited_from || null
+    }));
+    toRenderHistoryList(toHistoryList);
+  } catch(err){
+    console.error('Gagal memuat riwayat petugas:', err);
+    body.innerHTML = '<div class="to-hist-empty">Gagal memuat riwayat, cek koneksi/tabel Supabase.</div>';
+  }
+}
+
+function toCloseHistoryModal(){
+  document.getElementById('toHistoryOverlay').classList.remove('show');
+}
+
+function toLoadHistoryEntry(id){
+  const entry = toHistoryList.find(h => h.id === id);
+  if(!entry) return;
+  if(!confirm('Muat data riwayat ini ke tabel Ambil Alih untuk diedit? Isian yang sedang aktif di sesi ini akan ditimpa dan langsung tersinkron ke HP petugas.')) return;
+  toRows = JSON.parse(JSON.stringify(entry.rows || []));
+  toIdCounter = toRows.length ? Math.max(...toRows.map(r => r.id)) + 1 : 0;
+  document.getElementById('toMetaToko').value = entry.toko || '';
+  document.getElementById('toMetaWaktu').value = entry.waktu || 'siang';
+  document.getElementById('toMetaTgl').value = entry.tgl || todayISOAdmin();
+  toHideToko = entry.hideToko ? {...entry.hideToko} : { t1:false, t2:false };
+  toEditingFromId = entry.editedFrom || entry.id;
+  toRenderItems();
+  toCloseHistoryModal();
+  toScheduleSave(true);
+}
+
+async function toDeleteHistoryEntry(id){
+  const pass = prompt('Masukkan kata sandi untuk menghapus riwayat ini:');
+  if(pass === null) return;
+  if(pass !== '1234'){
+    alert('Kata sandi salah. Riwayat tidak dihapus.');
+    return;
+  }
+  if(!confirm('Hapus riwayat ini? Tindakan ini tidak bisa dibatalkan.')) return;
+  try{
+    const { error } = await sb.from(PETUGAS_HISTORY_TABLE).delete().eq('petugas_slug', toSlug).eq('entry_id', id);
+    if(error) throw error;
+    toHistoryList = toHistoryList.filter(h => h.id !== id);
+    toRenderHistoryList(toHistoryList);
+  } catch(err){
+    console.error('Gagal hapus riwayat:', err);
+    alert('Gagal menghapus riwayat, cek koneksi.');
+  }
 }
 
 document.addEventListener('click', evt => {
@@ -2672,6 +4825,191 @@ function subscribeCoretChannel(){
 
 connectGlobal();
 initCoretDrawing();
+</script>
+
+<!-- Mini-browser mengambang untuk tombol "Browser" di header Ambil Alih —
+     port persis dari stok_opname.html, berdiri sendiri (tidak bergantung
+     sesi petugas apa pun). -->
+<div class="cashier-popup" id="cashierPopup">
+  <div class="cashier-popup-box">
+    <div class="cashier-popup-head">
+      <div class="cashier-drag-strip" id="cashierDragHandle">
+        <div class="cashier-grip"><span></span><span></span><span></span></div>
+        <span class="cashier-title">Browser</span>
+        <button class="cashier-popup-close" onclick="closeCashierPopup()">✕</button>
+      </div>
+      <div class="cashier-addr-row">
+        <div class="cashier-popup-nav">
+          <button class="cashier-nav-btn" id="cashierBackBtn" onclick="cashierGoBack()" title="Kembali">‹</button>
+          <button class="cashier-nav-btn" onclick="cashierReload()" title="Muat ulang">⟳</button>
+        </div>
+        <form class="cashier-addr-form" onsubmit="return cashierNavigate(event)">
+          <input class="cashier-addr-bar" id="cashierAddrBar" type="text" placeholder="Cari di Google atau ketik URL" autocomplete="off">
+        </form>
+      </div>
+    </div>
+    <div class="cashier-popup-body">
+      <iframe id="cashierPopupFrame" src="about:blank" loading="lazy"></iframe>
+    </div>
+    <div class="cashier-resize-handle" id="cashierResizeHandle"></div>
+  </div>
+</div>
+<script>
+  var CASHIER_HOME = 'https://app.farmacare.id/4833/cashier';
+  var cashierHistory = [];
+
+  function cashierUrlFromInput(raw){
+    raw = raw.trim();
+    if(!raw) return CASHIER_HOME;
+    var looksLikeUrl = /^https?:\/\//i.test(raw) || (/^[\w-]+(\.[\w-]+)+([/?#].*)?$/i.test(raw) && !raw.includes(' '));
+    if(looksLikeUrl){
+      return /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
+    }
+    return 'https://www.google.com/search?q=' + encodeURIComponent(raw) + '&igu=1';
+  }
+
+  function cashierLoad(url, pushHistory){
+    var f = document.getElementById('cashierPopupFrame');
+    f.src = url;
+    document.getElementById('cashierAddrBar').value = url;
+    if(pushHistory !== false){
+      cashierHistory.push(url);
+    }
+    document.getElementById('cashierBackBtn').disabled = cashierHistory.length <= 1;
+  }
+
+  function cashierNavigate(e){
+    e.preventDefault();
+    var input = document.getElementById('cashierAddrBar');
+    cashierLoad(cashierUrlFromInput(input.value), true);
+    return false;
+  }
+
+  function cashierReload(){
+    var f = document.getElementById('cashierPopupFrame');
+    try{
+      f.contentWindow.location.reload();
+    }catch(err){
+      alert('Situs ini tidak mengizinkan reload dari jendela mini (dibatasi keamanan browser). Coba muat ulang lewat halaman itu sendiri, atau buka di tab baru.');
+    }
+  }
+
+  function cashierGoBack(){
+    if(cashierHistory.length > 1){
+      cashierHistory.pop();
+      var prev = cashierHistory[cashierHistory.length - 1];
+      cashierLoad(prev, false);
+    }
+  }
+
+  function openCashierPopup(){
+    if(cashierHistory.length === 0){
+      cashierLoad(CASHIER_HOME, true);
+    }
+    document.getElementById('cashierPopup').classList.add('show');
+  }
+  function closeCashierPopup(){
+    document.getElementById('cashierPopup').classList.remove('show');
+  }
+
+  (function(){
+    var handle = document.getElementById('cashierResizeHandle');
+    var box = document.querySelector('.cashier-popup-box');
+    var iframe = document.getElementById('cashierPopupFrame');
+    var startX, startY, startW, startH, dragging = false;
+
+    function onMove(e){
+      if(!dragging) return;
+      var p = e.touches ? e.touches[0] : e;
+      var dx = p.clientX - startX;
+      var dy = p.clientY - startY;
+      var minW = 220, minH = 260;
+      var maxW = window.innerWidth * 0.96;
+      var maxH = window.innerHeight * 0.92;
+      var newW = Math.min(maxW, Math.max(minW, startW + dx));
+      var newH = Math.min(maxH, Math.max(minH, startH + dy));
+      box.style.width = newW + 'px';
+      box.style.height = newH + 'px';
+      e.preventDefault();
+    }
+    function onEnd(){
+      dragging = false;
+      if(iframe) iframe.style.pointerEvents = 'auto';
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+    }
+    function onStart(e){
+      dragging = true;
+      var p = e.touches ? e.touches[0] : e;
+      startX = p.clientX;
+      startY = p.clientY;
+      var rect = box.getBoundingClientRect();
+      startW = rect.width;
+      startH = rect.height;
+      if(iframe) iframe.style.pointerEvents = 'none';
+      document.addEventListener('pointermove', onMove, {passive:false});
+      document.addEventListener('pointerup', onEnd);
+      document.addEventListener('touchmove', onMove, {passive:false});
+      document.addEventListener('touchend', onEnd);
+      e.preventDefault();
+    }
+    handle.addEventListener('pointerdown', onStart);
+    handle.addEventListener('touchstart', onStart, {passive:false});
+  })();
+
+  (function(){
+    var dragHandle = document.getElementById('cashierDragHandle');
+    var box = document.querySelector('.cashier-popup-box');
+    var iframe = document.getElementById('cashierPopupFrame');
+    var startX, startY, startLeft, startTop, dragging = false;
+
+    function onMove(e){
+      if(!dragging) return;
+      var p = e.touches ? e.touches[0] : e;
+      var dx = p.clientX - startX;
+      var dy = p.clientY - startY;
+      var rect = box.getBoundingClientRect();
+      var maxLeft = window.innerWidth - rect.width;
+      var maxTop = window.innerHeight - rect.height;
+      var newLeft = Math.min(Math.max(0, startLeft + dx), Math.max(0, maxLeft));
+      var newTop = Math.min(Math.max(0, startTop + dy), Math.max(0, maxTop));
+      box.style.left = newLeft + 'px';
+      box.style.top = newTop + 'px';
+      e.preventDefault();
+    }
+    function onEnd(){
+      dragging = false;
+      if(iframe) iframe.style.pointerEvents = 'auto';
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+    }
+    function onStart(e){
+      if(e.target.closest('button')) return;
+      dragging = true;
+      var p = e.touches ? e.touches[0] : e;
+      startX = p.clientX;
+      startY = p.clientY;
+      var rect = box.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop = rect.top;
+      box.style.position = 'fixed';
+      box.style.margin = '0';
+      box.style.left = startLeft + 'px';
+      box.style.top = startTop + 'px';
+      if(iframe) iframe.style.pointerEvents = 'none';
+      document.addEventListener('pointermove', onMove, {passive:false});
+      document.addEventListener('pointerup', onEnd);
+      document.addEventListener('touchmove', onMove, {passive:false});
+      document.addEventListener('touchend', onEnd);
+      e.preventDefault();
+    }
+    dragHandle.addEventListener('pointerdown', onStart);
+    dragHandle.addEventListener('touchstart', onStart, {passive:false});
+  })();
 </script>
 </body>
 </html>
