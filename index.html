@@ -148,6 +148,13 @@
 
   alter table public.stok_opname_petugas enable row level security;
 
+  -- REPLICA IDENTITY FULL supaya event UPDATE dari tabel ini menyertakan nilai
+  -- lama (payload.old.nama) lewat Realtime -- dipakai supaya begitu admin
+  -- mengubah nama petugas lewat tombol "Ubah", HP petugas yang sedang login
+  -- dengan nama lama itu otomatis ganti nama sendiri (dan sesi live-nya ikut
+  -- pindah) tanpa perlu reload halaman:
+  alter table public.stok_opname_petugas replica identity full;
+
   drop policy if exists "anon select petugas" on public.stok_opname_petugas;
   create policy "anon select petugas" on public.stok_opname_petugas
     for select using (true);
@@ -641,6 +648,41 @@
     font-family:inherit; color:var(--ink); background:#fff;
   }
   .to-field input:focus, .to-field select:focus{outline:none; border-color:var(--teal);}
+  .to-field-dropdown{position:relative;}
+  #toMetaToko{cursor:pointer; background:#fff;}
+  #toMetaToko::placeholder{color:#9aada6;}
+  #toMetaPetugas{cursor:pointer; background:#fff;}
+  .to-field-dropdown-panel{
+    display:none; position:absolute; top:calc(100% + 6px); left:0; width:100%; min-width:200px;
+    background:var(--card); border:1.5px solid var(--line); border-radius:12px;
+    box-shadow:0 10px 26px rgba(15,30,27,0.16); z-index:150; padding:10px;
+    max-height:260px; overflow-y:auto; animation:toDropIn .12s ease-out;
+  }
+  .to-field-dropdown-panel.show{display:block;}
+  @keyframes toDropIn{ from{transform:translateY(-4px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  .to-modal-list{display:flex; flex-direction:column; gap:6px; margin-bottom:8px;}
+  .to-modal-option{
+    text-align:left; background:#fafaf6; border:1.5px solid var(--line); border-radius:9px;
+    padding:9px 11px; font-family:inherit; font-size:13px; font-weight:600; color:var(--ink);
+    cursor:pointer; display:flex; align-items:center; gap:9px; width:100%;
+  }
+  .to-modal-option:hover, .to-modal-option:active{background:var(--mint); border-color:#a9c9c0;}
+  .to-modal-option.active{background:var(--mint); border-color:var(--teal); color:var(--teal-deep);}
+  .to-modal-option .dot{width:6px; height:6px; border-radius:50%; background:var(--teal); flex-shrink:0;}
+  .to-modal-option .online-label{margin-left:auto; font-size:10.5px; font-weight:700; color:var(--ink-soft);}
+  .to-modal-option .online-label.on{color:var(--klop);}
+  .to-modal-empty{font-size:11.5px; color:var(--ink-soft); padding:4px 2px 8px;}
+  .to-modal-manual{display:flex; gap:6px; padding-top:8px; border-top:1px solid var(--line);}
+  .to-modal-manual input{
+    flex:1; padding:8px 9px; border:1.5px solid var(--line); border-radius:9px;
+    font-family:inherit; font-size:12.5px; background:var(--card); color:var(--ink); min-width:0;
+  }
+  .to-modal-manual input:focus{outline:none; border-color:var(--teal);}
+  .to-modal-add{
+    background:var(--teal); color:#fff; border:none; padding:0 12px; border-radius:9px;
+    font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; font-family:inherit;
+  }
+  .to-modal-add:hover{background:var(--teal-deep);}
   .to-toolbar{display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
   .to-search-wrap{position:relative; flex:1; min-width:140px;}
   .to-search-wrap svg{position:absolute; left:9px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--ink-soft);}
@@ -709,6 +751,19 @@
     display:grid; grid-template-columns:repeat(auto-fit, minmax(128px, 1fr));
     gap:8px; margin-top:14px;
   }
+  .to-summary-strip{display:flex; gap:10px; margin:16px 0 6px; flex-wrap:wrap;}
+  .to-stat{
+    flex:1; min-width:110px; background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px;
+  }
+  .to-stat .n{font-family:'JetBrains Mono', monospace; font-size:20px; font-weight:700;}
+  .to-stat .l{font-size:10.5px; color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.05em;}
+  .to-stat.minus .n{color:var(--minus);}
+  .to-stat.plus .n{color:var(--plus);}
+  .to-stat.klop .n{color:var(--klop);}
+  .to-stat.total .n{color:var(--teal);}
+  .to-stat.checked .n{color:var(--klop);}
+  .to-stat.unchecked .n{color:var(--amber);}
   .to-add-btn{
     display:flex; align-items:center; gap:6px; background:var(--mint); color:var(--teal-deep);
     border:1.5px dashed #a9c9c0; padding:9px 14px; border-radius:10px; font-size:13px; font-weight:700;
@@ -775,6 +830,21 @@
     font-size:11.5px; padding:9px 8px; line-height:1.25; min-height:40px;
     box-sizing:border-box;
   }
+  .to-salin-row{
+    display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;
+  }
+  .to-salin-row .to-wa-main-btn{
+    width:100%; justify-content:center; align-items:center; gap:5px;
+    padding:7px 6px; font-size:11px; line-height:1.2; min-height:32px;
+    box-sizing:border-box;
+  }
+  .to-salin-row .to-wa-main-btn svg{width:13px;height:13px;}
+  .to-salin-row .to-add-btn{
+    justify-content:center; text-align:center; gap:5px;
+    font-size:11px; padding:7px 6px; line-height:1.2; min-height:32px;
+    box-sizing:border-box;
+  }
+  .to-salin-row .to-add-btn svg{width:13px;height:13px;}
   .to-copied-msgs{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; min-height:16px;}
   .to-copied-msg{font-size:11.5px; color:var(--klop); font-weight:700; opacity:0; transition:opacity .2s;}
   .to-copied-msg.show{opacity:1;}
@@ -1365,8 +1435,15 @@
         <div class="to-status-line"><span class="to-status-dot" id="toStatusDot"></span><span id="toStatusText">Memuat…</span></div>
 
         <div class="to-meta-grid">
-          <div class="to-field"><label>Nama Toko</label>
-            <input id="toMetaToko" placeholder="Nama toko" oninput="toScheduleSave()">
+          <div class="to-field to-field-dropdown"><label>Nama Toko</label>
+            <input id="toMetaToko" placeholder="Pilih toko" readonly onclick="toOpenTokoModal(event)">
+            <div class="to-field-dropdown-panel" id="toTokoModal">
+              <div class="to-modal-list" id="toTokoList"></div>
+              <div class="to-modal-manual">
+                <input id="toTokoManualInput" placeholder="Atau ketik nama toko" onkeydown="if(event.key==='Enter') toSubmitManualToko()">
+                <button type="button" class="to-modal-add" onclick="toSubmitManualToko()">Pakai</button>
+              </div>
+            </div>
           </div>
           <div class="to-field"><label>Waktu</label>
             <select id="toMetaWaktu" onchange="toScheduleSave()">
@@ -1441,6 +1518,15 @@
           <input type="file" id="toStockImportUploadInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="toHandleStockImportUpload(this.files[0]); this.value='';">
         </div>
 
+        <div class="to-summary-strip">
+          <div class="to-stat total"><div class="n" id="toStatTotal">0</div><div class="l">Total barang</div></div>
+          <div class="to-stat checked"><div class="n" id="toStatChecked">0</div><div class="l">Sudah dicek</div></div>
+          <div class="to-stat unchecked"><div class="n" id="toStatUnchecked">0</div><div class="l">Belum dicek</div></div>
+          <div class="to-stat minus"><div class="n" id="toStatMinus">0</div><div class="l">Yang minus</div></div>
+          <div class="to-stat plus"><div class="n" id="toStatPlus">0</div><div class="l">Yang plus</div></div>
+          <div class="to-stat klop"><div class="n" id="toStatKlop">0</div><div class="l">Yang klop</div></div>
+        </div>
+
         <div class="to-wa-block">
           <div class="to-wa-title">Format WhatsApp</div>
           <div class="to-hide-toko-row">
@@ -1454,7 +1540,7 @@
               Rafa 2
             </button>
           </div>
-          <div class="to-generate-bar">
+          <div class="to-salin-row">
             <button type="button" class="btn-main to-wa-main-btn" onclick="toGenerate(true)">
               <svg viewBox="0 0 24 24" fill="none"><path d="M8 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="#fff" stroke-width="1.8"/><path d="M5 3v14" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
               Salin ke WhatsApp
@@ -1463,6 +1549,8 @@
               <svg viewBox="0 0 24 24" fill="none"><path d="M8 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8"/><path d="M5 3v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
               Salin nama barang saja
             </button>
+          </div>
+          <div class="to-generate-bar">
             <button type="button" class="to-add-btn" style="border-style:solid;" onclick="toOpenPasteFillModal()" id="btnToPasteFill">
               <svg viewBox="0 0 24 24" fill="none"><path d="M9 5h6a1 1 0 0 1 1 1v1H8V6a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 6h-.5A1.5 1.5 0 0 0 5 7.5v13A1.5 1.5 0 0 0 6.5 22h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 6H17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
               Tempel &amp; isi stok
@@ -1943,6 +2031,27 @@ async function adminDeleteRoom(roomCode){
 const PETUGAS_TABLE = 'stok_opname_petugas';
 let petugasChannel = null;
 let petugasRows = [];
+// Dipakai untuk otomatis mengisi tabel stok_opname_petugas di Supabase kalau
+// sedang kosong (belum ada nama sama sekali) — supaya kartu "Kelola Nama
+// Petugas" dan dropdown Petugas tidak kosong melompong. Catatan: ini dicek
+// setiap kali panel admin dibuka, jadi kalau semua nama sengaja dihapus lagi
+// nanti, daftar bawaan ini akan otomatis terisi ulang saat panel dibuka
+// berikutnya.
+const PETUGAS_DEFAULT_SEED = ['Dinda', 'Hayati', 'Mely', 'Putri', 'Sely', 'Zen'];
+
+async function seedPetugasIfEmpty(){
+  if(!sb) return;
+  try{
+    const { count, error } = await sb.from(PETUGAS_TABLE).select('id', { count: 'exact', head: true });
+    if(error) throw error;
+    if(count === 0){
+      const { error: insertError } = await sb.from(PETUGAS_TABLE).insert(PETUGAS_DEFAULT_SEED.map(nama => ({ nama })));
+      if(insertError) throw insertError;
+    }
+  } catch(err){
+    console.error('Gagal mengisi daftar nama petugas awal:', err);
+  }
+}
 
 async function loadPetugasAdmin(){
   if(!sb) return;
@@ -1950,6 +2059,7 @@ async function loadPetugasAdmin(){
   const dot = document.getElementById('petugasDot');
   if(statusText) statusText.textContent = 'Memuat daftar petugas…';
   try{
+    await seedPetugasIfEmpty();
     const { data, error } = await sb.from(PETUGAS_TABLE).select('*').order('nama', { ascending: true });
     if(error) throw error;
     petugasRows = data || [];
@@ -2093,6 +2203,48 @@ let toIdCounter = 0;
 let toHideToko = { t1:false, t2:false };
 let toEditingFromId = null;
 let toShowOnlyUnchecked = false;
+const TO_TOKO_LIST = ['Rafa 1', 'Rafa 2'];
+
+function toOpenTokoModal(e){
+  if(e) e.stopPropagation();
+  const listEl = document.getElementById('toTokoList');
+  if(TO_TOKO_LIST.length === 0){
+    listEl.innerHTML = '<div class="to-modal-empty">Belum ada toko di daftar. Ketik nama secara manual di bawah.</div>';
+  } else {
+    listEl.innerHTML = TO_TOKO_LIST.map(name => `
+      <button type="button" class="to-modal-option" onclick="toSelectToko('${name.replace(/'/g, "\\'")}')">
+        <span class="dot"></span>${escapeHtml(name)}
+      </button>
+    `).join('');
+  }
+  document.getElementById('toTokoManualInput').value = '';
+  document.getElementById('toTokoModal').classList.add('show');
+}
+
+function toCloseTokoModal(){
+  const el = document.getElementById('toTokoModal');
+  if(el) el.classList.remove('show');
+}
+
+function toSelectToko(name){
+  document.getElementById('toMetaToko').value = name;
+  toCloseTokoModal();
+  toScheduleSave();
+}
+
+function toSubmitManualToko(){
+  const val = document.getElementById('toTokoManualInput').value.trim();
+  if(!val) return;
+  toSelectToko(val);
+}
+
+document.addEventListener('click', function(e){
+  document.querySelectorAll('.to-field-dropdown').forEach(field => {
+    if(!field.contains(e.target)){
+      field.querySelector('.to-field-dropdown-panel')?.classList.remove('show');
+    }
+  });
+});
 
 function todayISOAdmin(){
   const d = new Date();
@@ -2136,9 +2288,30 @@ function setTakeoverStatus(text, mode){
   if(dot) dot.className = 'to-status-dot' + (mode === 'on' ? ' on' : mode === 'warn' ? ' warn' : '');
 }
 
+function toRenderSummary(){
+  let minus = 0, plus = 0, klop = 0, checked = 0;
+  toRows.forEach(r => {
+    if(toIsChecked(r)) checked++;
+    const st = toStatusOf(r);
+    if(st){
+      if(st.type === 'minus') minus++;
+      else if(st.type === 'plus') plus++;
+      else klop++;
+    }
+  });
+  const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  setTxt('toStatTotal', toRows.length);
+  setTxt('toStatChecked', checked);
+  setTxt('toStatUnchecked', toRows.length - checked);
+  setTxt('toStatMinus', minus);
+  setTxt('toStatPlus', plus);
+  setTxt('toStatKlop', klop);
+}
+
 function toRenderItems(){
   const listEl = document.getElementById('toItemsList');
   if(!listEl) return;
+  toRenderSummary();
   const q = (document.getElementById('toSearchBox').value || '').trim().toLowerCase();
   const filterVal = document.getElementById('toStatusFilter').value;
   const visible = toRows.filter(r => {
@@ -2178,6 +2351,7 @@ function toUpdateField(id, field, value){
     if(fisikEl) fisikEl.textContent = toFisikOf(r);
     const statusEl = document.getElementById('toStatus-' + id);
     if(statusEl) statusEl.innerHTML = toCheckBadgeHtml(r);
+    toRenderSummary();
   }
   toScheduleSave();
 }
@@ -3579,9 +3753,56 @@ async function adminEditPetugas(id){
     alert('Nama "' + trimmed + '" sudah ada di daftar.');
     return;
   }
+  const oldSlug = slugifyPetugasAdmin(row.nama);
+  const newSlug = slugifyPetugasAdmin(trimmed);
   try{
     const { error } = await sb.from(PETUGAS_TABLE).update({ nama: trimmed }).eq('id', id);
     if(error) throw error;
+
+    // Sesi live & riwayat laporan petugas ini tersimpan berdasarkan slug
+    // dari namanya (bukan id-nya), jadi begitu namanya berubah slug-nya
+    // ikut berubah. Supaya datanya TIDAK hilang/putus, pindahkan semuanya
+    // ke slug yang baru -- baik jendela Ambil Alih sedang terbuka untuk
+    // petugas ini maupun tidak.
+    if(oldSlug && newSlug && oldSlug !== newSlug){
+      if(toSlug && toSlug === oldSlug){
+        // Jendela Ambil Alih sedang terbuka utk petugas ini: pindahkan
+        // sesinya secara live (bawa data yang sedang berjalan di layar ini)
+        // supaya sinkronisasi tidak putus.
+        const title = document.getElementById('takeoverTitle');
+        if(title) title.textContent = 'Ambil Alih — ' + trimmed;
+        const petugasEl = document.getElementById('toMetaPetugas');
+        if(petugasEl) petugasEl.value = trimmed;
+        if(toChannel){ try{ await sb.removeChannel(toChannel); }catch(e){} toChannel = null; }
+        toSlug = newSlug;
+        await toPushNow();
+        subscribeTakeoverChannel();
+        try{ await sb.from(PETUGAS_SESSION_TABLE).delete().eq('petugas_slug', oldSlug); }catch(e){ /* abaikan, bukan fatal */ }
+      } else {
+        // Jendela Ambil Alih TIDAK sedang terbuka: pindahkan sesi yang
+        // tersimpan di database dari slug lama ke slug baru apa adanya.
+        try{
+          const { data: oldSession } = await sb.from(PETUGAS_SESSION_TABLE).select('*').eq('petugas_slug', oldSlug).maybeSingle();
+          if(oldSession){
+            const { petugas_slug, ...rest } = oldSession;
+            await sb.from(PETUGAS_SESSION_TABLE).upsert({ ...rest, petugas_slug: newSlug, petugas_nama: trimmed }, { onConflict: 'petugas_slug' });
+            await sb.from(PETUGAS_SESSION_TABLE).delete().eq('petugas_slug', oldSlug);
+          }
+        } catch(e){ console.error('Gagal memindahkan sesi petugas ke slug baru:', e); }
+      }
+
+      // Pindahkan juga seluruh riwayat laporan petugas ini (tabel terpisah,
+      // tidak ikut terbawa otomatis oleh perubahan sesi di atas) ke slug
+      // baru, supaya tetap muncul lewat "Ambil Alih" -> "Riwayat".
+      try{
+        const { data: oldHistory } = await sb.from(PETUGAS_HISTORY_TABLE).select('*').eq('petugas_slug', oldSlug);
+        if(oldHistory && oldHistory.length){
+          const moved = oldHistory.map(h => ({ ...h, petugas_slug: newSlug, petugas_nama: trimmed }));
+          const { error: insErr } = await sb.from(PETUGAS_HISTORY_TABLE).insert(moved);
+          if(!insErr) await sb.from(PETUGAS_HISTORY_TABLE).delete().eq('petugas_slug', oldSlug);
+        }
+      } catch(e){ console.error('Gagal memindahkan riwayat petugas ke slug baru:', e); }
+    }
   } catch(err){
     console.error('Gagal mengubah nama petugas:', err);
     alert('Gagal mengubah nama petugas. Cek koneksi internet lalu coba lagi.');
