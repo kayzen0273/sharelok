@@ -963,6 +963,76 @@
     font-size:11.5px; line-height:1.6; white-space:pre-wrap; padding:10px 12px; border-radius:10px;
     max-height:220px; overflow-y:auto;
   }
+
+  /* ===== Catatan Kode JS (Panel Admin / Ambil Alih) — gaya code manager padat ===== */
+  .jsnote-toolbar{display:flex; gap:8px; margin-bottom:2px;}
+  .jsnote-search{
+    flex:1; min-width:0; padding:7px 10px; border:1.5px solid var(--line); border-radius:8px;
+    font-family:inherit; font-size:12.5px; color:var(--ink); background:var(--paper);
+  }
+  .jsnote-search:focus{outline:none; border-color:var(--teal);}
+  .jsnote-add-btn{
+    width:32px; height:32px; border-radius:8px; border:1.5px solid var(--teal); background:var(--teal);
+    color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .jsnote-add-btn:hover{background:var(--teal-deep); border-color:var(--teal-deep);}
+  .jsnote-add-btn svg{width:16px; height:16px;}
+  .jsnote-list{
+    border:1px solid var(--line); border-radius:10px; margin-top:10px; overflow:hidden; background:var(--card);
+  }
+  .jsnote-item{border-bottom:1px solid var(--line);}
+  .jsnote-item:last-child{border-bottom:none;}
+  .jsnote-row{display:flex; align-items:center; gap:7px; padding:7px 8px; cursor:pointer;}
+  .jsnote-item.open .jsnote-row{background:var(--mint);}
+  .jsnote-chevron{
+    width:16px; height:16px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    color:#9aada6; transition:transform .15s;
+  }
+  .jsnote-item.open .jsnote-chevron{transform:rotate(90deg); color:var(--teal);}
+  .jsnote-lang-tag{
+    flex-shrink:0; font-family:'JetBrains Mono', monospace; font-size:9px; font-weight:700; letter-spacing:.02em;
+    color:var(--amber); background:#f4e9d8; border-radius:5px; padding:2.5px 5px; line-height:1;
+  }
+  .jsnote-row-main{flex:1; min-width:0;}
+  .jsnote-title-input{
+    width:100%; border:1px solid transparent; border-radius:6px; padding:2px 5px; margin:-2px -5px;
+    font-size:12.5px; font-weight:600; color:var(--ink); background:transparent; font-family:inherit;
+  }
+  .jsnote-title-input:hover{border-color:var(--line);}
+  .jsnote-title-input:focus{border-color:var(--teal); background:var(--card); outline:none;}
+  .jsnote-meta{font-size:10px; color:var(--ink-soft); margin-top:1px; padding-left:5px; font-family:'JetBrains Mono', monospace;}
+  .jsnote-row-actions{display:flex; align-items:center; gap:0px; flex-shrink:0;}
+  .jsnote-save-dot{
+    width:6px; height:6px; border-radius:50%; background:var(--klop); margin-right:6px; flex-shrink:0;
+    opacity:0; transition:opacity .2s;
+  }
+  .jsnote-save-dot.show{opacity:1;}
+  .jsnote-icon-btn{
+    width:26px; height:26px; border-radius:7px; border:none; background:transparent; color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .jsnote-icon-btn:hover{background:#d7ece2; color:var(--teal);}
+  .jsnote-icon-btn.copied{color:var(--klop);}
+  .jsnote-icon-btn.del-icon:hover{background:var(--minus-bg); color:var(--minus);}
+  .jsnote-icon-btn svg{width:14px; height:14px;}
+  .jsnote-body{max-height:0; overflow:hidden; transition:max-height .18s ease; background:#1c2b29;}
+  .jsnote-item.open .jsnote-body{max-height:280px;}
+  .jsnote-editor-bar{
+    display:flex; align-items:center; justify-content:space-between; padding:5px 10px;
+    background:#16211f; border-top:1px solid #2a3d3a;
+  }
+  .jsnote-editor-bar span{font-family:'JetBrains Mono', monospace; font-size:9.5px; color:#7fa89c; letter-spacing:.03em;}
+  .jsnote-code{
+    display:block; width:100%; height:210px; resize:none; border:none; box-sizing:border-box;
+    padding:10px 12px; font-family:'JetBrains Mono', monospace; font-size:12px; line-height:1.6;
+    color:#d8ece5; background:#1c2b29; white-space:pre; overflow:auto; tab-size:2;
+  }
+  .jsnote-code::placeholder{color:#4f6a64;}
+  .jsnote-code:focus{outline:none;}
+  .jsnote-count-badge{
+    font-size:10.5px; font-weight:700; color:var(--ink-soft); background:var(--mint); border-radius:20px;
+    padding:2px 8px; margin-left:6px;
+  }
   .to-paste-stok-textarea{
     width:100%; min-height:150px; margin-top:12px; padding:10px 12px; border:1.5px solid var(--line);
     border-radius:10px; font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.6;
@@ -1426,6 +1496,7 @@
         <a class="link-btn" href="https://rekapsetoranrafa.vercel.app/" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;">Rekap Setoran</a>
         <button type="button" class="link-btn" onclick="toOpenHistoryModal()">Riwayat</button>
         <button type="button" class="link-btn" onclick="openCashierPopup()">Browser</button>
+        <button type="button" class="link-btn" onclick="openJsNotesModal()">Catatan JS</button>
         <button type="button" class="link-btn to-mast-reset" onclick="toResetSession()">Reset data</button>
       </div>
       <button type="button" class="takeover-close-btn" onclick="closeTakeover()" title="Tutup">✕</button>
@@ -1646,6 +1717,24 @@
       <button class="to-history-close" onclick="toCloseHistoryModal()">✕</button>
     </div>
     <div class="to-history-modal-body" id="toHistoryListBody"></div>
+  </div>
+</div>
+
+<div class="to-history-overlay" id="jsNotesOverlay" style="z-index:100022;" onclick="if(event.target===this) closeJsNotesModal()">
+  <div class="to-history-modal">
+    <div class="to-history-modal-head">
+      <h3>Catatan Kode JS<span class="jsnote-count-badge" id="jsNotesCountBadge">0</span></h3>
+      <button class="to-history-close" onclick="closeJsNotesModal()">✕</button>
+    </div>
+    <div class="to-history-modal-body">
+      <div class="jsnote-toolbar">
+        <input type="text" class="jsnote-search" id="jsNotesSearchInput" placeholder="Cari nama catatan..." oninput="renderJsNotesList()">
+        <button type="button" class="jsnote-add-btn" title="Tambah catatan baru" onclick="addJsNote()">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="jsNotesListBody"></div>
+    </div>
   </div>
 </div>
 
@@ -2203,6 +2292,7 @@ let toIdCounter = 0;
 let toHideToko = { t1:false, t2:false };
 let toEditingFromId = null;
 let toShowOnlyUnchecked = false;
+let toJsNotes = [];  // catatan kode JS milik petugas yang sedang diambil alih (toSlug), lihat toCollectState()/toApplyState()
 const TO_TOKO_LIST = ['Rafa 1', 'Rafa 2'];
 
 function toOpenTokoModal(e){
@@ -3376,7 +3466,8 @@ function toCollectState(){
     rows: toRows,
     idCounter: toIdCounter,
     hideToko: toHideToko,
-    editingFromId: toEditingFromId
+    editingFromId: toEditingFromId,
+    jsNotes: toJsNotes
   };
 }
 
@@ -3394,6 +3485,12 @@ function toApplyState(state, fallbackNama){
   document.getElementById('toMetaPetugas').value = meta.petugas || fallbackNama || '';
   toHideToko = (state && state.hideToko) || { t1:false, t2:false };
   toEditingFromId = (state && state.editingFromId) || null;
+  // Catatan JS: terapkan versi terbaru dari sesi live petugas ini (bisa
+  // datang dari HP petugas atau dari jendela Ambil Alih ini sendiri di tab
+  // lain) supaya daftar catatan kode selalu sama di kedua sisi.
+  toJsNotes = (state && Array.isArray(state.jsNotes)) ? state.jsNotes : (toJsNotes || []);
+  const jsNotesOverlayEl = document.getElementById('jsNotesOverlay');
+  if(jsNotesOverlayEl && jsNotesOverlayEl.classList.contains('show')) renderJsNotesList();
   toRenderItems();
   toApplyingRemote = false;
 }
@@ -3428,6 +3525,9 @@ async function startTakeoverSession(nama, slug){
   toSlug = slug;
   toRows = []; toIdCounter = 0; toHideToko = { t1:false, t2:false }; toEditingFromId = null;
   toShowOnlyUnchecked = false;
+  toJsNotes = []; jsNotesOpenId = null;
+  const jsNotesOverlayReset = document.getElementById('jsNotesOverlay');
+  if(jsNotesOverlayReset) jsNotesOverlayReset.classList.remove('show');
   const searchBox = document.getElementById('toSearchBox'); if(searchBox) searchBox.value = '';
   const uncheckedBtn = document.getElementById('toUncheckedBtn'); if(uncheckedBtn) uncheckedBtn.classList.remove('active');
   const filterSel = document.getElementById('toStatusFilter'); if(filterSel) filterSel.value = 'all';
@@ -3484,6 +3584,10 @@ function stopTakeoverSession(){
   toSlug = '';
   toRows = [];
   toIdCounter = 0;
+  toJsNotes = [];
+  jsNotesOpenId = null;
+  const jsNotesOverlayEl = document.getElementById('jsNotesOverlay');
+  if(jsNotesOverlayEl) jsNotesOverlayEl.classList.remove('show');
 }
 
 // Tombol "Reset data" di header Ambil Alih — mengosongkan sesi petugas yang
@@ -3674,6 +3778,197 @@ async function toOpenHistoryModal(){
 
 function toCloseHistoryModal(){
   document.getElementById('toHistoryOverlay').classList.remove('show');
+}
+
+// ======================================================
+// Catatan Kode JS (Panel Admin, dalam jendela "Ambil Alih").
+// DISINKRONKAN lewat sesi live per-petugas yang sama dipakai
+// untuk data barang (tabel stok_opname_petugas_session, field
+// state.jsNotes -- lihat toCollectState()/toApplyState()),
+// BUKAN localStorage lokal admin lagi. Jadi daftar catatan
+// kode di sini selalu sama dengan yang tampil di HP petugas
+// yang sedang diambil alih, dan perubahan di kedua sisi
+// langsung tersinkron dua arah secara live.
+// ======================================================
+let jsNotesOpenId = null;      // id catatan yang sedang terbuka (hanya satu sekaligus, biar rapi)
+const jsNotesSaveTimers = {};  // debounce timer per catatan
+
+const ICO_CHEVRON = '<svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICO_COPY = '<svg viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.8"/></svg>';
+const ICO_CHECK = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICO_TRASH = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function getJsNotes(){
+  return Array.isArray(toJsNotes) ? toJsNotes : [];
+}
+
+// immediate=true untuk perubahan struktural (tambah/ubah nama/hapus catatan)
+// supaya langsung terkirim; default (debounced) dipakai saat mengetik kode
+// supaya tidak mengirim di setiap ketukan huruf.
+function saveJsNotes(list, immediate){
+  toJsNotes = Array.isArray(list) ? list : [];
+  toScheduleSave(immediate);
+}
+
+function openJsNotesModal(){
+  if(!toSlug){ alert('Buka dulu sesi Ambil Alih untuk salah satu petugas.'); return; }
+  document.getElementById('jsNotesOverlay').classList.add('show');
+  document.getElementById('jsNotesSearchInput').value = '';
+  renderJsNotesList();
+}
+
+function closeJsNotesModal(){
+  document.getElementById('jsNotesOverlay').classList.remove('show');
+}
+
+function jsNoteCodeStats(code){
+  const lines = code ? code.split('\n').length : 0;
+  const chars = code ? code.length : 0;
+  if(!code) return 'kosong';
+  return lines + ' baris, ' + chars + ' char';
+}
+
+function renderJsNotesList(){
+  const body = document.getElementById('jsNotesListBody');
+  const badge = document.getElementById('jsNotesCountBadge');
+  const q = (document.getElementById('jsNotesSearchInput').value || '').trim().toLowerCase();
+  const allNotes = getJsNotes();
+  badge.textContent = allNotes.length;
+
+  const notes = q ? allNotes.filter(function(n){ return (n.title || '').toLowerCase().includes(q); }) : allNotes;
+
+  if(!allNotes.length){
+    body.innerHTML = '<div class="to-hist-empty">Belum ada catatan kode.<br>Tekan tombol + di atas untuk membuat catatan baru.</div>';
+    return;
+  }
+  if(!notes.length){
+    body.innerHTML = '<div class="to-hist-empty">Tidak ada catatan dengan nama itu.</div>';
+    return;
+  }
+
+  const rows = notes.map(function(note){
+    const isOpen = note.id === jsNotesOpenId;
+    return `
+      <div class="jsnote-item ${isOpen ? 'open' : ''}" id="jsnote-${note.id}">
+        <div class="jsnote-row" onclick="toggleJsNote(${note.id}, event)">
+          <span class="jsnote-chevron">${ICO_CHEVRON}</span>
+          <span class="jsnote-lang-tag">JS</span>
+          <div class="jsnote-row-main">
+            <input type="text" class="jsnote-title-input" value="${escapeHtml(note.title)}"
+                   onclick="event.stopPropagation()"
+                   onchange="renameJsNote(${note.id}, this.value)" placeholder="Nama Javascript">
+            <div class="jsnote-meta" id="jsnote-stats-${note.id}">${jsNoteCodeStats(note.code)}</div>
+          </div>
+          <div class="jsnote-row-actions">
+            <span class="jsnote-save-dot" id="jsnote-saved-${note.id}" title="Tersimpan"></span>
+            <button type="button" class="jsnote-icon-btn" id="jsnote-copybtn-${note.id}" title="Salin kode" onclick="event.stopPropagation(); copyJsNote(${note.id})">${ICO_COPY}</button>
+            <button type="button" class="jsnote-icon-btn del-icon" title="Hapus" onclick="event.stopPropagation(); deleteJsNote(${note.id})">${ICO_TRASH}</button>
+          </div>
+        </div>
+        <div class="jsnote-body">
+          <div class="jsnote-editor-bar"><span>${escapeHtml(note.title || 'javascript')}.js</span><span>UTF-8</span></div>
+          <textarea class="jsnote-code" id="jsnote-code-${note.id}" spellcheck="false"
+                    oninput="updateJsNoteCode(${note.id}, this.value)"
+                    placeholder="Tempel atau tulis kode JavaScript di sini...">${escapeHtml(note.code)}</textarea>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  body.innerHTML = '<div class="jsnote-list">' + rows + '</div>';
+}
+
+function toggleJsNote(id, evt){
+  if(evt && evt.target && evt.target.closest('.jsnote-title-input')) return;
+  jsNotesOpenId = (jsNotesOpenId === id) ? null : id;
+  renderJsNotesList();
+  if(jsNotesOpenId === id){
+    setTimeout(function(){
+      const el = document.getElementById('jsnote-code-' + id);
+      if(el) el.focus();
+    }, 60);
+  }
+}
+
+function addJsNote(){
+  const notes = getJsNotes();
+  const nextIndex = notes.length + 1;
+  const newNote = { id: Date.now(), title: 'Javascript ' + nextIndex, code: '' };
+  notes.unshift(newNote);
+  saveJsNotes(notes, true);
+  jsNotesOpenId = newNote.id;
+  document.getElementById('jsNotesSearchInput').value = '';
+  renderJsNotesList();
+  setTimeout(function(){
+    const el = document.getElementById('jsnote-code-' + newNote.id);
+    if(el) el.focus();
+  }, 60);
+}
+
+function renameJsNote(id, newTitle){
+  const notes = getJsNotes();
+  const note = notes.find(function(n){ return n.id === id; });
+  if(note){ note.title = newTitle || 'Tanpa nama'; saveJsNotes(notes, true); flashJsNoteSaved(id); }
+}
+
+// Autosave: nyimpen ke localStorage dengan jeda singkat biar nggak nyimpen
+// di setiap ketukan huruf, tapi kelihatan "hidup" (titik hijau berkedip).
+function updateJsNoteCode(id, newCode){
+  clearTimeout(jsNotesSaveTimers[id]);
+  jsNotesSaveTimers[id] = setTimeout(function(){
+    const notes = getJsNotes();
+    const note = notes.find(function(n){ return n.id === id; });
+    if(note){
+      note.code = newCode;
+      saveJsNotes(notes);
+      const statsEl = document.getElementById('jsnote-stats-' + id);
+      if(statsEl) statsEl.textContent = jsNoteCodeStats(newCode);
+      flashJsNoteSaved(id);
+    }
+  }, 400);
+}
+
+function flashJsNoteSaved(id){
+  const dot = document.getElementById('jsnote-saved-' + id);
+  if(!dot) return;
+  dot.classList.add('show');
+  clearTimeout(dot._hideTimer);
+  dot._hideTimer = setTimeout(function(){ dot.classList.remove('show'); }, 1400);
+}
+
+function deleteJsNote(id){
+  if(!confirm('Hapus catatan kode ini?')) return;
+  let notes = getJsNotes();
+  notes = notes.filter(function(n){ return n.id !== id; });
+  saveJsNotes(notes, true);
+  if(jsNotesOpenId === id) jsNotesOpenId = null;
+  renderJsNotesList();
+}
+
+function copyJsNote(id){
+  const notes = getJsNotes();
+  const note = notes.find(function(n){ return n.id === id; });
+  if(!note) return;
+  const finish = function(ok){
+    const btn = document.getElementById('jsnote-copybtn-' + id);
+    if(btn){
+      btn.innerHTML = ok ? ICO_CHECK : ICO_COPY;
+      btn.classList.toggle('copied', ok);
+      setTimeout(function(){ btn.innerHTML = ICO_COPY; btn.classList.remove('copied'); }, 1400);
+    }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(note.code).then(function(){ finish(true); }).catch(function(){ finish(false); });
+  } else {
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = note.code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      finish(true);
+    }catch(e){ finish(false); }
+  }
 }
 
 function toLoadHistoryEntry(id){
