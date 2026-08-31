@@ -146,6 +146,15 @@
     created_at timestamptz not null default now()
   );
 
+  -- Kolom password (disimpan sebagai hash SHA-256, BUKAN teks polos) untuk
+  -- fitur login petugas: nama yang sudah ada di daftar cukup mengisi
+  -- password (kalau kolom ini masih kosong, artinya petugas itu belum pernah
+  -- membuat password -> HP-nya akan diminta membuat password baru saat login
+  -- pertama kali; kalau sudah terisi, HP diminta memasukkan password yang
+  -- cocok). Nama baru yang belum ada di daftar wajib mengisi nama + password
+  -- sekaligus. Kalau baris ini error "column already exists", abaikan saja:
+  alter table public.stok_opname_petugas add column if not exists password_hash text;
+
   alter table public.stok_opname_petugas enable row level security;
 
   -- REPLICA IDENTITY FULL supaya event UPDATE dari tabel ini menyertakan nilai
@@ -1122,16 +1131,24 @@
   .to-confirm-btn-cancel:hover{background:var(--mint);}
 
   .petugas-item{
-    display:flex; align-items:center; gap:10px; border:1.5px solid var(--line); border-radius:12px;
-    padding:9px 14px; margin-bottom:8px; background:var(--card);
+    display:flex; flex-direction:column; gap:8px; border:1.5px solid var(--line); border-radius:12px;
+    padding:10px 14px; margin-bottom:8px; background:var(--card);
   }
   .petugas-item:last-child{margin-bottom:0;}
+  .petugas-item-top{display:flex; align-items:center; gap:10px; min-width:0;}
   .petugas-item-avatar{
     width:30px; height:30px; border-radius:50%; background:var(--teal); color:#fff; flex-shrink:0;
     display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12.5px;
   }
-  .petugas-item-name{font-weight:700; font-size:13px; color:var(--ink); flex:1; min-width:0; word-break:break-word;}
-  .petugas-item-actions{display:flex; gap:12px; flex-shrink:0;}
+  .petugas-item-name{font-weight:700; font-size:13px; color:var(--ink); word-break:break-word;}
+  .petugas-item-name-btn{min-width:0; flex:1;}
+  .petugas-item-actions{
+    display:flex; gap:10px 14px; flex-wrap:wrap; align-items:center;
+    padding-left:40px; /* sejajar dengan nama di atas (lebar avatar + gap) */
+  }
+  .petugas-pw-status{font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px; flex-shrink:0; white-space:nowrap;}
+  .petugas-pw-status.set{background:var(--klop-bg,#e9f6ee); color:var(--klop,#3c8a5c);}
+  .petugas-pw-status.unset{background:#fbf1e0; color:var(--amber,#b8863b);}
 </style>
 </head>
 <body>
@@ -1219,7 +1236,11 @@
       terakhir tetap dimuat; perubahan dari admin otomatis diterapkan ke HP petugas begitu online lagi).
       <b>Ubah</b> mengganti nama di daftar pilihan untuk semua HP (laporan yang sudah tersimpan sebelumnya
       tidak ikut berubah). <b>Hapus</b> membuang nama dari daftar pilihan saja — tidak menghapus laporan
-      mana pun.
+      mana pun.<br><br>
+      Setiap nama sekarang punya <b>password</b> — petugas mengisi/membuat sendiri passwordnya saat login
+      pertama kali di halaman Stok Opname. Badge <b>"Belum ada password"</b> berarti petugas itu belum
+      pernah login lagi setelah fitur ini aktif. Tombol <b>Atur/Reset Password</b> dipakai kalau petugas
+      lupa passwordnya — masukkan password baru di sini, langsung bisa dipakai login lagi.
     </div>
 
     <div style="margin-top:16px; padding-top:14px; border-top:1px dashed rgba(10,69,62,0.18);">
@@ -2201,15 +2222,20 @@ function renderPetugasAdminList(){
     const nama = escapeHtml(namaRaw);
     const inisial = (row.nama || '?').trim().charAt(0).toUpperCase();
     const online = isPetugasOnline(namaRaw);
+    const hasPw = !!row.password_hash;
     return `
       <div class="petugas-item">
-        <div class="petugas-item-avatar">${escapeHtml(inisial)}</div>
-        <button type="button" class="petugas-item-name-btn" onclick="openTakeover('${namaRaw.replace(/'/g, "\\'")}')" title="Buka & ambil alih layar stok opname petugas ini">
-          <span class="petugas-online-dot ${online ? 'on' : ''}"></span>
-          <span class="petugas-item-name">${nama}</span>
-          <span class="petugas-online-label">${online ? 'Online' : 'Offline'}</span>
-        </button>
+        <div class="petugas-item-top">
+          <div class="petugas-item-avatar">${escapeHtml(inisial)}</div>
+          <button type="button" class="petugas-item-name-btn" onclick="openTakeover('${namaRaw.replace(/'/g, "\\'")}')" title="Buka & ambil alih layar stok opname petugas ini">
+            <span class="petugas-online-dot ${online ? 'on' : ''}"></span>
+            <span class="petugas-item-name">${nama}</span>
+            <span class="petugas-online-label">${online ? 'Online' : 'Offline'}</span>
+          </button>
+        </div>
         <div class="petugas-item-actions">
+          <span class="petugas-pw-status ${hasPw ? 'set' : 'unset'}" title="${hasPw ? 'Password sudah diatur oleh petugas ini' : 'Petugas ini belum membuat password — akan diminta membuat sendiri saat login pertama kali'}">${hasPw ? 'Ada password' : 'Belum ada password'}</span>
+          <button type="button" class="link-btn" data-petugas-action="resetpw" data-petugas-id="${row.id}">${hasPw ? 'Reset' : 'Atur'} Password</button>
           <button type="button" class="link-btn" data-petugas-action="edit" data-petugas-id="${row.id}">Ubah</button>
           <button type="button" class="link-btn link-btn-danger" data-petugas-action="delete" data-petugas-id="${row.id}">Hapus</button>
         </div>
@@ -4013,7 +4039,48 @@ document.addEventListener('click', evt => {
   const action = btn.dataset.petugasAction;
   if(action === 'edit') adminEditPetugas(id);
   else if(action === 'delete') adminDeletePetugas(id);
+  else if(action === 'resetpw') adminResetPetugasPassword(id);
 });
+
+// Hash SHA-256 yang SAMA persis dengan yang dipakai di stok_opname.html
+// (fungsi hashPetugasPassword di sana) supaya password yang diatur/di-reset
+// dari sini bisa langsung dipakai login di HP petugas.
+async function hashPetugasPasswordAdmin(pw){
+  const enc = new TextEncoder().encode(pw || '');
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function adminResetPetugasPassword(id){
+  if(!sb) return;
+  const row = petugasRows.find(r => r.id === id);
+  if(!row) return;
+  const hadPw = !!row.password_hash;
+  const pw = prompt((hadPw ? 'Reset' : 'Atur') + ' password untuk "' + (row.nama || '') + '" (minimal 4 karakter).\nPetugas akan langsung bisa login pakai password baru ini:');
+  if(pw === null) return;
+  const trimmed = pw.trim();
+  if(trimmed.length < 4){
+    alert('Password minimal 4 karakter.');
+    return;
+  }
+  const confirmPw = prompt('Ulangi password untuk konfirmasi:');
+  if(confirmPw === null) return;
+  if(confirmPw.trim() !== trimmed){
+    alert('Konfirmasi password tidak cocok. Coba lagi.');
+    return;
+  }
+  try{
+    const hash = await hashPetugasPasswordAdmin(trimmed);
+    const { error } = await sb.from(PETUGAS_TABLE).update({ password_hash: hash }).eq('id', id);
+    if(error) throw error;
+    row.password_hash = hash;
+    renderPetugasAdminList();
+    alert('Password untuk "' + (row.nama || '') + '" berhasil ' + (hadPw ? 'direset' : 'diatur') + '.');
+  } catch(err){
+    console.error('Gagal mengatur password petugas:', err);
+    alert('Gagal menyimpan password. Cek koneksi internet lalu coba lagi.');
+  }
+}
 
 async function adminAddPetugas(){
   const input = document.getElementById('petugasAddInput');
