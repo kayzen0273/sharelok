@@ -214,6 +214,67 @@
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
+        /* ===== Modal Foto (muncul saat foto yang melayang di galaksi diklik) ===== */
+        #gl-modal-foto {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 35;
+            cursor: pointer;
+        }
+        #gl-modal-foto.visible { display: flex; }
+        #gl-modal-foto .polaroid {
+            width: min(78vw, 320px);
+            background: linear-gradient(160deg, #fff8fb 0%, #ffe9f4 100%);
+            border: 3px solid #ffc7e4;
+            border-radius: 16px;
+            padding: 14px 14px 22px;
+            box-shadow: 0 14px 40px rgba(255, 20, 147, 0.45);
+            position: relative;
+            text-align: center;
+            cursor: default;
+            animation: fotoAparece 0.28s ease-out;
+        }
+        #gl-modal-foto .polaroid img {
+            width: 100%;
+            max-height: 60vh;
+            object-fit: contain;
+            border-radius: 8px;
+            border: 2px solid #ffd7ef;
+            background: #fff0f7;
+            display: block;
+        }
+        #gl-modal-foto .polaroid p {
+            margin: 10px 0 0;
+            font-family: 'Georgia', serif;
+            color: #b01867;
+            font-size: 0.95rem;
+            text-shadow: 0 0 8px rgba(255, 70, 150, 0.2);
+        }
+        #gl-cerrar-foto {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            border: none;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            background: #ff4da6;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(255, 20, 147, 0.4);
+        }
+        @keyframes fotoAparece {
+            from { opacity: 0; transform: scale(0.85) rotate(-3deg); }
+            to { opacity: 1; transform: scale(1) rotate(-1.5deg); }
+        }
+
         /* ===== Pop-up "Milik Selamanya" (muncul dengan gestur jari kelingking, tutup HANYA lewat tombol) ===== */
         #gl-modal-proposal {
             position: fixed;
@@ -993,86 +1054,6 @@
             font-family: Arial, sans-serif;
             text-decoration: none;
         }
-
-        /* ===== Modal "Bingkai Foto Lucu" - muncul saat foto yang melayang di klik ===== */
-        #gl-modal-photo {
-            position: fixed;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: rgba(20, 0, 15, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 110;
-            padding: 24px;
-            box-sizing: border-box;
-        }
-        #gl-modal-photo.visible { display: flex; }
-        #gl-photo-frame {
-            position: relative;
-            width: min(80vw, 380px);
-            background: #fffdfc;
-            border-radius: 18px;
-            padding: 14px 14px 22px;
-            box-shadow: 0 16px 44px rgba(255, 20, 147, 0.5);
-            border: 3px solid #ffb3d9;
-            animation: cartaAparece 0.3s ease-out;
-        }
-        #gl-photo-frame::before {
-            content: '';
-            position: absolute;
-            inset: 6px;
-            border: 2px dashed #ffd7ef;
-            border-radius: 12px;
-            pointer-events: none;
-        }
-        #gl-photo-frame .corner-deco {
-            position: absolute;
-            font-size: 1.4rem;
-            pointer-events: none;
-            filter: drop-shadow(0 2px 4px rgba(255, 20, 147, 0.35));
-        }
-        #gl-photo-frame .corner-tl { top: -14px; left: -12px; }
-        #gl-photo-frame .corner-tr { top: -14px; right: -12px; transform: scaleX(-1); }
-        #gl-photo-frame .corner-bl { bottom: 4px; left: -12px; }
-        #gl-photo-frame .corner-br { bottom: 4px; right: -12px; transform: scaleX(-1); }
-        #gl-photo-img-wrap {
-            width: 100%;
-            border-radius: 10px;
-            overflow: hidden;
-            background: #ffeef6;
-        }
-        #gl-photo-img {
-            display: block;
-            width: 100%;
-            max-height: 62vh;
-            object-fit: contain;
-            background: #ffeef6;
-        }
-        #gl-photo-caption {
-            margin: 12px 4px 0;
-            text-align: center;
-            font-family: 'Georgia', serif;
-            font-size: 0.95rem;
-            color: #b01867;
-            text-shadow: 0 0 6px rgba(255, 70, 150, 0.15);
-        }
-        #gl-photo-close {
-            position: absolute;
-            top: -16px;
-            right: -16px;
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            border: none;
-            background: #ff4da6;
-            color: #fff;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(255, 20, 147, 0.5);
-            line-height: 1;
-        }
     </style>
 </head>
 <body>
@@ -1128,6 +1109,15 @@
                 <h3>Untukmu daftar penting</h3>
                 <p id="gl-mensaje-romantico"></p>
                 <button id="gl-cerrar-carta">Tutup</button>
+            </div>
+        </div>
+
+        <!-- ===== Modal Foto - muncul saat foto yang melayang di galaksi diklik ===== -->
+        <div id="gl-modal-foto">
+            <div class="polaroid">
+                <button id="gl-cerrar-foto" title="Tutup">✕</button>
+                <img id="gl-foto-besar" src="" alt="Kenangan kita">
+                <p>📸 salah satu momen kita</p>
             </div>
         </div>
 
@@ -1266,21 +1256,6 @@
                     <button class="gl-rules-btn ghost small" id="gl-rules-reset-btn" type="button">Kosongkan papan</button>
                     <button class="gl-rules-btn small" id="gl-rules-done-btn" type="button">✓ Selesai</button>
                 </div>
-            </div>
-        </div>
-
-        <!-- ===== Modal "Bingkai Foto Lucu" - muncul saat foto yang melayang di galaksi diklik ===== -->
-        <div id="gl-modal-photo">
-            <div id="gl-photo-frame">
-                <span class="corner-deco corner-tl">💗</span>
-                <span class="corner-deco corner-tr">💗</span>
-                <span class="corner-deco corner-bl">✨</span>
-                <span class="corner-deco corner-br">✨</span>
-                <button id="gl-photo-close" title="Tutup">✕</button>
-                <div id="gl-photo-img-wrap">
-                    <img id="gl-photo-img" src="" alt="Foto kenangan">
-                </div>
-                <p id="gl-photo-caption">Tekan foto lain buat lihat kenangan lainnya 💕</p>
             </div>
         </div>
 
@@ -2141,26 +2116,12 @@
         const modalCarta = document.getElementById('gl-modal-carta');
         const mensajeRomantico = document.getElementById('gl-mensaje-romantico');
         const cerrarCarta = document.getElementById('gl-cerrar-carta');
+        const modalFoto = document.getElementById('gl-modal-foto');
+        const fotoBesar = document.getElementById('gl-foto-besar');
+        const cerrarFoto = document.getElementById('gl-cerrar-foto');
         const closeBtn = document.getElementById('gl-close-btn');
         const pageCloseBtn = document.getElementById('gl-page-close-btn');
         const musica = document.getElementById('gl-musica-fondo');
-
-        // ===== Modal "Bingkai Foto Lucu" =====
-        const photoModal = document.getElementById('gl-modal-photo');
-        const photoImg = document.getElementById('gl-photo-img');
-        const photoCloseBtn = document.getElementById('gl-photo-close');
-
-        function openPhotoModal(url) {
-            photoImg.src = url;
-            photoModal.classList.add('visible');
-        }
-        function closePhotoModal() {
-            photoModal.classList.remove('visible');
-        }
-        photoCloseBtn.addEventListener('click', closePhotoModal);
-        photoModal.addEventListener('click', (event) => {
-            if (event.target === photoModal) closePhotoModal();
-        });
 
         // ===== Modal "Menu Pilihan" (muncul pertama saat Lanjut diklik) =====
         const menuModal = document.getElementById('gl-modal-menu');
@@ -3027,6 +2988,11 @@
             modalCarta.classList.add('visible');
         }
 
+        function mostrarFoto(url) {
+            fotoBesar.src = url;
+            modalFoto.classList.add('visible');
+        }
+
         function init() {
             glScene = new THREE.Scene();
             crearEstrellasFondo();
@@ -3056,21 +3022,22 @@
                 if (event.target === modalCarta) modalCarta.classList.remove('visible');
             });
 
+            cerrarFoto.addEventListener('click', () => modalFoto.classList.remove('visible'));
+            modalFoto.addEventListener('click', (event) => {
+                if (event.target === modalFoto) modalFoto.classList.remove('visible');
+            });
+
             canvasEl.addEventListener('pointerdown', (event) => {
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
                 raycaster.setFromCamera(mouse, glCamera);
 
-                // Cek dulu kalau yang diklik adalah salah satu foto yang melayang
-                if (fotoSprites.length > 0) {
-                    const hitsFoto = raycaster.intersectObjects(fotoSprites, false);
-                    if (hitsFoto.length > 0) {
-                        const url = hitsFoto[0].object.userData.photoUrl;
-                        if (url) {
-                            openPhotoModal(url);
-                            return;
-                        }
-                    }
+                // Cek dulu apakah foto yang melayang di galaksi diklik
+                const impactosFoto = raycaster.intersectObjects(fotoSprites, false);
+                if (impactosFoto.length > 0) {
+                    const sprite = impactosFoto[0].object;
+                    mostrarFoto(sprite.userData.photoUrl);
+                    return;
                 }
 
                 if (!heartModel) return;
@@ -3160,7 +3127,7 @@
                 closeNicknameModal();
                 closeDateModal();
                 closeRulesModal();
-                closePhotoModal();
+                modalFoto.classList.remove('visible');
                 if (typeof resumeCamera === 'function') resumeCamera(); // nyalakan lagi kamera saat kembali ke mode gestur utama
             }
         };
