@@ -649,6 +649,28 @@
 
   /* ====== Editor Ambil Alih (langsung ke Supabase, tanpa iframe) ====== */
   .to-wrap{padding:14px; overflow-x:hidden;}
+  .to-sesi-tabs{
+    display:flex; align-items:center; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    margin-bottom:12px; padding-bottom:2px; scrollbar-width:none;
+  }
+  .to-sesi-tabs::-webkit-scrollbar{display:none;}
+  .to-sesi-tab{
+    display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
+    padding:8px 12px; border-radius:10px; border:1.5px solid var(--line); background:var(--card);
+    font-family:inherit; font-size:12.5px; font-weight:700; color:var(--ink-soft);
+    cursor:pointer; white-space:nowrap;
+  }
+  .to-sesi-tab.active{background:var(--teal); border-color:var(--teal); color:#fff;}
+  .to-sesi-tab-del{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:16px; height:16px; border-radius:50%; font-size:12px; line-height:1; font-weight:700;
+    background:rgba(0,0,0,0.08); color:inherit; margin-left:2px;
+  }
+  .to-sesi-tab.active .to-sesi-tab-del{background:rgba(255,255,255,0.22);}
+  .to-sesi-tab-add{
+    width:34px; height:34px; padding:0; justify-content:center; font-size:17px;
+    color:var(--teal); border-style:dashed;
+  }
   .to-meta-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;}
   .to-field{display:flex; flex-direction:column; gap:4px; min-width:0;}
   .to-field label{font-size:10.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.02em;}
@@ -710,6 +732,22 @@
   }
   .to-unchecked-btn.active{background:var(--mint); border-color:var(--teal); color:var(--teal-deep);}
   .to-status-line{font-size:11px; color:var(--ink-soft); margin-bottom:8px; display:flex; align-items:center; gap:6px;}
+  .to-undo-bar{
+    display:flex; align-items:center; gap:10px; justify-content:space-between;
+    background:#fbf3e6; border:1px solid #e6cfa0; color:#8a6420;
+    border-radius:10px; padding:8px 10px; margin-bottom:10px; font-size:12px; font-weight:600;
+  }
+  .to-undo-bar-text{flex:1; min-width:0;}
+  .to-undo-bar-actions{display:flex; align-items:center; gap:6px; flex-shrink:0;}
+  .to-undo-bar-btn{
+    background:var(--teal); color:#fff; border:none; border-radius:7px; padding:6px 10px;
+    font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap;
+  }
+  .to-undo-bar-btn:hover{background:var(--teal-deep);}
+  .to-undo-bar-dismiss{
+    background:none; border:none; color:#8a6420; font-size:14px; font-weight:700;
+    cursor:pointer; padding:2px 4px; line-height:1;
+  }
   .to-status-dot{width:7px; height:7px; border-radius:50%; background:#c7cdc9; flex-shrink:0;}
   .to-status-dot.on{background:var(--klop);}
   .to-status-dot.warn{background:var(--amber);}
@@ -1526,6 +1564,16 @@
       <div class="to-wrap">
         <div class="to-status-line"><span class="to-status-dot" id="toStatusDot"></span><span id="toStatusText">Memuat…</span></div>
 
+        <div class="to-undo-bar" id="toUndoBar" style="display:none;">
+          <span class="to-undo-bar-text" id="toUndoBarText">Data riwayat sudah dimuat ke sesi ini.</span>
+          <div class="to-undo-bar-actions">
+            <button type="button" class="to-undo-bar-btn" onclick="toUndoLoadHistory()">↺ Kembali ke sebelumnya</button>
+            <button type="button" class="to-undo-bar-dismiss" onclick="toDismissUndoBar()" title="Tutup">✕</button>
+          </div>
+        </div>
+
+        <div class="to-sesi-tabs" id="toSesiTabsWrap"></div>
+
         <div class="to-meta-grid">
           <div class="to-field to-field-dropdown"><label>Nama Toko</label>
             <input id="toMetaToko" placeholder="Pilih toko" readonly onclick="toOpenTokoModal(event)">
@@ -2317,9 +2365,130 @@ let toRows = [];
 let toIdCounter = 0;
 let toHideToko = { t1:false, t2:false };
 let toEditingFromId = null;
+let toUndoSnapshot = null;  // simpan kondisi sesi sebelum "Muat & edit" dari Riwayat, biar bisa dikembalikan
 let toShowOnlyUnchecked = false;
 let toJsNotes = [];  // catatan kode JS milik petugas yang sedang diambil alih (toSlug), lihat toCollectState()/toApplyState()
 const TO_TOKO_LIST = ['Rafa 1', 'Rafa 2'];
+
+// ====== Sesi Hitung Terpisah (samakan dengan stok_opname.html) ======
+// HP petugas bisa punya beberapa "Sesi" (tab) yang masing-masing punya
+// daftar barang, toko, tanggal, dan shift SENDIRI-SENDIRI. Supaya "Ambil
+// Alih" tidak cuma menampilkan/menimpa satu sesi (dan tidak menghapus sesi
+// lain saat menyimpan), jendela ini juga menyimpan semua sesi di `toSesiList`
+// dan tetap menjaga variabel lama (`toRows`, `toIdCounter`, dst) sebagai
+// cerminan sesi yang sedang aktif di jendela ini, supaya kode lama yang
+// sudah pakai variabel itu tidak perlu diubah satu-satu.
+let toSesiList = [ { id:1, nama:'Sesi 1', rows:[], idCounter:0, hideToko:{t1:false,t2:false}, editingFromId:null, toko:'', tgl:'', waktu:'siang' } ];
+let toActiveSesiId = 1;
+let toSesiIdCounter = 2;
+
+function toGetActiveSesiIndex(){
+  let idx = toSesiList.findIndex(s => s.id === toActiveSesiId);
+  if(idx === -1){ idx = 0; toActiveSesiId = toSesiList[0] ? toSesiList[0].id : 1; }
+  return idx;
+}
+
+function toSyncGlobalsIntoActiveSesi(){
+  const idx = toGetActiveSesiIndex();
+  if(!toSesiList[idx]) return;
+  toSesiList[idx].rows = toRows;
+  toSesiList[idx].idCounter = toIdCounter;
+  toSesiList[idx].hideToko = toHideToko;
+  toSesiList[idx].editingFromId = toEditingFromId;
+  const elToko = document.getElementById('toMetaToko');
+  const elTgl = document.getElementById('toMetaTgl');
+  const elWaktu = document.getElementById('toMetaWaktu');
+  if(elToko) toSesiList[idx].toko = elToko.value;
+  if(elTgl) toSesiList[idx].tgl = elTgl.value;
+  if(elWaktu) toSesiList[idx].waktu = elWaktu.value;
+}
+
+function toLoadActiveSesiIntoGlobals(){
+  const idx = toGetActiveSesiIndex();
+  const s = toSesiList[idx] || toSesiList[0] || { rows:[], idCounter:0, hideToko:{t1:false,t2:false}, editingFromId:null, toko:'', tgl:'', waktu:'siang' };
+  toRows = s.rows || [];
+  toIdCounter = s.idCounter || (toRows.length ? Math.max(...toRows.map(r => r.id)) + 1 : 0);
+  toHideToko = s.hideToko || { t1:false, t2:false };
+  toEditingFromId = s.editingFromId || null;
+  const elToko = document.getElementById('toMetaToko');
+  const elTgl = document.getElementById('toMetaTgl');
+  const elWaktu = document.getElementById('toMetaWaktu');
+  if(elToko) elToko.value = (s.toko !== undefined && s.toko !== null) ? s.toko : '';
+  if(elTgl) elTgl.value = s.tgl || todayISOAdmin();
+  if(elWaktu) elWaktu.value = s.waktu || 'siang';
+}
+
+function toResetViewStateForSesiSwitch(){
+  toShowOnlyUnchecked = false;
+  const uncheckedBtn = document.getElementById('toUncheckedBtn'); if(uncheckedBtn) uncheckedBtn.classList.remove('active');
+  const filterSel = document.getElementById('toStatusFilter'); if(filterSel) filterSel.value = 'all';
+  const searchBox = document.getElementById('toSearchBox'); if(searchBox) searchBox.value = '';
+}
+
+function toSwitchSesi(id){
+  if(id === toActiveSesiId) return;
+  toSyncGlobalsIntoActiveSesi();
+  toActiveSesiId = id;
+  toLoadActiveSesiIntoGlobals();
+  toResetViewStateForSesiSwitch();
+  toRenderSesiTabs();
+  toRenderItems();
+  toScheduleSave(true);
+}
+
+function toAddSesi(){
+  const suggested = 'Sesi ' + (toSesiList.length + 1);
+  const name = prompt('Nama sesi baru:', suggested);
+  if(name === null) return;
+  const nama = name.trim() || suggested;
+  toSyncGlobalsIntoActiveSesi();
+  const newId = toSesiIdCounter++;
+  toSesiList.push({ id:newId, nama, rows:[], idCounter:0, hideToko:{t1:false,t2:false}, editingFromId:null, toko:'', tgl:todayISOAdmin(), waktu:'siang' });
+  toActiveSesiId = newId;
+  toLoadActiveSesiIntoGlobals();
+  toResetViewStateForSesiSwitch();
+  toRenderSesiTabs();
+  toRenderItems();
+  toScheduleSave(true);
+}
+
+function toRenameSesi(id){
+  const s = toSesiList.find(x => x.id === id);
+  if(!s) return;
+  const name = prompt('Ganti nama sesi:', s.nama);
+  if(name === null) return;
+  s.nama = name.trim() || s.nama;
+  toRenderSesiTabs();
+  toScheduleSave(true);
+}
+
+function toDeleteSesi(id){
+  if(toSesiList.length <= 1){ alert('Minimal harus ada satu sesi.'); return; }
+  const s = toSesiList.find(x => x.id === id);
+  if(!s) return;
+  if(!confirm(`Hapus "${s.nama}"? Semua data barang di sesi ini akan hilang (di HP petugas juga).`)) return;
+  toSesiList = toSesiList.filter(x => x.id !== id);
+  if(toActiveSesiId === id){
+    toActiveSesiId = toSesiList[0].id;
+    toLoadActiveSesiIntoGlobals();
+    toResetViewStateForSesiSwitch();
+    toRenderItems();
+  }
+  toRenderSesiTabs();
+  toScheduleSave(true);
+}
+
+function toRenderSesiTabs(){
+  const wrap = document.getElementById('toSesiTabsWrap');
+  if(!wrap) return;
+  const tabsHtml = toSesiList.map(s => `
+    <button type="button" class="to-sesi-tab ${s.id === toActiveSesiId ? 'active' : ''}" onclick="toSwitchSesi(${s.id})" ondblclick="toRenameSesi(${s.id})" title="Klik dua kali untuk ganti nama">
+      ${escapeHtml(s.nama)}
+      ${toSesiList.length > 1 ? `<span class="to-sesi-tab-del" onclick="event.stopPropagation(); toDeleteSesi(${s.id})" title="Hapus sesi">&times;</span>` : ''}
+    </button>
+  `).join('');
+  wrap.innerHTML = tabsHtml + `<button type="button" class="to-sesi-tab to-sesi-tab-add" onclick="toAddSesi()" title="Tambah sesi">+</button>`;
+}
 
 function toOpenTokoModal(e){
   if(e) e.stopPropagation();
@@ -3482,6 +3651,7 @@ function toApplyPasteStokConfirm(){
 }
 
 function toCollectState(){
+  toSyncGlobalsIntoActiveSesi();
   return {
     meta: {
       toko: document.getElementById('toMetaToko').value,
@@ -3489,10 +3659,16 @@ function toCollectState(){
       tgl: document.getElementById('toMetaTgl').value,
       petugas: document.getElementById('toMetaPetugas').value
     },
+    // rows/idCounter/hideToko/editingFromId di sini adalah cerminan sesi yang
+    // sedang aktif di jendela Ambil Alih ini -- dipertahankan untuk
+    // kompatibilitas kode lama. Data lengkap semua sesi ada di sesiList,
+    // termasuk toko/tanggal/shift masing-masing sesi.
     rows: toRows,
     idCounter: toIdCounter,
     hideToko: toHideToko,
     editingFromId: toEditingFromId,
+    sesiList: toSesiList,
+    activeSesiId: toActiveSesiId,
     jsNotes: toJsNotes
   };
 }
@@ -3501,16 +3677,39 @@ function toCollectState(){
 // dari perubahan live yang dikirim HP petugas).
 function toApplyState(state, fallbackNama){
   toApplyingRemote = true;
-  const remoteRows = (state && state.rows) || [];
-  toRows = remoteRows;
-  toIdCounter = Math.max((state && state.idCounter) || 0, toRows.length ? Math.max(...toRows.map(r => r.id)) + 1 : 0, toIdCounter || 0);
-  const meta = (state && state.meta) || {};
-  document.getElementById('toMetaToko').value = meta.toko || '';
-  document.getElementById('toMetaWaktu').value = meta.waktu || 'siang';
-  document.getElementById('toMetaTgl').value = meta.tgl || todayISOAdmin();
-  document.getElementById('toMetaPetugas').value = meta.petugas || fallbackNama || '';
-  toHideToko = (state && state.hideToko) || { t1:false, t2:false };
-  toEditingFromId = (state && state.editingFromId) || null;
+  if(state && Array.isArray(state.sesiList) && state.sesiList.length){
+    // Format baru (multi-sesi): tampilkan semua sesi milik petugas ini,
+    // masing-masing dengan toko/tanggal/shift-nya sendiri.
+    toSesiList = state.sesiList.map(s => ({
+      id: s.id, nama: s.nama || 'Sesi', rows: s.rows || [],
+      idCounter: s.idCounter || 0, hideToko: s.hideToko || { t1:false, t2:false },
+      editingFromId: s.editingFromId || null,
+      toko: s.toko || '', tgl: s.tgl || '', waktu: s.waktu || 'siang'
+    }));
+    toActiveSesiId = (state.activeSesiId && toSesiList.some(s => s.id === state.activeSesiId)) ? state.activeSesiId : toSesiList[0].id;
+    toSesiIdCounter = Math.max(toSesiIdCounter, Math.max(0, ...toSesiList.map(s => s.id)) + 1);
+    toLoadActiveSesiIntoGlobals();
+    document.getElementById('toMetaPetugas').value = (state.meta && state.meta.petugas) || fallbackNama || '';
+  } else {
+    // Format lama (sebelum ada multi-sesi) -- jadikan "Sesi 1".
+    const remoteRows = (state && state.rows) || [];
+    toRows = remoteRows;
+    toIdCounter = Math.max((state && state.idCounter) || 0, toRows.length ? Math.max(...toRows.map(r => r.id)) + 1 : 0, toIdCounter || 0);
+    const meta = (state && state.meta) || {};
+    document.getElementById('toMetaToko').value = meta.toko || '';
+    document.getElementById('toMetaWaktu').value = meta.waktu || 'siang';
+    document.getElementById('toMetaTgl').value = meta.tgl || todayISOAdmin();
+    document.getElementById('toMetaPetugas').value = meta.petugas || fallbackNama || '';
+    toHideToko = (state && state.hideToko) || { t1:false, t2:false };
+    toEditingFromId = (state && state.editingFromId) || null;
+    const idx = toGetActiveSesiIndex();
+    toSesiList[idx] = {
+      id: toActiveSesiId, nama: toSesiList[idx] ? toSesiList[idx].nama : 'Sesi 1',
+      rows: toRows, idCounter: toIdCounter, hideToko: toHideToko, editingFromId: toEditingFromId,
+      toko: meta.toko || '', tgl: meta.tgl || '', waktu: meta.waktu || 'siang'
+    };
+  }
+  toRenderSesiTabs();
   // Catatan JS: terapkan versi terbaru dari sesi live petugas ini (bisa
   // datang dari HP petugas atau dari jendela Ambil Alih ini sendiri di tab
   // lain) supaya daftar catatan kode selalu sama di kedua sisi.
@@ -3549,7 +3748,11 @@ function toScheduleSave(immediate){
 
 async function startTakeoverSession(nama, slug){
   toSlug = slug;
-  toRows = []; toIdCounter = 0; toHideToko = { t1:false, t2:false }; toEditingFromId = null;
+  toSesiList = [ { id:1, nama:'Sesi 1', rows:[], idCounter:0, hideToko:{t1:false,t2:false}, editingFromId:null, toko:'', tgl:'', waktu:'siang' } ];
+  toActiveSesiId = 1;
+  toSesiIdCounter = 2;
+  toLoadActiveSesiIntoGlobals();
+  toUndoSnapshot = null; toHideUndoBar();
   toShowOnlyUnchecked = false;
   toJsNotes = []; jsNotesOpenId = null;
   const jsNotesOverlayReset = document.getElementById('jsNotesOverlay');
@@ -3557,10 +3760,8 @@ async function startTakeoverSession(nama, slug){
   const searchBox = document.getElementById('toSearchBox'); if(searchBox) searchBox.value = '';
   const uncheckedBtn = document.getElementById('toUncheckedBtn'); if(uncheckedBtn) uncheckedBtn.classList.remove('active');
   const filterSel = document.getElementById('toStatusFilter'); if(filterSel) filterSel.value = 'all';
-  document.getElementById('toMetaToko').value = '';
-  document.getElementById('toMetaWaktu').value = 'siang';
-  document.getElementById('toMetaTgl').value = todayISOAdmin();
   document.getElementById('toMetaPetugas').value = nama;
+  toRenderSesiTabs();
   toRenderItems();
   setTakeoverStatus('Memuat data petugas…');
 
@@ -3610,8 +3811,12 @@ function stopTakeoverSession(){
   toSlug = '';
   toRows = [];
   toIdCounter = 0;
+  toSesiList = [ { id:1, nama:'Sesi 1', rows:[], idCounter:0, hideToko:{t1:false,t2:false}, editingFromId:null, toko:'', tgl:'', waktu:'siang' } ];
+  toActiveSesiId = 1;
+  toSesiIdCounter = 2;
   toJsNotes = [];
   jsNotesOpenId = null;
+  toUndoSnapshot = null; toHideUndoBar();
   const jsNotesOverlayEl = document.getElementById('jsNotesOverlay');
   if(jsNotesOverlayEl) jsNotesOverlayEl.classList.remove('show');
 }
@@ -3622,23 +3827,22 @@ function stopTakeoverSession(){
 function toResetSession(){
   if(!toSlug){ alert('Belum ada sesi petugas yang terbuka.'); return; }
   const namaPetugas = document.getElementById('toMetaPetugas').value || 'petugas ini';
-  if(!confirm(`Hapus semua data sesi "${namaPetugas}" dan mulai dari kosong?\n\nData kosong ini juga akan tersinkron ke HP petugas tersebut.`)) return;
-  toRows = [];
-  toIdCounter = 0;
-  toHideToko = { t1:false, t2:false };
-  toEditingFromId = null;
+  if(!confirm(`Hapus SEMUA sesi milik "${namaPetugas}" (semua tab) dan mulai dari kosong?\n\nData kosong ini juga akan tersinkron ke HP petugas tersebut.`)) return;
+  toSesiList = [ { id:1, nama:'Sesi 1', rows:[], idCounter:0, hideToko:{t1:false,t2:false}, editingFromId:null, toko:'', tgl:'', waktu:'siang' } ];
+  toActiveSesiId = 1;
+  toSesiIdCounter = 2;
+  toLoadActiveSesiIntoGlobals();
+  toUndoSnapshot = null; toHideUndoBar();
   toShowOnlyUnchecked = false;
   const searchBox = document.getElementById('toSearchBox'); if(searchBox) searchBox.value = '';
   const uncheckedBtn = document.getElementById('toUncheckedBtn'); if(uncheckedBtn) uncheckedBtn.classList.remove('active');
   const filterSel = document.getElementById('toStatusFilter'); if(filterSel) filterSel.value = 'all';
-  document.getElementById('toMetaToko').value = '';
-  document.getElementById('toMetaWaktu').value = 'siang';
-  document.getElementById('toMetaTgl').value = todayISOAdmin();
   const preview = document.getElementById('toPreview');
   if(preview){
     preview.classList.add('empty');
     preview.textContent = 'Isi daftar barang di atas, lalu klik "Salin ke WhatsApp" untuk melihat hasilnya di sini.';
   }
+  toRenderSesiTabs();
   toRenderItems();
   toScheduleSave(true);
 }
@@ -4000,7 +4204,18 @@ function copyJsNote(id){
 function toLoadHistoryEntry(id){
   const entry = toHistoryList.find(h => h.id === id);
   if(!entry) return;
-  if(!confirm('Muat data riwayat ini ke tabel Ambil Alih untuk diedit? Isian yang sedang aktif di sesi ini akan ditimpa dan langsung tersinkron ke HP petugas.')) return;
+  if(!confirm('Muat data riwayat ini ke tabel Ambil Alih untuk diedit? Isian yang sedang aktif di sesi ini akan ditimpa dan langsung tersinkron ke HP petugas.\n\nTenang, kondisi sebelum ini masih bisa dikembalikan lewat tombol "Kembali ke sebelumnya" setelah dimuat.')) return;
+  // Simpan dulu kondisi sesi saat ini sebagai snapshot, supaya bisa
+  // dikembalikan lewat toUndoLoadHistory() kalau ternyata salah pilih.
+  toUndoSnapshot = {
+    rows: JSON.parse(JSON.stringify(toRows || [])),
+    idCounter: toIdCounter,
+    toko: document.getElementById('toMetaToko').value || '',
+    waktu: document.getElementById('toMetaWaktu').value || 'siang',
+    tgl: document.getElementById('toMetaTgl').value || todayISOAdmin(),
+    hideToko: toHideToko ? {...toHideToko} : { t1:false, t2:false },
+    editingFromId: toEditingFromId
+  };
   toRows = JSON.parse(JSON.stringify(entry.rows || []));
   toIdCounter = toRows.length ? Math.max(...toRows.map(r => r.id)) + 1 : 0;
   document.getElementById('toMetaToko').value = entry.toko || '';
@@ -4010,6 +4225,43 @@ function toLoadHistoryEntry(id){
   toEditingFromId = entry.editedFrom || entry.id;
   toRenderItems();
   toCloseHistoryModal();
+  toScheduleSave(true);
+  toShowUndoBar('Data riwayat (' + (entry.toko || '-') + ' • ' + (entry.waktu || '-') + ') sudah dimuat ke sesi ini.');
+}
+
+// ====== Undo "Muat & edit" dari Riwayat — kembalikan sesi Ambil Alih ke
+// kondisi persis sebelum data riwayat ditimpakan. ======
+function toShowUndoBar(text){
+  const bar = document.getElementById('toUndoBar');
+  const textEl = document.getElementById('toUndoBarText');
+  if(!bar) return;
+  if(textEl) textEl.textContent = text || 'Data riwayat sudah dimuat ke sesi ini.';
+  bar.style.display = 'flex';
+}
+
+function toHideUndoBar(){
+  const bar = document.getElementById('toUndoBar');
+  if(bar) bar.style.display = 'none';
+}
+
+function toDismissUndoBar(){
+  toUndoSnapshot = null;
+  toHideUndoBar();
+}
+
+function toUndoLoadHistory(){
+  if(!toUndoSnapshot){ toHideUndoBar(); return; }
+  const snap = toUndoSnapshot;
+  toRows = JSON.parse(JSON.stringify(snap.rows || []));
+  toIdCounter = snap.idCounter || 0;
+  document.getElementById('toMetaToko').value = snap.toko || '';
+  document.getElementById('toMetaWaktu').value = snap.waktu || 'siang';
+  document.getElementById('toMetaTgl').value = snap.tgl || todayISOAdmin();
+  toHideToko = snap.hideToko ? {...snap.hideToko} : { t1:false, t2:false };
+  toEditingFromId = snap.editingFromId || null;
+  toUndoSnapshot = null;
+  toRenderItems();
+  toHideUndoBar();
   toScheduleSave(true);
 }
 
