@@ -209,23 +209,6 @@
   .stat.checked .n{color:var(--klop);}
   .stat.unchecked .n{color:var(--amber);}
 
-  .voice-assist-row{
-    display:flex; align-items:center; gap:10px; margin:0 0 12px;
-    padding:10px 12px; background:var(--mint); border-radius:12px; border:1.5px dashed #a9c9c0;
-  }
-  .voice-mic-btn{
-    width:38px; height:38px; border-radius:50%; background:var(--teal); color:#fff; border:none;
-    display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0;
-  }
-  .voice-mic-btn svg{width:18px;height:18px;}
-  .voice-mic-btn.listening{background:var(--minus); animation:voicePulse 1.3s infinite;}
-  @keyframes voicePulse{
-    0%{box-shadow:0 0 0 0 rgba(192,80,58,.45);}
-    70%{box-shadow:0 0 0 11px rgba(192,80,58,0);}
-    100%{box-shadow:0 0 0 0 rgba(192,80,58,0);}
-  }
-  .voice-assist-title{font-size:12.5px; font-weight:700; color:var(--teal-deep);}
-  .voice-assist-sub{font-size:10.8px; color:var(--ink-soft); margin-top:2px; line-height:1.4;}
   .search-row{display:flex; gap:10px; align-items:center; margin-bottom:10px;}
   .search-box-wrap{position:relative; flex:1; min-width:0;}
   .search-box-wrap svg{
@@ -1163,15 +1146,6 @@
 
   <div class="card">
     <h2>Daftar Barang</h2>
-    <div class="voice-assist-row" id="voiceAssistRow">
-      <button type="button" class="voice-mic-btn" id="voiceMicBtn" onclick="toggleVoiceAssist()" title="Asisten suara: ucapkan nama barang lalu angkanya">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z" stroke="currentColor" stroke-width="1.8"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </button>
-      <div class="voice-assist-info">
-        <div class="voice-assist-title" id="voiceAssistTitle">Asisten Suara (Beta)</div>
-        <div class="voice-assist-sub" id="voiceAssistSub">Tap mic, lalu ucapkan "nama barang, angka" — mis. "Plossa merah dua puluh". Bilang "batal" utk undo, "berhenti" utk matikan.</div>
-      </div>
-    </div>
     <div class="search-row">
       <div class="search-box-wrap">
         <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -2248,223 +2222,6 @@ function hideNamaSuggest(id){
     const box = document.getElementById(`namaSuggest-${id}`);
     if(box) box.classList.remove('show');
   }, 150);
-}
-
-// ====== Asisten Suara (Beta) ======
-// Isi angka stok cukup dengan ngomong, misal "Plossa merah dua puluh" —
-// TANPA API key/server AI apa pun: murni pakai fitur pengenalan suara
-// bawaan browser (Web Speech API / SpeechRecognition), jadi jalan lokal di
-// HP masing-masing dan gratis. Catatan: fitur bawaan browser ini tetap
-// butuh koneksi internet aktif di sebagian besar HP (mesin pengenal suara
-// ada di sistem/browsernya, bukan di server kita) dan baru didukung baik di
-// Chrome/Edge Android -- belum tentu jalan di semua browser/iOS.
-//
-// Alur: nama barang dicocokkan pakai fungsi fuzzy match yang sama dengan
-// kotak saran nama (scoreAgainstQuery/tokenize di atas), angka diambil dari
-// teks hasil pengenalan suara (browser sudah otomatis mengubah ucapan
-// angka jadi digit). Hasil diisi ke kolom Rafa 1/Rafa 2 sesuai toko yang
-// sedang aktif (atau ke Web/Apk kalau eksplisit disebut "apk"/"web"), lalu
-// dikonfirmasi balik lewat suara (text-to-speech) supaya petugas tidak
-// perlu lihat layar terus.
-let voiceRecognition = null;
-let voiceListening = false;
-let voiceLastFill = null; // { id, field, prevValue, nama, value } -- utk perintah "batal"
-let voiceCursorRowId = null; // baris terakhir yg kesebut, dipakai kalau abis itu cuma nyebut angka doang
-
-function getSpeechRecognitionCtor(){
-  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
-}
-
-function voiceSupported(){
-  return !!getSpeechRecognitionCtor();
-}
-
-function speakVoice(text){
-  try{
-    if(!window.speechSynthesis || !text) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'id-ID';
-    u.rate = 1.05;
-    window.speechSynthesis.speak(u);
-  }catch(e){}
-}
-
-function setVoiceStatus(text){
-  const sub = document.getElementById('voiceAssistSub');
-  if(sub) sub.textContent = text;
-}
-
-// Field target default (Rafa 1/Rafa 2) berdasarkan kolom toko mana yang
-// sedang ditampilkan/aktif di sesi ini -- kalau salah satu disembunyikan
-// lewat toggle "sembunyikan kolom", berarti itu bukan toko yang lagi
-// dihitung sekarang.
-function voiceDefaultField(){
-  if(hideToko.t1 && !hideToko.t2) return 't2';
-  if(hideToko.t2 && !hideToko.t1) return 't1';
-  const toko = (document.getElementById('metaToko').value || '').trim().toLowerCase();
-  if(toko.includes('2')) return 't2';
-  return 't1';
-}
-
-function voiceFieldLabel(field){
-  if(field === 't1') return 'Rafa 1';
-  if(field === 't2') return 'Rafa 2';
-  return 'Web/Apk';
-}
-
-// Cari baris paling mirip namanya pakai fuzzy match yang sama dgn kotak
-// saran nama barang, dinormalisasi terhadap jumlah kata biar nama barang
-// panjang tidak dirugikan dibanding nama pendek.
-function voiceFindBestRowMatch(namaPart){
-  const qTokens = tokenize(namaPart);
-  if(!qTokens.length) return null;
-  let best = null;
-  rows.forEach(r => {
-    const nama = r.nama.trim();
-    if(!nama) return;
-    const m = scoreAgainstQuery(nama, qTokens);
-    if(!m) return;
-    const norm = m.score / qTokens.length;
-    if(!best || norm < best.norm) best = { row: r, norm };
-  });
-  return best;
-}
-
-function undoVoiceFill(){
-  if(!voiceLastFill){ speakVoice('Belum ada yang bisa dibatalkan.'); setVoiceStatus('Belum ada isian voice sebelumnya.'); return; }
-  const { id, field, prevValue, nama } = voiceLastFill;
-  const r = rows.find(x => x.id === id);
-  if(r) r[field] = prevValue;
-  render();
-  saveState();
-  showStockImportToast(`↩️ Dibatalkan: "${nama}" (${voiceFieldLabel(field)})`);
-  speakVoice(`Oke, dibatalkan.`);
-  voiceLastFill = null;
-}
-
-function applyVoiceResult(transcriptRaw){
-  const raw = (transcriptRaw || '').toLowerCase().trim();
-  if(!raw) return;
-
-  // --- Perintah global ---
-  if(/^(batal|undo|salah|hapus tadi)\b/.test(raw)){ undoVoiceFill(); return; }
-  if(/^(ulangi|apa tadi|coba lagi)\b/.test(raw)){
-    if(voiceLastFill) speakVoice(`${voiceLastFill.nama}, ${voiceLastFill.value}, ${voiceFieldLabel(voiceLastFill.field)}.`);
-    else speakVoice('Belum ada yang diisi.');
-    return;
-  }
-  if(/^(berhenti|stop|selesai|matikan)\b/.test(raw)){ stopVoiceAssist(); return; }
-
-  // --- Cari angka ---
-  const numMatch = raw.match(/\d+(?:[.,]\d+)?/);
-  if(!numMatch){
-    setVoiceStatus(`Tidak dengar angka di: "${raw}". Coba lagi, mis. "Plossa merah dua puluh".`);
-    return;
-  }
-  const value = String(parseInt(numMatch[0].replace(',', '.'), 10));
-
-  // --- Sisihkan kata kunci kolom (apk/web/rafa satu/rafa dua) dari nama ---
-  let namaPart = (raw.slice(0, numMatch.index) + ' ' + raw.slice(numMatch.index + numMatch[0].length)).trim();
-  let field = null;
-  if(/\b(apk|web|sistem)\b/.test(namaPart)){ field = 'apk'; namaPart = namaPart.replace(/\b(apk|web|sistem)\b/g, '').trim(); }
-  else if(/\brafa\s*2\b|\brafa\s*dua\b|\btoko\s*dua\b/.test(namaPart)){ field = 't2'; namaPart = namaPart.replace(/\brafa\s*2\b|\brafa\s*dua\b|\btoko\s*dua\b/g, '').trim(); }
-  else if(/\brafa\s*1\b|\brafa\s*satu\b|\btoko\s*satu\b/.test(namaPart)){ field = 't1'; namaPart = namaPart.replace(/\brafa\s*1\b|\brafa\s*satu\b|\btoko\s*satu\b/g, '').trim(); }
-  namaPart = namaPart.replace(/\s+/g, ' ').trim();
-  if(!field) field = voiceDefaultField();
-
-  // --- Kalau cuma nyebut angka doang, pakai baris terakhir yg kesebut ---
-  let row = null;
-  if(!namaPart){
-    if(voiceCursorRowId) row = rows.find(r => r.id === voiceCursorRowId) || null;
-    if(!row){ setVoiceStatus('Sebutkan juga nama barangnya, mis. "Plossa merah dua puluh".'); speakVoice('Nama barangnya apa?'); return; }
-  } else {
-    const best = voiceFindBestRowMatch(namaPart);
-    if(!best || best.norm > 2.5){
-      setVoiceStatus(`Barang "${namaPart}" tidak ketemu di daftar. Coba ulangi lebih jelas.`);
-      speakVoice(`${namaPart} tidak ketemu.`);
-      return;
-    }
-    row = best.row;
-  }
-
-  const prevValue = row[field];
-  row[field] = value;
-  pendingEditIds.add(row.id);
-  voiceCursorRowId = row.id;
-  voiceLastFill = { id: row.id, field, prevValue, nama: row.nama.trim() || '(tanpa nama)', value };
-
-  render();
-  saveState();
-  const label = voiceFieldLabel(field);
-  showStockImportToast(`🎤 ${row.nama.trim() || '(tanpa nama)'} → ${value} (${label})`);
-  speakVoice(`${row.nama.trim()}, ${value}.`);
-}
-
-function initVoiceRecognitionIfNeeded(){
-  if(voiceRecognition) return voiceRecognition;
-  const Ctor = getSpeechRecognitionCtor();
-  if(!Ctor) return null;
-  const rec = new Ctor();
-  rec.lang = 'id-ID';
-  rec.continuous = true;
-  rec.interimResults = false;
-  rec.maxAlternatives = 1;
-  rec.onresult = (e) => {
-    const res = e.results[e.results.length - 1];
-    if(res && res[0]) applyVoiceResult(res[0].transcript);
-  };
-  rec.onerror = (e) => {
-    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
-      setVoiceStatus('Akses mikrofon ditolak. Izinkan mikrofon di pengaturan browser lalu coba lagi.');
-      stopVoiceAssist();
-    } else if(e.error === 'no-speech'){
-      // wajar kalau lagi sepi suara, biarkan auto-restart lanjut jalan
-    } else {
-      setVoiceStatus(`Ada gangguan (${e.error}), mencoba lagi...`);
-    }
-  };
-  rec.onend = () => {
-    // Browser suka menghentikan sesi pengenalan suara sendiri walau
-    // continuous=true (biasanya tiap beberapa puluh detik) -- selama mode
-    // masih aktif, nyalakan lagi otomatis supaya terasa "selalu dengar".
-    if(voiceListening){
-      try{ rec.start(); }catch(e){}
-    }
-  };
-  voiceRecognition = rec;
-  return rec;
-}
-
-function toggleVoiceAssist(){
-  if(voiceListening) stopVoiceAssist();
-  else startVoiceAssist();
-}
-
-function startVoiceAssist(){
-  if(isViewOnlyForMe()) return;
-  if(!voiceSupported()){
-    alert('Browser ini belum mendukung pengenalan suara (coba pakai Chrome terbaru di Android).');
-    return;
-  }
-  const rec = initVoiceRecognitionIfNeeded();
-  if(!rec) return;
-  try{ rec.start(); }catch(e){ /* sudah jalan, abaikan */ }
-  voiceListening = true;
-  voiceCursorRowId = null;
-  document.getElementById('voiceMicBtn')?.classList.add('listening');
-  document.getElementById('voiceAssistTitle').textContent = 'Asisten Suara — mendengarkan...';
-  setVoiceStatus('Ucapkan "nama barang, angka", mis. "Plossa merah dua puluh".');
-  speakVoice('Mendengarkan.');
-}
-
-function stopVoiceAssist(){
-  voiceListening = false;
-  if(voiceRecognition){ try{ voiceRecognition.stop(); }catch(e){} }
-  document.getElementById('voiceMicBtn')?.classList.remove('listening');
-  const title = document.getElementById('voiceAssistTitle');
-  if(title) title.textContent = 'Asisten Suara (Beta)';
-  setVoiceStatus('Tap mic, lalu ucapkan "nama barang, angka" — mis. "Plossa merah dua puluh". Bilang "batal" utk undo, "berhenti" utk matikan.');
 }
 
 function renderPaginationBar(totalVisible, totalPages){
@@ -3837,11 +3594,6 @@ function updateSessionUI(){
   if(metaPetugas) metaPetugas.style.pointerEvents = viewOnly ? 'none' : '';
   const petugasRenameBtn = document.getElementById('petugasRenameBtn');
   if(petugasRenameBtn) petugasRenameBtn.style.display = (viewOnly || IS_ADMIN_TAKEOVER) ? 'none' : '';
-  const voiceAssistRow = document.getElementById('voiceAssistRow');
-  if(voiceAssistRow){
-    voiceAssistRow.style.display = (viewOnly || IS_ADMIN_TAKEOVER) ? 'none' : '';
-    if((viewOnly || IS_ADMIN_TAKEOVER) && typeof voiceListening !== 'undefined' && voiceListening) stopVoiceAssist();
-  }
   const addBtn = document.getElementById('btnAddRow');
   const importBtn = document.getElementById('btnImportExcel');
   const pasteStokBtn = document.getElementById('btnPasteStok');
@@ -5971,11 +5723,6 @@ async function loadState(){
   await initPetugasListListener();
   await reconcilePetugasIdentity();
   renderPetugasOverrideNote();
-  if(!voiceSupported()){
-    const micBtn = document.getElementById('voiceMicBtn');
-    if(micBtn) micBtn.style.opacity = '0.45';
-    setVoiceStatus('Browser ini belum mendukung pengenalan suara. Coba pakai Chrome terbaru di Android.');
-  }
   await autoJoinFromStartup();
 
   initBroadcastListener();
@@ -7574,7 +7321,7 @@ initOrderListListener();
 
 
 <!-- ============================================================================
-     AI Agent (Groq) — asisten mengambang yang bisa membaca & MENGUBAH
+     AI Agent (Lokal/Browser) — asisten mengambang yang bisa membaca & MENGUBAH
      data stok opname (barang, stok Rafa 1/Rafa 2/Web-Apk, info update) lewat
      perintah bahasa natural. Berdiri sendiri (vanilla JS), langsung memakai
      variabel & fungsi asli aplikasi ini (rows, render, saveState, dst) yang
@@ -7583,7 +7330,7 @@ initOrderListListener();
      Diadaptasi dari AI Agent yang sama di aplikasi Sistem Kasir.
 ============================================================================ -->
 <style>
-  /* ================= AI Agent (Groq) — widget styles =================
+  /* ================= AI Agent (Lokal/Browser) — widget styles =================
      Namespaced with "bba-" so it never collides with the app's own CSS.
      Reuses the app's existing CSS variables (--teal, --ink, --paper, dst)
      so it feels native instead of bolted-on. */
@@ -7748,7 +7495,7 @@ initOrderListListener();
   .bba-send:hover{ background:var(--teal-deep); }
   .bba-send:disabled{ opacity:.4; cursor:default; }
 
-  /* Settings / API key modal */
+  /* Settings / Local AI status modal */
   .bba-modal-ov{ position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; background:rgba(10,25,22,0.5); padding:14px; }
   .bba-modal-ov.show{ display:flex; }
   .bba-modal{ background:var(--card); border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,0.35); width:100%; max-width:360px; padding:18px; max-height:90vh; overflow-y:auto; }
@@ -7777,6 +7524,13 @@ initOrderListListener();
   .bba-model-status.ok{ color:var(--klop); }
   .bba-model-status.err{ color:var(--minus); }
   .bba-model-hint{ font-size:10px; color:#9aada6; margin:0 0 12px; line-height:1.4; }
+  .bba-ai-status{ background:var(--mint); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:10px; }
+  .bba-ai-status-text{ font-size:12px; color:var(--ink); font-weight:600; line-height:1.5; }
+  .bba-ai-progress-wrap{ display:none; height:6px; border-radius:6px; background:#dbe8e1; overflow:hidden; margin-top:8px; }
+  .bba-ai-progress-wrap.show{ display:block; }
+  .bba-ai-progress-bar{ height:100%; width:0%; background:var(--teal); transition:width .25s ease; }
+  .bba-ai-status-btns{ display:flex; gap:7px; margin-bottom:16px; }
+  .bba-ai-status-btns button{ flex:1; border:none; border-radius:10px; padding:9px 8px; font-size:11.5px; font-weight:800; cursor:pointer; }
   .bba-confirm-toggle{ display:flex; align-items:center; gap:8px; margin-bottom:16px; cursor:pointer; user-select:none; }
   .bba-confirm-toggle span{ font-size:11.5px; color:var(--ink-soft); font-weight:600; line-height:1.4; }
   .bba-modal-btns{ display:flex; gap:7px; }
@@ -7892,26 +7646,23 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
   'use strict';
 
   // =====================================================================
-  // AI Agent (Groq) — asisten mengambang untuk aplikasi Stok Opname.
+  // AI Agent (Lokal/Browser) — asisten mengambang untuk aplikasi Stok Opname.
   // Berdiri sendiri (vanilla JS). Membaca & MENGUBAH data asli aplikasi ini
   // langsung lewat variabel/fungsi global yang sudah ada di file ini
   // (rows, addRow, updateField, delRow, render, saveState, dst) — sehingga
   // perubahan lewat AI Agent langsung tampil di layar & ikut tersinkron ke
   // room tim (kalau sedang aktif), sama seperti kalau diedit manual.
+  //
+  // Otaknya memakai AI bawaan browser (Prompt API / "LanguageModel", mis.
+  // Gemini Nano di Chrome) — berjalan 100% di perangkat pengguna, TIDAK
+  // butuh API key, dan TIDAK mengirim apa pun ke server pihak ketiga.
   // =====================================================================
 
   // ---------------------------------------------------------------------
   // Config / penyimpanan lokal
   // ---------------------------------------------------------------------
-  var LS_KEY_APIKEY  = 'groq_agent_api_key_v4';
-  var LS_KEY_MODEL   = 'groq_agent_model_v4';
   var LS_KEY_CONFIRM = 'bb_agent_confirm_writes';
   var LS_KEY_HISTORY = 'bb_agent_history_stokopname_v1';
-  var DEFAULT_MODEL  = 'llama-3.3-70b-versatile';
-  var DEFAULT_API_KEY = '';
-  var API_ORIGIN     = 'https://api.groq.com/openai/v1';
-  var API_URL        = API_ORIGIN + '/chat/completions';
-  var MODELS_URL     = API_ORIGIN + '/models';
   var MAX_TOOL_LOOPS = 8;
   var MAX_HISTORY    = 40;
   var WAKTU_OPTIONS  = ['pagi', 'siang', 'sore', 'malam'];
@@ -7919,10 +7670,6 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
 
-  function getApiKey() { return lsGet(LS_KEY_APIKEY, DEFAULT_API_KEY) || DEFAULT_API_KEY; }
-  function setApiKey(v) { lsSet(LS_KEY_APIKEY, v || ''); }
-  function getModel() { return lsGet(LS_KEY_MODEL, DEFAULT_MODEL) || DEFAULT_MODEL; }
-  function setModel(v) { lsSet(LS_KEY_MODEL, (v || '').trim() || DEFAULT_MODEL); }
   function getConfirmWrites() { return lsGet(LS_KEY_CONFIRM, '1') !== '0'; }
   function setConfirmWrites(v) { lsSet(LS_KEY_CONFIRM, v ? '1' : '0'); }
 
@@ -7992,7 +7739,8 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
   }
 
   // ---------------------------------------------------------------------
-  // Tool schema (OpenAI-compatible function calling, dipakai Groq)
+  // Tool schema (dipakai untuk mendeskripsikan tools ke model & untuk
+  // membangun skema JSON responseConstraint dari Prompt API bawaan browser)
   // ---------------------------------------------------------------------
   var TOOLS = [
     {
@@ -8156,6 +7904,199 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
 
   var WRITE_TOOLS = { add_item: 1, update_item: 1, delete_item: 1, bulk_set_stock: 1, bulk_add_items: 1, set_meta: 1, clear_all_items: 1 };
   var ALWAYS_CONFIRM_TOOLS = { delete_item: 1, clear_all_items: 1, bulk_add_items: 1 };
+
+  // ---------------------------------------------------------------------
+  // Mesin AI Lokal (Prompt API bawaan browser — "LanguageModel", mis.
+  // Gemini Nano di Chrome). Tidak ada server/API key sama sekali: semua
+  // proses "mikir" terjadi di perangkat pengguna sendiri.
+  //
+  // Prompt API bawaan browser belum punya konsep "tools"/function-calling
+  // asli seperti API cloud (Groq/OpenAI dkk), jadi tool-calling di sini
+  // DITIRU dengan cara:
+  //   1) Daftar & skema semua tools dijelaskan sebagai teks di system
+  //      prompt (lihat buildToolsDoc()).
+  //   2) Jawaban model DIPAKSA berbentuk JSON { reply, tool_call } lewat
+  //      opsi "responseConstraint" (JSON Schema) yang didukung Prompt API
+  //      sejak Chrome 137 — reply berisi teks untuk pengguna, tool_call
+  //      berisi { name, arguments } kalau model mau memanggil satu tool,
+  //      atau null kalau cukup membalas teks saja.
+  // Konsekuensinya model lokal jauh lebih kecil & kurang pintar dibanding
+  // model cloud, jadi hasilnya tidak akan sebagus versi Groq — terutama
+  // untuk perintah yang rumit/banyak langkah sekaligus.
+  // ---------------------------------------------------------------------
+  var LOCAL_AI_SUPPORTED = (typeof self !== 'undefined' && 'LanguageModel' in self);
+  var _toolCallSchemaCache = null;
+
+  // Bangun skema JSON (responseConstraint) dari daftar TOOLS di atas, jadi
+  // kalau daftar tools berubah, skema ini otomatis ikut menyesuaikan.
+  function buildToolCallSchema() {
+    var variants = TOOLS.map(function (t) {
+      return {
+        type: 'object',
+        properties: {
+          name: { type: 'string', enum: [t.function.name] },
+          arguments: t.function.parameters || { type: 'object', properties: {} }
+        },
+        required: ['name', 'arguments']
+      };
+    });
+    return {
+      type: 'object',
+      properties: {
+        reply: { type: 'string' },
+        tool_call: { anyOf: [{ type: 'null' }].concat(variants) }
+      },
+      required: ['reply', 'tool_call']
+    };
+  }
+  function getToolCallSchema() {
+    if (!_toolCallSchemaCache) _toolCallSchemaCache = buildToolCallSchema();
+    return _toolCallSchemaCache;
+  }
+
+  // Dokumentasi tools dalam bentuk teks biasa, disisipkan ke system prompt
+  // supaya model (yang tidak menerima parameter "tools" terpisah) tetap
+  // tahu tools apa saja yang tersedia & parameternya apa.
+  function buildToolsDoc() {
+    return TOOLS.map(function (t) {
+      var f = t.function;
+      var paramNames = Object.keys((f.parameters && f.parameters.properties) || {});
+      return '- ' + f.name + '(' + paramNames.join(', ') + '): ' + f.description;
+    }).join('\n');
+  }
+
+  // Cek status ketersediaan model lokal: "available" | "downloadable" |
+  // "downloading" | "unavailable" | "unsupported" (browser tidak punya
+  // Prompt API sama sekali, mis. bukan Chrome / versi lama / flag mati).
+  async function checkLocalAiAvailability() {
+    if (!LOCAL_AI_SUPPORTED) return 'unsupported';
+    try { return await LanguageModel.availability(); }
+    catch (e) { return 'unsupported'; }
+  }
+
+  // Memicu pengunduhan model lokal (sekali saja per perangkat/browser).
+  // Harus dipanggil dari dalam event klik pengguna (butuh "user activation").
+  async function downloadLocalModel(onProgress) {
+    if (!LOCAL_AI_SUPPORTED) throw new Error('Browser ini belum punya AI bawaan (Prompt API). Coba pakai Chrome versi terbaru & pastikan sudah diaktifkan.');
+    var session = await LanguageModel.create({
+      monitor: function (m) {
+        m.addEventListener('downloadprogress', function (e) {
+          if (onProgress) onProgress(e.loaded || 0);
+        });
+      }
+    });
+    try { session.destroy(); } catch (e) { /* ignore */ }
+    return true;
+  }
+
+  // Ubah data URL (hasil kompres foto di fileToCompressedDataUrl) jadi Blob,
+  // karena Prompt API menerima Blob/File untuk bagian konten bertipe gambar,
+  // bukan data URL string seperti format vision OpenAI-compatible.
+  function dataUrlToBlob(dataUrl) {
+    var parts = String(dataUrl || '').split(',');
+    var mimeMatch = /data:([^;]+);base64/.exec(parts[0] || '');
+    var mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    var binary = atob(parts[1] || '');
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+
+  // Ubah satu "content" pesan (format lama: string ATAU array bagian
+  // text/image_url) jadi bagian konten yang dimengerti Prompt API.
+  function toLocalContentParts(content) {
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)) {
+      var parts = [];
+      content.forEach(function (p) {
+        if (!p) return;
+        if (p.type === 'text') parts.push({ type: 'text', value: p.text || '' });
+        else if (p.type === 'image_url' && p.image_url && p.image_url.url) {
+          try { parts.push({ type: 'image', value: dataUrlToBlob(p.image_url.url) }); }
+          catch (e) { /* lewati gambar yang gagal dibaca */ }
+        }
+      });
+      return parts.length ? parts : '';
+    }
+    return content == null ? '' : String(content);
+  }
+
+  // Ubah riwayat pesan gaya lama (system + user/assistant/tool) jadi
+  // rangkaian "turn" yang dikirim ke session.prompt() milik Prompt API.
+  // System prompt TIDAK ikut di sini karena sudah dipasang lewat
+  // initialPrompts saat sesi dibuat (lihat createLocalSession()). Pesan
+  // ber-role "tool" (hasil eksekusi tool) diubah jadi pesan "user" berlabel
+  // jelas, karena Prompt API tidak punya role "tool" sendiri.
+  function messagesToLocalTurns(msgsForApi) {
+    var turns = [];
+    for (var i = 1; i < msgsForApi.length; i++) {
+      var m = msgsForApi[i];
+      if (!m) continue;
+      if (m.role === 'user') {
+        turns.push({ role: 'user', content: toLocalContentParts(m.content) });
+      } else if (m.role === 'assistant') {
+        var txt = m.content || '';
+        if (m.tool_calls && m.tool_calls.length) {
+          m.tool_calls.forEach(function (tc) {
+            txt += '\n[tool_call: ' + tc.function.name + ' ' + (tc.function.arguments || '{}') + ']';
+          });
+        }
+        turns.push({ role: 'assistant', content: txt || '(memanggil tool)' });
+      } else if (m.role === 'tool') {
+        turns.push({ role: 'user', content: '[HASIL_TOOL "' + (m.name || '') + '"]: ' + (m.content || '{}') });
+      }
+    }
+    return turns;
+  }
+
+  // Bikin sesi Prompt API baru dengan system prompt terpasang. Sesi baru
+  // dibuat setiap giliran (bukan dipakai ulang) supaya konsisten dengan
+  // system prompt yang memuat tanggal/jam terkini & instruksi tools —
+  // sama seperti versi Groq lama yang mengirim ulang system prompt di
+  // setiap panggilan.
+  async function createLocalSession(systemPrompt) {
+    if (!LOCAL_AI_SUPPORTED) { var e = new Error('NO_LOCAL_AI'); e.code = 'NO_LOCAL_AI'; throw e; }
+    var avail = await checkLocalAiAvailability();
+    if (avail === 'unavailable' || avail === 'unsupported') {
+      var e2 = new Error('NO_LOCAL_AI'); e2.code = 'NO_LOCAL_AI'; e2.availability = avail; throw e2;
+    }
+    try {
+      return await LanguageModel.create({
+        initialPrompts: [{ role: 'system', content: systemPrompt }],
+        expectedInputs: [{ type: 'text' }, { type: 'image' }]
+      });
+    } catch (eImg) {
+      // Fallback kalau perangkat/browser ini ternyata tidak dukung input gambar.
+      return await LanguageModel.create({ initialPrompts: [{ role: 'system', content: systemPrompt }] });
+    }
+  }
+
+  // Jalankan satu giliran tanya-jawab ke model lokal & kembalikan bentuk
+  // { content, tool_calls } — sengaja disamakan dengan bentuk pesan gaya
+  // OpenAI/Groq lama supaya kode agent loop di bawah tidak perlu diubah.
+  async function runLocalModel(msgsForApi) {
+    var systemPrompt = (msgsForApi[0] && msgsForApi[0].content) || '';
+    var session = await createLocalSession(systemPrompt);
+    try {
+      var turns = messagesToLocalTurns(msgsForApi);
+      var raw = await session.prompt(turns, { responseConstraint: getToolCallSchema() });
+      var parsed;
+      try { parsed = JSON.parse(raw); } catch (eParse) { parsed = { reply: raw, tool_call: null }; }
+      var replyText = (parsed && typeof parsed.reply === 'string') ? parsed.reply : String(raw || '');
+      var toolCall = parsed && parsed.tool_call;
+      var toolCalls;
+      if (toolCall && toolCall.name) {
+        toolCalls = [{
+          id: 'local_' + Date.now(),
+          type: 'function',
+          function: { name: toolCall.name, arguments: JSON.stringify(toolCall.arguments || {}) }
+        }];
+      }
+      return { content: replyText, tool_calls: toolCalls };
+    } finally {
+      try { session.destroy(); } catch (eDestroy) { /* ignore */ }
+    }
+  }
 
   // ---------------------------------------------------------------------
   // Implementasi tool — langsung memakai variabel/fungsi asli aplikasi
@@ -8629,9 +8570,10 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
 
   // ---------------------------------------------------------------------
   // Lampiran gambar: baca file gambar dari pengguna, kompres jadi JPEG kecil
-  // (biar hemat kuota/token & muat di localStorage), lalu diubah jadi data URL
-  // yang dikirim sebagai content type "image_url" ke API (format vision
-  // OpenAI-compatible, dipakai juga oleh Groq).
+  // (biar hemat memori & muat di localStorage), lalu diubah jadi data URL.
+  // Data URL ini disimpan dalam format riwayat gaya lama (content type
+  // "image_url"), lalu dikonversi lagi ke Blob saat dikirim ke Prompt API
+  // lokal (lihat dataUrlToBlob() & toLocalContentParts()).
   // ---------------------------------------------------------------------
   function fileToCompressedDataUrl(file, maxDim, quality) {
     return new Promise(function (resolve, reject) {
@@ -8674,16 +8616,6 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
     }
   }
 
-  // Buang field internal (non-standar) sebelum dikirim ke API, agar body request
-  // tetap sesuai skema chat-completions yang diharapkan Groq.
-  function sanitizeForApi(m) {
-    var out = { role: m.role, content: m.content };
-    if (m.tool_calls) out.tool_calls = m.tool_calls;
-    if (m.tool_call_id) out.tool_call_id = m.tool_call_id;
-    if (m.name) out.name = m.name;
-    return out;
-  }
-
   // ---------------------------------------------------------------------
   // Percakapan agent
   // ---------------------------------------------------------------------
@@ -8721,133 +8653,39 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
       '12. Kamu tidak melulu harus soal stok opname. Kalau pengguna mengajak ngobrol topik lain (curhat, minta ide, tanya hal umum, becanda, minta dihibur, dll), layani dengan senang hati layaknya rekan kerja yang asyik diajak ngobrol — tidak perlu selalu menarik topik balik ke stok barang.',
       '13. Gaya bicaramu humoris dan bijak: boleh melempar candaan ringan atau pantun singkat sesekali, tapi juga sisipkan pandangan yang masuk akal/bijak kalau pengguna sedang serius, capek, atau butuh semangat — jangan menggurui, cukup hangat dan tulus.',
       '14. Tetap peka situasi: kalau pengguna kelihatan stres, sedih, atau butuh dukungan sungguhan, kurangi becandaan dan dengarkan dulu dengan empati sebelum (kalau pas) menyelipkan humor ringan untuk mencairkan suasana.',
-      '15. Emoji boleh dipakai sewajarnya untuk terasa hidup, tapi jangan berlebihan sampai mengganggu keterbacaan, dan jangan sampai mengorbankan kejelasan saat menyampaikan info penting soal data stok.'
+      '15. Emoji boleh dipakai sewajarnya untuk terasa hidup, tapi jangan berlebihan sampai mengganggu keterbacaan, dan jangan sampai mengorbankan kejelasan saat menyampaikan info penting soal data stok.',
+      '',
+      'Daftar tools yang tersedia (nama(parameter): kegunaan):',
+      buildToolsDoc(),
+      '',
+      'Format jawaban WAJIB (dipaksa lewat skema JSON, bukan sekadar aturan):',
+      '- Jawabanmu HARUS berupa satu objek JSON persis dengan dua field: "reply" dan "tool_call".',
+      '- "reply": string berisi balasanmu untuk pengguna (boleh kosong "" kalau kamu memanggil tool yang hasilnya sudah cukup jelas, tapi sebaiknya tetap isi teks singkat).',
+      '- "tool_call": null kalau giliran ini kamu TIDAK perlu memanggil tool apapun (cukup membalas teks). Kalau perlu memanggil satu tool, isi dengan objek { "name": "<nama_tool>", "arguments": { ... sesuai parameter tool tersebut ... } }.',
+      '- Hanya boleh memanggil SATU tool per giliran jawaban. Kalau butuh beberapa tool berurutan, panggil satu dulu, tunggu hasilnya (akan dikirim kembali ke kamu sebagai pesan berlabel [HASIL_TOOL "..."]), baru panggil tool berikutnya di giliran selanjutnya.',
+      '- Pesan yang diawali label [HASIL_TOOL "nama_tool"]: ... BUKAN pesan dari pengguna — itu adalah hasil tool yang baru saja kamu panggil sendiri, dipakai sebagai konteks untuk menyusun jawabanmu berikutnya.'
     ].join('\n');
   }
 
-  async function fetchModelList(apiKey) {
-    var res = await fetch(MODELS_URL, { method: 'GET', headers: { 'Authorization': 'Bearer ' + apiKey } });
-    if (!res.ok) {
-      var bodyText = ''; try { bodyText = await res.text(); } catch (e) { /* ignore */ }
-      throw new Error('HTTP ' + res.status + (bodyText ? (': ' + bodyText.slice(0, 200)) : ''));
-    }
-    var json = await res.json();
-    var list = Array.isArray(json) ? json : (json.data || json.models || []);
-    var ids = list.map(function (m) { return typeof m === 'string' ? m : (m.id || m.name || m.model || null); }).filter(Boolean);
-    var seen = {}, out = [];
-    ids.forEach(function (id) { if (!seen[id]) { seen[id] = 1; out.push(id); } });
-    out.sort();
-    return out;
-  }
-
+  // callBlackbox / callBlackboxStream dipertahankan namanya (dipakai di
+  // runAgentLoop di bawah) tapi sekarang keduanya jalan 100% lokal lewat
+  // Prompt API bawaan browser (lihat runLocalModel di atas) — tidak ada
+  // fetch() ke server manapun, tidak ada API key.
   async function callBlackbox(msgsForApi) {
-    var apiKey = getApiKey();
-    if (!apiKey) { var err = new Error('NO_API_KEY'); err.code = 'NO_API_KEY'; throw err; }
-    var res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: getModel(), messages: msgsForApi.map(sanitizeForApi), tools: TOOLS, tool_choice: 'auto', temperature: 0.3, max_tokens: 1500, stream: false })
-    });
-    if (!res.ok) {
-      var bodyText = ''; try { bodyText = await res.text(); } catch (e) { /* ignore */ }
-      var apiErr = new Error('Groq API error ' + res.status + (bodyText ? (': ' + bodyText.slice(0, 300)) : ''));
-      apiErr.status = res.status;
-      throw apiErr;
-    }
-    return res.json();
+    return runLocalModel(msgsForApi);
   }
 
-  // Versi streaming — supaya jawaban AI langsung muncul kata-per-kata begitu
-  // mulai digenerate (bukan menunggu seluruh jawaban selesai), jadi terasa
-  // jauh lebih cepat. onTextDelta dipanggil berulang dengan teks terkumpul
-  // sejauh ini setiap kali ada potongan baru datang dari server.
-  // Kalau server/model ternyata tidak mendukung SSE stream, otomatis jatuh
-  // balik ke pembacaan respons biasa (non-stream) supaya tetap jalan.
+  // "Versi streaming" — nama & signature dipertahankan supaya kode
+  // pemanggil (runAgentLoop) tidak perlu berubah, tapi sesungguhnya TIDAK
+  // ada streaming huruf-per-huruf lagi: karena jawaban model lokal dipaksa
+  // berbentuk satu blok JSON utuh (responseConstraint) supaya tool-calling
+  // bisa ditiru, jawaban baru valid & bisa ditampilkan setelah komplet.
+  // Jadi di sini kita cukup jalankan sampai selesai, lalu panggil
+  // onTextDelta SEKALI dengan teks akhirnya.
   async function callBlackboxStream(msgsForApi, onTextDelta) {
-    var apiKey = getApiKey();
-    if (!apiKey) { var err = new Error('NO_API_KEY'); err.code = 'NO_API_KEY'; throw err; }
-    var res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: getModel(), messages: msgsForApi.map(sanitizeForApi), tools: TOOLS, tool_choice: 'auto', temperature: 0.3, max_tokens: 1500, stream: true })
-    });
-    if (!res.ok) {
-      var bodyText = ''; try { bodyText = await res.text(); } catch (e) { /* ignore */ }
-      var apiErr = new Error('Groq API error ' + res.status + (bodyText ? (': ' + bodyText.slice(0, 300)) : ''));
-      apiErr.status = res.status;
-      throw apiErr;
-    }
-
-    // Fallback kalau environment tidak bisa baca body sebagai stream.
-    if (!res.body || typeof res.body.getReader !== 'function') {
-      var json = await res.json();
-      var m0 = json && json.choices && json.choices[0] && json.choices[0].message;
-      if (m0 && m0.content && onTextDelta) onTextDelta(m0.content);
-      return m0 || { content: '', tool_calls: undefined };
-    }
-
-    var reader = res.body.getReader();
-    var decoder = new TextDecoder('utf-8');
-    var buffer = '';
-    var content = '';
-    var toolCallsMap = {};
-    var sawAnyEvent = false;
-
-    function handleLine(line) {
-      line = line.trim();
-      if (!line || line.indexOf('data:') !== 0) return;
-      var payload = line.slice(5).trim();
-      if (payload === '[DONE]') return;
-      var evt;
-      try { evt = JSON.parse(payload); } catch (e) { return; }
-      sawAnyEvent = true;
-      var choice = evt.choices && evt.choices[0];
-      var delta = choice && choice.delta;
-      if (!delta) return;
-      if (delta.content) {
-        content += delta.content;
-        if (onTextDelta) onTextDelta(content);
-      }
-      if (delta.tool_calls) {
-        delta.tool_calls.forEach(function (tc) {
-          var idx = (tc.index === undefined || tc.index === null) ? 0 : tc.index;
-          if (!toolCallsMap[idx]) toolCallsMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
-          if (tc.id) toolCallsMap[idx].id = tc.id;
-          if (tc.type) toolCallsMap[idx].type = tc.type;
-          if (tc.function) {
-            if (tc.function.name) toolCallsMap[idx].function.name += tc.function.name;
-            if (tc.function.arguments) toolCallsMap[idx].function.arguments += tc.function.arguments;
-          }
-        });
-      }
-    }
-
-    while (true) {
-      var chunk = await reader.read();
-      if (chunk.done) break;
-      buffer += decoder.decode(chunk.value, { stream: true });
-      var lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (var i = 0; i < lines.length; i++) handleLine(lines[i]);
-    }
-    if (buffer) handleLine(buffer);
-
-    // Kalau tidak ada satupun event SSE yang terbaca (server ternyata balas
-    // non-stream walau diminta stream:true), coba baca ulang sebagai JSON biasa.
-    if (!sawAnyEvent) {
-      try {
-        var textFallback = decoder.decode();
-        var jsonFallback = textFallback ? JSON.parse(textFallback) : null;
-        var mF = jsonFallback && jsonFallback.choices && jsonFallback.choices[0] && jsonFallback.choices[0].message;
-        if (mF) {
-          if (mF.content && onTextDelta) onTextDelta(mF.content);
-          return mF;
-        }
-      } catch (eFallback) { /* abaikan, lanjut ke hasil stream kosong di bawah */ }
-    }
-
-    var toolCallsArr = Object.keys(toolCallsMap).sort(function (a, b) { return a - b; }).map(function (k) { return toolCallsMap[k]; });
-    return { content: content, tool_calls: toolCallsArr.length ? toolCallsArr : undefined };
+    var result = await runLocalModel(msgsForApi);
+    if (onTextDelta && result.content) onTextDelta(result.content);
+    return result;
   }
 
   async function executeToolCall(tc) {
@@ -8958,11 +8796,14 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
       }
       addBubble('error', 'Terlalu banyak langkah berturut-turut, dihentikan untuk keamanan. Coba pecah permintaan menjadi lebih kecil.');
     } catch (e) {
-      if (e && e.code === 'NO_API_KEY') {
-        addBubble('error', 'API Key Groq belum diatur. Klik ikon kunci 🔑 di atas untuk memasukkannya.');
-        openKeyModal();
-      } else if (e && e.status === 400 && /model/i.test((e.message || ''))) {
-        addBubble('error', 'Model "' + getModel() + '" tidak dikenali oleh API Key ini.\n\nKlik ikon kunci 🔑 → tombol "Muat Model" untuk melihat daftar model yang benar-benar valid untuk akun kamu, lalu pilih salah satu.\n\nDetail: ' + e.message);
+      if (e && e.code === 'NO_LOCAL_AI') {
+        if (!LOCAL_AI_SUPPORTED) {
+          addBubble('error', 'Browser ini belum punya AI bawaan (Prompt API). Coba buka pakai Chrome versi terbaru di komputer/HP Android. Klik ikon 🧠 di atas untuk detail status.');
+        } else if (e.availability === 'downloadable') {
+          addBubble('error', 'Model AI lokal belum diunduh di perangkat ini. Klik ikon 🧠 di atas lalu tombol "Unduh Model" untuk mengaktifkannya (sekali saja).');
+        } else {
+          addBubble('error', 'AI lokal belum siap dipakai di perangkat ini. Klik ikon 🧠 di atas untuk cek statusnya.');
+        }
         openKeyModal();
       } else {
         addBubble('error', 'Terjadi kesalahan: ' + ((e && e.message) || e));
@@ -8984,11 +8825,9 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
   }
 
   function openKeyModal() {
-    els.keyInput.value = getApiKey();
-    els.modelInput.value = getModel();
-    if (els.modelDisplayTxt) els.modelDisplayTxt.textContent = getModel();
     els.confirmToggle.checked = getConfirmWrites();
     els.keyModalOv.classList.add('show');
+    if (typeof els.refreshAiStatus === 'function') els.refreshAiStatus();
   }
   function closeKeyModal() { els.keyModalOv.classList.remove('show'); }
 
@@ -9073,12 +8912,12 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
     mountBotLottie(headIco);
     var headTxt = el('div', 'bba-head-txt');
     var hT1 = el('div', 't1'); hT1.textContent = 'AI Agent';
-    var hT2 = el('div', 't2'); hT2.textContent = 'Stok Opname · Groq';
+    var hT2 = el('div', 't2'); hT2.textContent = 'Stok Opname · AI Lokal (Browser)';
     var hT3 = el('div', 't3'); hT3.textContent = 'Dibuat oleh Zen — Designer & Programmer';
     headTxt.appendChild(hT1); headTxt.appendChild(hT2); headTxt.appendChild(hT3);
     headLeft.appendChild(headTxt);
     var headRight = el('div', 'bba-head-right');
-    var keyBtn = el('button', 'bba-icon-btn', { type: 'button', title: 'API Key & Pengaturan' }); keyBtn.textContent = '🔑';
+    var keyBtn = el('button', 'bba-icon-btn', { type: 'button', title: 'Status AI Lokal & Pengaturan' }); keyBtn.textContent = '🧠';
     var clearBtn = el('button', 'bba-icon-btn', { type: 'button', title: 'Bersihkan chat' }); clearBtn.textContent = '🧹';
     var closeBtn = el('button', 'bba-icon-btn', { type: 'button', title: 'Tutup' }); closeBtn.textContent = '✕';
     headRight.appendChild(keyBtn); headRight.appendChild(clearBtn); headRight.appendChild(closeBtn);
@@ -9110,22 +8949,26 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
     panel.appendChild(head); panel.appendChild(body); panel.appendChild(foot);
     document.body.appendChild(panel);
 
-    // --- Modal API key / pengaturan ---
+    // --- Modal status AI lokal / pengaturan ---
     var modalOv = el('div', 'bba-modal-ov');
     var modal = el('div', 'bba-modal');
 
-    var mTitle = el('h3'); mTitle.textContent = '🔑 Pengaturan AI Agent';
-    var mSub = el('p', 'sub'); mSub.textContent = 'API Key disimpan hanya di perangkat ini (localStorage), tidak dikirim ke server manapun selain Groq.';
+    var mTitle = el('h3'); mTitle.textContent = '🧠 Status AI Lokal';
+    var mSub = el('p', 'sub'); mSub.textContent = 'Ditenagai AI bawaan browser (mis. Gemini Nano di Chrome) — 100% berjalan di perangkat ini, TIDAK butuh API key, dan TIDAK mengirim data stok kamu ke server manapun.';
     var mCredit = el('p', 'sub'); mCredit.style.marginTop = '2px'; mCredit.style.fontStyle = 'italic'; mCredit.style.opacity = '0.75';
     mCredit.textContent = 'AI Agent ini dirancang & diprogram oleh Zen.';
 
-    var lblKey = el('label'); lblKey.textContent = 'Groq API Key';
-    var keyRow = el('div', 'bba-field-row');
-    var keyInput = el('input', '', { type: 'password', placeholder: 'sk-xxxxxxxxxxxxxxxx' });
-    var toggleShow = el('button', 'bba-eye', { type: 'button', tabindex: '-1' }); toggleShow.textContent = '👁';
-    keyRow.appendChild(keyInput); keyRow.appendChild(toggleShow);
+    var statusBox = el('div', 'bba-ai-status');
+    var statusText = el('div', 'bba-ai-status-text'); statusText.textContent = 'Mengecek status…';
+    var progressWrap = el('div', 'bba-ai-progress-wrap');
+    var progressBar = el('div', 'bba-ai-progress-bar');
+    progressWrap.appendChild(progressBar);
+    statusBox.appendChild(statusText); statusBox.appendChild(progressWrap);
 
-    var modelInput = el('input', '', { type: 'hidden' }); // dipertahankan untuk kompatibilitas internal, model selalu otomatis
+    var statusBtnRow = el('div', 'bba-ai-status-btns');
+    var downloadBtn = el('button', 'bba-btn-save', { type: 'button' }); downloadBtn.textContent = 'Unduh / Aktifkan Model';
+    var recheckBtn = el('button', 'bba-btn-clear', { type: 'button' }); recheckBtn.textContent = 'Cek Ulang';
+    statusBtnRow.appendChild(downloadBtn); statusBtnRow.appendChild(recheckBtn);
 
     var confirmRow = el('label', 'bba-confirm-toggle');
     var confirmToggle = el('input', '', { type: 'checkbox' });
@@ -9134,20 +8977,63 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
 
     var mBtnRow = el('div', 'bba-modal-btns');
     var saveBtn = el('button', 'bba-btn-save', { type: 'button' }); saveBtn.textContent = 'Simpan';
-    var clearKeyBtn = el('button', 'bba-btn-clear', { type: 'button' }); clearKeyBtn.textContent = 'Hapus Key';
     var closeModalBtn = el('button', 'bba-btn-close', { type: 'button' }); closeModalBtn.textContent = 'Tutup';
-    mBtnRow.appendChild(saveBtn); mBtnRow.appendChild(clearKeyBtn); mBtnRow.appendChild(closeModalBtn);
+    mBtnRow.appendChild(saveBtn); mBtnRow.appendChild(closeModalBtn);
 
     modal.appendChild(mTitle); modal.appendChild(mSub); modal.appendChild(mCredit);
-    modal.appendChild(lblKey); modal.appendChild(keyRow);
+    modal.appendChild(statusBox); modal.appendChild(statusBtnRow);
     modal.appendChild(confirmRow); modal.appendChild(mBtnRow);
     modalOv.appendChild(modal);
     document.body.appendChild(modalOv);
 
     els.fab = fab; els.headIco = headIco; els.panel = panel; els.body = body; els.input = textarea; els.sendBtn = sendBtn;
-    els.keyModalOv = modalOv; els.keyInput = keyInput; els.modelInput = modelInput; els.confirmToggle = confirmToggle;
+    els.keyModalOv = modalOv; els.confirmToggle = confirmToggle;
+    els.statusText = statusText; els.progressWrap = progressWrap; els.progressBar = progressBar;
+    els.downloadBtn = downloadBtn; els.recheckBtn = recheckBtn;
     els.attachBtn = attachBtn; els.attachInput = attachInput; els.imgChip = imgChip;
     els.imgChipThumb = imgChipThumb; els.imgChipRemove = imgChipRemove;
+
+    // --- Status AI lokal: cek ketersediaan & tampilkan di modal ---
+    function renderAiStatus(state) {
+      els.downloadBtn.style.display = 'none';
+      els.progressWrap.classList.remove('show');
+      if (state === 'unsupported') {
+        els.statusText.innerHTML = '❌ Browser ini belum mendukung AI bawaan (Prompt API).<br>Coba pakai Chrome versi terbaru (desktop/Android) & pastikan sudah tersedia.';
+      } else if (state === 'available') {
+        els.statusText.textContent = '✅ Model AI lokal sudah siap dipakai di perangkat ini.';
+      } else if (state === 'downloading') {
+        els.statusText.textContent = '⏳ Sedang mengunduh model AI lokal ke perangkat ini (sekali saja)…';
+        els.progressWrap.classList.add('show');
+      } else if (state === 'downloadable') {
+        els.statusText.textContent = '⬇️ Model AI lokal belum diunduh. Tekan tombol di bawah untuk mengunduh & mengaktifkannya (sekali saja, butuh koneksi internet saat unduh).';
+        els.downloadBtn.style.display = '';
+      } else {
+        els.statusText.textContent = '❔ Status tidak diketahui: ' + state;
+      }
+    }
+    async function refreshAiStatus() {
+      els.statusText.textContent = 'Mengecek status…';
+      var state = await checkLocalAiAvailability();
+      renderAiStatus(state);
+      return state;
+    }
+    els.refreshAiStatus = refreshAiStatus;
+    downloadBtn.addEventListener('click', function () {
+      downloadBtn.disabled = true;
+      renderAiStatus('downloading');
+      downloadLocalModel(function (loaded) {
+        var pct = Math.max(0, Math.min(100, Math.round((loaded || 0) * 100)));
+        els.progressBar.style.width = pct + '%';
+        els.statusText.textContent = '⏳ Mengunduh model AI lokal… ' + pct + '%';
+      }).then(function () {
+        downloadBtn.disabled = false;
+        refreshAiStatus();
+      }).catch(function (e) {
+        downloadBtn.disabled = false;
+        els.statusText.textContent = '❌ Gagal mengunduh: ' + ((e && e.message) || e);
+      });
+    });
+    recheckBtn.addEventListener('click', function () { refreshAiStatus(); });
 
     // --- Lampiran gambar: state & helper ---
     var pendingImage = null; // data URL gambar yang sudah dikompres, siap dikirim
@@ -9180,7 +9066,7 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
     });
     imgChipRemove.addEventListener('click', function () { clearPendingImage(); });
 
-    // Model dipilih otomatis (DEFAULT_MODEL) — tidak ada UI pemilihan model lagi.
+    // Model AI dipakai otomatis dari browser (tidak ada pemilihan model manual).
 
     // --- Event wiring ---
     fab.addEventListener('click', function () {
@@ -9188,7 +9074,14 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
       if (panel.classList.contains('show')) {
         hint.classList.remove('show');
         if (!body.childElementCount) {
-          addBubble('assistant', 'Haloo! Saya AI Agent di aplikasi Stok Opname ini 🤖 Bisa baca dan LANGSUNG UBAH data barang — tambah, edit, isi stok massal, hapus, sampai ubah info toko/tanggal/petugas — tinggal minta aja.\n\nDan satu lagi — aku nggak cuma jago ngitung stok, kok. Lagi capek, butuh ide, atau sekadar mau ngobrol receh? Sini, gas aja, aku dengerin 😄\n\n*AI Agent ini dirancang & diprogram oleh Zen.*');
+          addBubble('assistant', 'Haloo! Saya AI Agent di aplikasi Stok Opname ini 🤖 Bisa baca dan LANGSUNG UBAH data barang — tambah, edit, isi stok massal, hapus, sampai ubah info toko/tanggal/petugas — tinggal minta aja.\n\nDan satu lagi — aku nggak cuma jago ngitung stok, kok. Lagi capek, butuh ide, atau sekadar mau ngobrol receh? Sini, gas aja, aku dengerin 😄\n\nAku jalan 100% lokal di browser kamu (tanpa API key, tanpa kirim data ke server manapun).\n\n*AI Agent ini dirancang & diprogram oleh Zen.*');
+          checkLocalAiAvailability().then(function (state) {
+            if (state === 'unsupported') {
+              addBubble('error', 'Browser/perangkat ini belum mendukung AI bawaan (Prompt API). Coba buka pakai Chrome versi terbaru. Klik ikon 🧠 di pojok kanan atas untuk detail.');
+            } else if (state === 'downloadable' || state === 'downloading') {
+              addBubble('assistant', 'Model AI lokal belum diunduh di perangkat ini. Klik ikon 🧠 di pojok kanan atas lalu "Unduh / Aktifkan Model" (sekali saja) sebelum mulai chat ya.');
+            }
+          });
           messages.forEach(function (m) {
             if (m.role === 'user') renderStoredUserMessage(m.content);
             else if (m.role === 'assistant' && m.content) addBubble('assistant', m.content);
@@ -9211,24 +9104,10 @@ window.__PHOENIX_LOTTIE__ = {"v":"5.9.0","fr":29.9700012207031,"ip":0,"op":65.00
       addBubble('assistant', 'Riwayat chat dibersihkan. Ada yang bisa saya bantu?');
     });
 
-    var showingKey = false;
-    toggleShow.addEventListener('click', function () {
-      showingKey = !showingKey;
-      keyInput.type = showingKey ? 'text' : 'password';
-      toggleShow.textContent = showingKey ? '🙈' : '👁';
-    });
-
     saveBtn.addEventListener('click', function () {
-      setApiKey(keyInput.value.trim());
-      setModel(modelInput.value.trim());
       setConfirmWrites(confirmToggle.checked);
       closeKeyModal();
       addBubble('assistant', 'Pengaturan disimpan. Siap membantu!');
-    });
-    clearKeyBtn.addEventListener('click', function () {
-      setApiKey('');
-      keyInput.value = '';
-      addBubble('assistant', 'API Key dihapus dari perangkat ini.');
     });
 
     function doSend() {
