@@ -61,6 +61,7 @@
   alter table public.stok_opname_broadcast add column if not exists music_path text;
   alter table public.stok_opname_broadcast add column if not exists video_path text;
   alter table public.stok_opname_settings add column if not exists app_url text;
+  alter table public.stok_opname_settings add column if not exists hint_bubble_enabled boolean not null default true;
 
   -- Untuk fitur "Coret-coret" (gambar tangan dari admin, tampil live di layar
   -- stok opname, cuma tampil saja / tidak bisa disentuh di layar tersebut):
@@ -88,6 +89,8 @@
   create table if not exists public.stok_opname_settings (
     screen_code text primary key,
     sync_card_visible boolean not null default true,
+    hint_bubble_enabled boolean not null default true, -- saklar "Kata-kata di atas AI Agent"
+                                               -- dari Panel Admin, berlaku untuk semua HP.
     app_url text,                             -- URL lengkap halaman stok_opname.html (kalau tidak
                                                -- satu folder dengan panel admin ini). Dipakai untuk
                                                -- fitur "Ambil Alih" & pratinjau coret-coret.
@@ -357,6 +360,28 @@
   .btn-stop:hover{background:#f6dbd2;}
   .btn-stop:disabled{opacity:.45; cursor:not-allowed;}
   .link-btn{background:none; border:none; font-size:11.5px; font-weight:700; text-decoration:underline; padding:2px 0; cursor:pointer; color:var(--ink-soft);}
+
+  /* ===== Baris pengaturan bergaya toggle (dipindah dari tombol ⚙️ Pengaturan header) ===== */
+  .settings-row{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+    padding:10px 2px;
+  }
+  .settings-row + .settings-row{ border-top:1px solid var(--line); }
+  .settings-row-text{ min-width:0; }
+  .settings-row-title{ font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:3px; }
+  .settings-row-desc{ font-size:11.5px; font-weight:500; color:var(--ink-soft); line-height:1.45; }
+  .toggle-switch{ position:relative; display:inline-block; width:44px; height:26px; flex-shrink:0; }
+  .toggle-switch input{ opacity:0; width:0; height:0; }
+  .toggle-slider{
+    position:absolute; cursor:pointer; inset:0; background:#c2c9c4; border-radius:999px;
+    transition:background .2s ease;
+  }
+  .toggle-slider:before{
+    content:''; position:absolute; left:3px; top:3px; width:20px; height:20px; border-radius:50%;
+    background:#fff; box-shadow:0 1px 3px rgba(15,30,27,0.3); transition:transform .2s ease;
+  }
+  .toggle-switch input:checked + .toggle-slider{ background:var(--teal); }
+  .toggle-switch input:checked + .toggle-slider:before{ transform:translateX(18px); }
 
   .status-line{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-top:10px;}
   .dot{width:8px; height:8px; border-radius:50%; background:#c2c9c4; flex-shrink:0;}
@@ -793,6 +818,14 @@
   .to-badge.klop{background:var(--klop-bg); color:var(--klop);}
   .to-badge.unchecked{background:#f0efe8; color:#9aada6; font-weight:700; font-family:inherit;}
   .to-badge.partial{background:#fbf1e0; color:var(--amber); font-family:inherit;}
+  .to-note-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; margin-left:4px; padding:0; vertical-align:middle;
+    background:none; border:1.5px dashed #c2c9c4; border-radius:7px; color:#9aada6; cursor:pointer;
+  }
+  .to-note-btn svg{width:12px;height:12px;}
+  .to-note-btn:hover{border-color:var(--teal); color:var(--teal);}
+  .to-note-btn.has-note{border-style:solid; border-color:var(--amber); background:#fbf1e0; color:var(--amber);}
   .to-empty-msg{text-align:center; padding:28px 10px; color:var(--ink-soft); font-size:12.5px;}
   .to-row-actions{
     display:grid; grid-template-columns:repeat(auto-fit, minmax(128px, 1fr));
@@ -1206,9 +1239,24 @@
     <h2>Status</h2>
     <div class="status-line"><span class="dot" id="statusDot"></span><span id="statusText">Menghubungkan…</span></div>
     <div class="footnote">
-      Apa pun yang ditampilkan dari sini akan langsung muncul di <b>semua</b> layar/perangkat yang
-      sedang membuka halaman stok opname — tidak perlu kode apa pun, otomatis tersambung.
+      Apa pun yang ditampilkan dari sini langsung muncul di <b>semua</b> layar/perangkat yang membuka
+      halaman stok opname — otomatis tersambung, tanpa kode apa pun.
     </div>
+  </div>
+
+  <div class="card connected-only">
+    <h2>⚙️ Pengaturan Halaman Stok Opname</h2>
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <div class="settings-row-title">Kata-kata di atas AI Agent</div>
+        <div class="settings-row-desc">Bubble kata semangat/lucu/bijak yang muncul bergantian di atas ikon robot AI Agent (pojok kanan bawah) di halaman Stok Opname. Matikan kalau dirasa mengganggu.</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="hintBubbleToggle" onchange="setHintBubbleEnabled(this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="footnote" id="hintBubbleStatus">Memuat status…</div>
   </div>
 
   <div class="card connected-only">
@@ -1219,9 +1267,8 @@
       <button type="button" class="btn-stop" id="btnHideSyncCard" onclick="setSyncCardVisibility(false)">Sembunyikan</button>
     </div>
     <div class="footnote">
-      Kontrol apakah kotak "Sinkronisasi Tim (Realtime)" (tempat gabung/buat room) tampil di halaman
-      stok opname pada semua HP. Room yang sudah aktif tetap jalan seperti biasa kalau disembunyikan —
-      cuma kotaknya saja yang hilang dari tampilan.
+      Kontrol tampil/sembunyikan kotak "Sinkronisasi Tim (Realtime)" di halaman stok opname. Room yang
+      sudah aktif tetap jalan walau disembunyikan — cuma kotaknya yang hilang dari tampilan.
     </div>
   </div>
 
@@ -1233,10 +1280,8 @@
       <button type="button" class="link-btn" onclick="loadRooms()">Muat ulang</button>
     </div>
     <div class="footnote">
-      Semua room sinkronisasi tim yang pernah dibuat lewat kotak "Sinkronisasi Tim" di halaman stok
-      opname. <b>Hentikan</b> mengunci room supaya rekan tim tidak bisa melihat/mengedit data sampai
-      dijalankan lagi (sama seperti host yang menghentikannya sendiri). <b>Hapus</b> menghapus room
-      beserta seluruh data yang tersimpan di dalamnya secara permanen dan tidak bisa dibatalkan.
+      Semua room yang pernah dibuat lewat "Sinkronisasi Tim". <b>Hentikan</b> mengunci room (tim tidak
+      bisa lihat/edit sampai dijalankan lagi). <b>Hapus</b> menghapus room beserta datanya permanen.
     </div>
   </div>
 
@@ -1247,10 +1292,8 @@
     </div>
     <div id="presenceList" style="margin-top:12px;"><div class="presence-empty">Memuat…</div></div>
     <div class="footnote">
-      Menampilkan semua perangkat yang sedang membuka halaman stok opname secara live, termasuk yang
-      field Petugas-nya belum diisi (ditampilkan sebagai "Anonim" beserta identitas HP/browsernya). Begitu
-      tab ditutup atau koneksinya putus, otomatis hilang dari daftar ini. <b>Tidak ada kaitannya dengan
-      fitur "Sinkronisasi Tim"</b> — dipakai sendirian atau lewat room, tetap terlihat di sini.
+      Semua perangkat yang sedang membuka halaman stok opname, termasuk yang belum isi Petugas
+      (tampil sebagai "Anonim"). Hilang otomatis saat tab ditutup. Tidak terkait "Sinkronisasi Tim".
     </div>
   </div>
 
@@ -1266,35 +1309,13 @@
       <button type="button" class="btn-main" onclick="adminAddPetugas()">Tambah</button>
     </div>
     <div class="footnote">
-      Nama-nama ini otomatis muncul di pop up "Siapa yang bertugas?" (wajib diisi begitu HP pertama kali
-      membuka halaman Stok Opname, lalu diingat otomatis di HP itu) dan di dropdown Petugas pada form.
-      <b>Ketuk nama petugas</b> untuk langsung masuk ke tampilan stok opname petugas itu secara live (tampilan
-      sama persis seperti aslinya) dan mengambil alih dari sini — berlaku real-time dua arah, <b>bukan</b>
-      lewat "Sinkronisasi Tim", dan tetap bisa dibuka/diambil alih walau petugas-nya sedang offline (data
-      terakhir tetap dimuat; perubahan dari admin otomatis diterapkan ke HP petugas begitu online lagi).
-      <b>Ubah</b> mengganti nama di daftar pilihan untuk semua HP (laporan yang sudah tersimpan sebelumnya
-      tidak ikut berubah). <b>Hapus</b> membuang nama dari daftar pilihan saja — tidak menghapus laporan
-      mana pun.<br><br>
-      Setiap nama sekarang punya <b>password</b> — petugas mengisi/membuat sendiri passwordnya saat login
-      pertama kali di halaman Stok Opname. Badge <b>"Belum ada password"</b> berarti petugas itu belum
-      pernah login lagi setelah fitur ini aktif. Tombol <b>Atur/Reset Password</b> dipakai kalau petugas
-      lupa passwordnya — masukkan password baru di sini, langsung bisa dipakai login lagi.
+      Muncul di pop up "Siapa yang bertugas?" dan dropdown Petugas. <b>Ketuk nama</b> untuk mengambil alih
+      tampilan petugas itu secara live (real-time dua arah, walau sedang offline). <b>Ubah</b> mengganti nama
+      untuk semua HP; <b>Hapus</b> hanya membuang dari daftar, laporan tidak terpengaruh.<br><br>
+      Setiap petugas punya <b>password</b> sendiri (dibuat saat login pertama). Badge "Belum ada password"
+      = belum pernah login. <b>Atur/Reset Password</b> untuk membantu petugas yang lupa password.
     </div>
 
-    <div style="margin-top:16px; padding-top:14px; border-top:1px dashed rgba(10,69,62,0.18);">
-      <div class="field-label" style="margin-bottom:6px;">Alamat halaman Stok Opname (untuk fitur Ambil Alih)</div>
-      <div class="actions-row" style="margin-top:0;">
-        <input type="text" id="appUrlInput" class="field-input" placeholder="Contoh: https://tokoanda.com/stok_opname.html (kosongkan kalau satu folder dengan panel admin ini)" style="flex:1; min-width:220px; margin-bottom:0;">
-        <button type="button" class="btn-main" onclick="saveAppUrlSetting()">Simpan</button>
-      </div>
-      <div class="footnote" id="appUrlStatus">
-        Isi kotak ini dengan alamat/link lengkap tempat halaman Stok Opname (untuk petugas) di-hosting,
-        kalau filenya <b>tidak</b> berada di folder yang sama dengan Panel Admin ini — misalnya kalau
-        dihosting terpisah (Netlify, GitHub Pages, dst) atau namanya bukan persis "stok_opname.html".
-        Setelah disimpan, fitur <b>Ambil Alih</b> di atas otomatis memakai alamat ini, di semua perangkat
-        admin — tidak perlu diatur ulang di HP/komputer lain.
-      </div>
-    </div>
   </div>
 
   <div class="card connected-only">
@@ -1307,9 +1328,8 @@
     </label>
     <input type="file" id="masterFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleMasterFileChange(event)">
     <div class="field-hint">
-      Otomatis mendeteksi kolom mana yang berisi <b>nama barang</b> — dari judul kolom (mis. "Nama
-      Barang"/"Nama Obat") kalau ada, atau dari isinya kalau tidak ada judul. Kolom lain seperti
-      "No", "Kode", "Qty", dst akan dilewati otomatis, jadi urutan kolom di file bebas.
+      Kolom <b>nama barang</b> dideteksi otomatis dari judul (mis. "Nama Barang") atau isinya kalau
+      tanpa judul. Kolom lain ("No", "Kode", "Qty", dst) dilewati — urutan kolom bebas.
     </div>
 
     <div class="master-preview" id="masterPreviewWrap" style="display:none;">
@@ -1330,11 +1350,8 @@
     </div>
 
     <div class="footnote">
-      Daftar ini <b>tidak langsung muncul</b> di tabel stok opname — cuma jadi "pegangan nama". Di
-      halaman stok opname, saat petugas mengetik nama barang, nama-nama dari daftar ini akan muncul
-      sebagai saran di bawah kolom dan bisa langsung diklik untuk dipilih. AI Agent juga otomatis
-      menyesuaikan ejaan nama barang yang ditambahkannya ke ejaan yang ada di daftar ini kalau cocok
-      atau mirip.
+      Daftar ini <b>tidak langsung muncul</b> di tabel — cuma jadi saran nama saat petugas mengetik di
+      halaman stok opname. AI Agent juga otomatis menyesuaikan ejaan ke daftar ini kalau mirip/cocok.
     </div>
   </div>
 
@@ -1348,10 +1365,8 @@
     </label>
     <input type="file" id="stockImportFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleStockImportFileChange(event)">
     <div class="field-hint">
-      Otomatis mendeteksi kolom <b>nama barang</b> dan kolom <b>sisa stok</b> — dari judul kolom (mis.
-      "Nama Barang", "Sisa Stok"/"Stok"/"Qty"/"Jumlah") kalau ada, atau dari isinya kalau tidak ada
-      judul. Kolom sisa stok harus berupa angka (kalau di selnya ikut ada satuan seperti "pcs", itu
-      akan diabaikan otomatis dan yang dipakai cuma angkanya).
+      Kolom <b>nama barang</b> &amp; <b>sisa stok</b> dideteksi otomatis dari judul (mis. "Sisa
+      Stok"/"Qty") atau isinya. Satuan seperti "pcs" pada kolom stok diabaikan, cuma angkanya dipakai.
     </div>
 
     <div class="master-preview" id="stockImportPreviewWrap" style="display:none;">
@@ -1372,14 +1387,10 @@
     </div>
 
     <div class="footnote">
-      Sisa stok dicocokkan dengan <b>nama barang</b> yang sudah ada di baris tabel halaman stok
-      opname (cocok persis, tidak peka huruf besar/kecil/spasi), lalu otomatis mengisi kolom
-      <b>Web/Apk</b>-nya — berlaku langsung di semua HP yang sedang membuka halaman tersebut, tanpa
-      perlu memuat ulang. Barang di file yang namanya <b>tidak ditemukan</b> di baris manapun akan
-      dilewati (baris baru tidak otomatis dibuat, harus ditambahkan manual dulu di halaman stok
-      opname atau lewat Daftar Nama Barang Master di atas). Tombol <b>Hapus Data Import Terakhir</b>
-      hanya membersihkan catatan di panel admin ini — angka Web/Apk yang <b>sudah</b> terisi di
-      halaman stok opname tidak ikut terhapus/berubah.
+      Dicocokkan ke <b>nama barang</b> yang sudah ada di tabel (persis, tanpa peka besar/kecil), lalu
+      mengisi kolom <b>Web/Apk</b> otomatis di semua HP. Nama yang <b>tidak ditemukan</b> dilewati
+      (tambahkan manual dulu di halaman stok opname atau lewat Daftar Master di atas). <b>Hapus Data
+      Import Terakhir</b> hanya bersihkan catatan di sini, angka yang sudah terisi tidak ikut hilang.
     </div>
   </div>
 
@@ -1719,12 +1730,9 @@
     </div>
     <div class="to-history-modal-body">
       <div class="footnote" style="margin-top:0;">
-        Tempel teks daftar barang di bawah, satu barang per baris, format <b>Nama barang : jumlah</b>
-        (nomor urut di depan seperti "1." boleh ada atau tidak). Setelah klik "Isi ke Rafa 1/2", nama
-        barang akan otomatis dicocokkan ke barang yang sudah ada di tabel sesi ini — <b>termasuk kalau
-        ada typo ringan</b> (huruf diganti/kurang/lebih) — lalu muncul halaman <b>review</b> untuk
-        mengecek satu per satu: cocok atau tidak, boleh diganti manual (pilih barang lain), atau
-        dibuang kalau memang tidak perlu, sebelum benar-benar diterapkan ke tabel.
+        Tempel daftar barang, satu per baris, format <b>Nama barang : jumlah</b> (nomor urut boleh ada
+        atau tidak). Klik "Isi ke Rafa 1/2" untuk mencocokkan otomatis ke tabel sesi ini (termasuk
+        typo ringan), lalu review satu per satu sebelum diterapkan.
       </div>
       <textarea id="toPasteFillText" class="to-paste-stok-textarea" placeholder="1. Plossa merah : 3&#10;2. Bodrex tab : 5&#10;3. Antangin jrg : 6&#10;4. Trisela : 0&#10;5. Flucadex tab : 0&#10;6. Panadol hijau : 0"></textarea>
       <div class="to-paste-stok-actions">
@@ -1764,11 +1772,9 @@
     </div>
     <div class="to-history-modal-body">
       <div class="footnote" style="margin-top:0;">
-        Tempel daftar nama barang di bawah, satu nama per baris. Nomor urut di depan
-        seperti "1." atau "1)" boleh ada atau tidak, otomatis menyesuaikan. Nama barang
-        yang <b>sudah ada</b> di tabel sesi ini akan dilewati (tidak dobel). Nama yang
-        <b>belum ada</b> akan diisi ke baris kosong yang tersedia dulu, baru kalau sudah habis
-        akan ditambahkan sebagai baris baru — jumlah stoknya tetap kosong, tinggal diisi manual.
+        Tempel daftar nama barang, satu per baris (nomor urut boleh ada/tidak). Nama yang <b>sudah
+        ada</b> dilewati; yang <b>belum ada</b> diisi ke baris kosong dulu, lalu ditambah sebagai baris
+        baru kalau sudah habis — stoknya tetap kosong, diisi manual belakangan.
       </div>
       <textarea id="toPasteNamaText" class="to-paste-stok-textarea" placeholder="1. Plossa merah&#10;2. Bodrex tab&#10;3. Antangin jrg&#10;4. Trisela&#10;5. Flucadex tab&#10;6. Panadol hijau"></textarea>
       <div class="to-paste-stok-actions">
@@ -1966,13 +1972,17 @@ async function loadSyncCardSetting(){
     if(error) throw error;
     syncCardVisible = data ? data.sync_card_visible !== false : true;
     appUrlSetting = data ? (data.app_url || '') : '';
+    hintBubbleEnabled = data ? data.hint_bubble_enabled !== false : true;
     renderSyncCardStatus();
     renderAppUrlStatus();
+    renderHintBubbleStatus();
     subscribeSettingsChannel();
   } catch(err){
     console.error('Gagal memuat status modal sinkronisasi:', err);
     const text = document.getElementById('syncCardStatusText');
     if(text) text.textContent = 'Gagal memuat status. Pastikan tabel stok_opname_settings sudah dibuat (lihat komentar di atas file ini).';
+    const hintStatus = document.getElementById('hintBubbleStatus');
+    if(hintStatus) hintStatus.textContent = 'Gagal memuat status.';
   }
 }
 
@@ -1985,8 +1995,10 @@ function subscribeSettingsChannel(){
     }, payload => {
       syncCardVisible = payload.new ? payload.new.sync_card_visible !== false : true;
       appUrlSetting = payload.new ? (payload.new.app_url || '') : '';
+      hintBubbleEnabled = payload.new ? payload.new.hint_bubble_enabled !== false : true;
       renderSyncCardStatus();
       renderAppUrlStatus();
+      renderHintBubbleStatus();
     })
     .subscribe();
 }
@@ -2560,8 +2572,31 @@ function toCheckBadgeHtml(r){
   const st = toStatusOf(r);
   if(!st) return '<span class="to-badge partial">Fisik terisi</span>';
   if(st.type === 'klop') return '<span class="to-badge klop">KLOP ✓</span>';
-  if(st.type === 'minus') return `<span class="to-badge minus">${st.selisih}</span>`;
-  return `<span class="to-badge plus">+${st.selisih}</span>`;
+  if(st.type === 'minus') return `<span class="to-badge minus">${st.selisih}</span>${toCatatanNoteHtml(r)}`;
+  return `<span class="to-badge plus">+${st.selisih}</span>${toCatatanNoteHtml(r)}`;
+}
+
+// Catatan opsional untuk menjelaskan kenapa barang selisih minus/plus — port
+// persis dari tombol pensil di halaman Stok Opname, supaya admin yang sedang
+// "Ambil Alih" juga bisa lihat/isi catatan yang sama (tersimpan di r.catatan
+// dan ikut tersinkron dua arah seperti field lain).
+function toCatatanNoteHtml(r){
+  const has = r.catatan && r.catatan.trim();
+  const title = has ? `Catatan: ${r.catatan.trim()}` : 'Tambah catatan (opsional)';
+  return `<button type="button" class="to-note-btn ${has ? 'has-note' : ''}" title="${escapeHtml(title)}" onclick="toEditCatatan(${r.id})">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M4 17.5V20h2.5l11.3-11.3-2.5-2.5L4 17.5Zm14.7-9.9c.4-.4.4-1 0-1.4l-1.9-1.9c-.4-.4-1-.4-1.4 0l-1.5 1.5 3.3 3.3 1.5-1.5Z" fill="currentColor"/></svg>
+  </button>`;
+}
+
+function toEditCatatan(id){
+  const r = toRows.find(r => r.id === id);
+  if(!r) return;
+  const val = prompt(`Catatan untuk "${(r.nama || '').trim() || 'barang ini'}" (kenapa minus/plus?):`, r.catatan || '');
+  if(val === null) return; // batal
+  r.catatan = val.trim();
+  const statusEl = document.getElementById('toStatus-' + id);
+  if(statusEl) statusEl.innerHTML = toCheckBadgeHtml(r);
+  toScheduleSave();
 }
 
 function setTakeoverStatus(text, mode){
@@ -5656,6 +5691,45 @@ function subscribeCoretChannel(){
       renderCoretLocal();
     })
     .subscribe();
+}
+
+// ===== Saklar "Kata-kata di atas AI Agent" (dipindah dari tombol ⚙️ Pengaturan
+// yang dulu ada di header halaman Stok Opname). Disimpan di tabel
+// stok_opname_settings dan disiarkan lewat Supabase Realtime, jadi begitu
+// diubah dari sini langsung berlaku di SEMUA HP yang sedang membuka halaman
+// Stok Opname — sama seperti "Modal Sinkronisasi Tim" di atas.
+let hintBubbleEnabled = true;
+
+function renderHintBubbleStatus(){
+  const toggle = document.getElementById('hintBubbleToggle');
+  const status = document.getElementById('hintBubbleStatus');
+  if(toggle) toggle.checked = hintBubbleEnabled;
+  if(status) status.textContent = hintBubbleEnabled
+    ? 'Sedang ditampilkan di semua HP.'
+    : 'Sedang dimatikan di semua HP.';
+}
+
+async function setHintBubbleEnabled(enabled){
+  if(!sb) return;
+  const toggle = document.getElementById('hintBubbleToggle');
+  if(toggle) toggle.disabled = true;
+  try{
+    const { error } = await sb.from(SETTINGS_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      hint_bubble_enabled: enabled,
+      updated_by: CLIENT_ID,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'screen_code' });
+    if(error) throw error;
+    hintBubbleEnabled = enabled;
+    renderHintBubbleStatus();
+  } catch(err){
+    console.error('Gagal mengubah status kata-kata AI Agent:', err);
+    renderHintBubbleStatus();
+    alert('Gagal menyimpan perubahan. Cek koneksi internet lalu coba lagi.');
+  } finally {
+    if(toggle) toggle.disabled = false;
+  }
 }
 
 connectGlobal();
