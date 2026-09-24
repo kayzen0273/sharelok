@@ -573,6 +573,10 @@
   }
   .petugas-online-dot.on{background:#3c8a5c; box-shadow:0 0 0 3px rgba(60,138,92,0.18);}
   .petugas-online-label{font-size:10.5px; color:var(--ink-soft); font-weight:600; flex-shrink:0; white-space:nowrap;}
+  .petugas-item-sub{
+    font-size:11px; color:var(--ink-soft); padding-left:40px; /* sejajar dengan nama (lebar avatar + gap) */
+    margin-top:-3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
 
   .takeover-overlay{
     display:none; position:fixed; inset:0; z-index:100000; background:rgba(10,20,18,0.55);
@@ -1907,6 +1911,7 @@ async function connectGlobal(){
   loadSyncCardSetting();
   loadRooms();
   loadPetugasAdmin();
+  loadPetugasSessionsAdmin();
   loadItemMaster();
   loadStockImportStatus();
   subscribePresenceChannel();
@@ -2059,7 +2064,8 @@ function relativeTimeFromNow(iso){
   if(!iso) return '-';
   const diffMs = Date.now() - new Date(iso).getTime();
   const diffSec = Math.round(diffMs / 1000);
-  if(diffSec < 60) return 'baru saja';
+  if(diffSec < 5) return 'baru saja';
+  if(diffSec < 60) return diffSec + ' detik lalu';
   const diffMin = Math.round(diffSec / 60);
   if(diffMin < 60) return diffMin + ' menit lalu';
   const diffHour = Math.round(diffMin / 60);
@@ -2201,6 +2207,15 @@ async function adminDeleteRoom(roomCode){
 const PETUGAS_TABLE = 'stok_opname_petugas';
 let petugasChannel = null;
 let petugasRows = [];
+// Peta slug -> updated_at (ISO) dari tabel stok_opname_petugas_session, dipakai
+// untuk label "Aktif ... lalu" di kartu "Kelola Nama Petugas" (lihat
+// loadPetugasSessionsAdmin() & petugasActiveLabel() di bawah). Beda dari titik
+// Online/Offline (yang berasal dari Presence, hanya benar selagi HP-nya masih
+// terbuka) — ini menandakan kapan terakhir kali ada perubahan data dari
+// petugas tersebut, jadi tetap berguna walau sedang offline.
+let petugasSessionMap = {};
+let petugasSessionChannel = null;
+let petugasActiveLabelTimer = null;
 // Dipakai untuk otomatis mengisi tabel stok_opname_petugas di Supabase kalau
 // sedang kosong (belum ada nama sama sekali) — supaya kartu "Kelola Nama
 // Petugas" dan dropdown Petugas tidak kosong melompong. Catatan: ini dicek
@@ -2283,6 +2298,7 @@ function renderPetugasAdminList(){
     const inisial = (row.nama || '?').trim().charAt(0).toUpperCase();
     const online = isPetugasOnline(namaRaw);
     const hasPw = !!row.password_hash;
+    const activeLabel = escapeHtml(petugasActiveLabel(namaRaw));
     return `
       <div class="petugas-item">
         <div class="petugas-item-top">
@@ -2293,6 +2309,7 @@ function renderPetugasAdminList(){
             <span class="petugas-online-label">${online ? 'Online' : 'Offline'}</span>
           </button>
         </div>
+        <div class="petugas-item-sub">${activeLabel}</div>
         <div class="petugas-item-actions">
           <span class="petugas-pw-status ${hasPw ? 'set' : 'unset'}" title="${hasPw ? 'Password sudah diatur oleh petugas ini' : 'Petugas ini belum membuat password — akan diminta membuat sendiri saat login pertama kali'}">${hasPw ? 'Ada password' : 'Belum ada password'}</span>
           <button type="button" class="link-btn" data-petugas-action="resetpw" data-petugas-id="${row.id}">${hasPw ? 'Reset' : 'Atur'} Password</button>
@@ -2302,6 +2319,60 @@ function renderPetugasAdminList(){
       </div>
     `;
   }).join('');
+}
+
+// Memuat kapan terakhir kali tiap petugas aktif (kolom updated_at di tabel
+// stok_opname_petugas_session, yang diperbarui otomatis oleh HP petugas
+// setiap kali ada perubahan data). Dipanggil sekali saat panel dibuka, lalu
+// terus disinkron lewat subscribePetugasSessionChannel().
+async function loadPetugasSessionsAdmin(){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.from(PETUGAS_SESSION_TABLE).select('petugas_slug, updated_at');
+    if(error) throw error;
+    petugasSessionMap = {};
+    (data || []).forEach(row => {
+      if(row && row.petugas_slug) petugasSessionMap[row.petugas_slug] = row.updated_at;
+    });
+    renderPetugasAdminList();
+    subscribePetugasSessionChannel();
+    if(!petugasActiveLabelTimer){
+      // Label "Aktif X detik/menit/jam/hari lalu" perlu ikut berjalan meski
+      // tidak ada data baru masuk, supaya "5 detik lalu" terus bertambah.
+      petugasActiveLabelTimer = setInterval(renderPetugasAdminList, 15000);
+    }
+  } catch(err){
+    console.error('Gagal memuat waktu aktif petugas:', err);
+  }
+}
+
+function subscribePetugasSessionChannel(){
+  if(!sb) return;
+  if(petugasSessionChannel){ try{ sb.removeChannel(petugasSessionChannel); }catch(e){} petugasSessionChannel = null; }
+  petugasSessionChannel = sb.channel('petugas-session-admin-monitor')
+    .on('postgres_changes', { event: '*', schema: 'public', table: PETUGAS_SESSION_TABLE }, payload => {
+      if(payload.eventType === 'DELETE'){
+        const oldSlug = payload.old && payload.old.petugas_slug;
+        if(oldSlug) delete petugasSessionMap[oldSlug];
+      } else if(payload.new && payload.new.petugas_slug){
+        petugasSessionMap[payload.new.petugas_slug] = payload.new.updated_at;
+      }
+      renderPetugasAdminList();
+    })
+    .subscribe();
+}
+
+// Label ringkas "kapan terakhir aktif" untuk satu nama petugas di kartu
+// "Kelola Nama Petugas". Kalau sedang online (Presence), tampilkan "Aktif
+// sekarang"; kalau tidak, pakai waktu terakhir dari petugasSessionMap
+// (detik/menit/jam/hari lalu, lihat relativeTimeFromNow()); kalau belum
+// pernah ada sesi sama sekali, tampilkan "Belum pernah aktif".
+function petugasActiveLabel(nama){
+  if(isPetugasOnline(nama)) return 'Aktif sekarang';
+  const slug = slugifyPetugasAdmin(nama);
+  const lastActive = slug ? petugasSessionMap[slug] : null;
+  if(!lastActive) return 'Belum pernah aktif';
+  return 'Aktif ' + relativeTimeFromNow(lastActive);
 }
 
 // ====== Ambil Alih Layar Petugas (real-time, lewat sesi live per-petugas) ======
