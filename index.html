@@ -62,6 +62,13 @@
   alter table public.stok_opname_broadcast add column if not exists video_path text;
   alter table public.stok_opname_settings add column if not exists app_url text;
   alter table public.stok_opname_settings add column if not exists hint_bubble_enabled boolean not null default true;
+  alter table public.stok_opname_settings add column if not exists bb_event_enabled boolean not null default true;
+  alter table public.stok_opname_settings add column if not exists bb_reset_at timestamptz;
+
+  -- Untuk tombol "Reset Skor Leaderboard Block Blast" (panel admin perlu izin menghapus
+  -- baris di tabel leaderboard; jalankan sekali):
+  create policy "anon delete blockblast" on public.blockblast_leaderboard
+    for delete using (true);
 
   -- Untuk fitur "Coret-coret" (gambar tangan dari admin, tampil live di layar
   -- stok opname, cuma tampil saja / tidak bisa disentuh di layar tersebut):
@@ -89,6 +96,8 @@
   create table if not exists public.stok_opname_settings (
     screen_code text primary key,
     sync_card_visible boolean not null default true,
+    bb_event_enabled boolean not null default true,   -- saklar "Event Block Blast" (pengumuman event)
+    bb_reset_at timestamptz,                          -- waktu terakhir skor Block Blast direset dari Panel Admin
     hint_bubble_enabled boolean not null default true, -- saklar "Kata-kata di atas AI Agent"
                                                -- dari Panel Admin, berlaku untuk semua HP.
     app_url text,                             -- URL lengkap halaman stok_opname.html (kalau tidak
@@ -1325,6 +1334,25 @@
       </label>
     </div>
     <div class="footnote" id="hintBubbleStatus">Memuat status…</div>
+    <div class="settings-row" style="margin-top:14px;">
+      <div class="settings-row-text">
+        <div class="settings-row-title">🏆 Event Top Score Block Blast</div>
+        <div class="settings-row-desc">Pengumuman event (pil kecil di atas layar + popup info) di halaman Stok Opname. Aktifkan untuk memulai event, nonaktifkan untuk menghentikannya kapan saja. Walau aktif, pengumuman tetap otomatis hilang setelah tanggal akhir event.</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="bbEventToggle" onchange="setBbEventEnabled(this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="footnote" id="bbEventStatus">Memuat status…</div>
+    <div class="settings-row" style="margin-top:14px;">
+      <div class="settings-row-text">
+        <div class="settings-row-title">♻️ Reset Skor Leaderboard Block Blast</div>
+        <div class="settings-row-desc">Menghapus semua skor di leaderboard untuk semua pemain, lalu leaderboard di semua HP langsung kosong. Dipakai saat memulai event baru. Tidak bisa dibatalkan.</div>
+      </div>
+      <button type="button" class="btn-stop" id="bbResetBtn" onclick="resetBbLeaderboard()">Reset Skor</button>
+    </div>
+    <div class="footnote" id="bbResetStatus">Memuat info skor…</div>
   </div>
 
   <div class="card connected-only">
@@ -2094,9 +2122,15 @@ async function loadSyncCardSetting(){
     syncCardVisible = data ? data.sync_card_visible !== false : true;
     appUrlSetting = data ? (data.app_url || '') : '';
     hintBubbleEnabled = data ? data.hint_bubble_enabled !== false : true;
+    bbEventEnabled = data ? data.bb_event_enabled !== false : true;
+    bbResetAt = data ? (data.bb_reset_at || null) : null;
     renderSyncCardStatus();
     renderAppUrlStatus();
     renderHintBubbleStatus();
+    renderBbEventStatus();
+    renderBbResetStatus();
+    loadBbLbInfo();
+    subscribeBbLbChannel();
     subscribeSettingsChannel();
   } catch(err){
     console.error('Gagal memuat status modal sinkronisasi:', err);
@@ -2104,6 +2138,8 @@ async function loadSyncCardSetting(){
     if(text) text.textContent = 'Gagal memuat status. Pastikan tabel stok_opname_settings sudah dibuat (lihat komentar di atas file ini).';
     const hintStatus = document.getElementById('hintBubbleStatus');
     if(hintStatus) hintStatus.textContent = 'Gagal memuat status.';
+    const bbStatus = document.getElementById('bbEventStatus');
+    if(bbStatus) bbStatus.textContent = 'Gagal memuat status.';
   }
 }
 
@@ -2117,9 +2153,13 @@ function subscribeSettingsChannel(){
       syncCardVisible = payload.new ? payload.new.sync_card_visible !== false : true;
       appUrlSetting = payload.new ? (payload.new.app_url || '') : '';
       hintBubbleEnabled = payload.new ? payload.new.hint_bubble_enabled !== false : true;
+      bbEventEnabled = payload.new ? payload.new.bb_event_enabled !== false : true;
+      bbResetAt = payload.new ? (payload.new.bb_reset_at || null) : null;
       renderSyncCardStatus();
       renderAppUrlStatus();
       renderHintBubbleStatus();
+      renderBbEventStatus();
+      renderBbResetStatus();
     })
     .subscribe();
 }
@@ -5917,6 +5957,135 @@ async function setHintBubbleEnabled(enabled){
     alert('Gagal menyimpan perubahan. Cek koneksi internet lalu coba lagi.');
   } finally {
     if(toggle) toggle.disabled = false;
+  }
+}
+
+
+// ====== Saklar Event Top Score Block Blast ======
+// Disimpan di stok_opname_settings.bb_event_enabled dan disiarkan lewat Realtime,
+// jadi langsung berlaku di SEMUA HP yang membuka halaman Stok Opname.
+let bbEventEnabled = true;
+
+function renderBbEventStatus(){
+  const toggle = document.getElementById('bbEventToggle');
+  const status = document.getElementById('bbEventStatus');
+  if(toggle) toggle.checked = bbEventEnabled;
+  if(status) status.textContent = bbEventEnabled
+    ? 'Event AKTIF — pengumuman tampil di semua HP (sampai tanggal akhir event).'
+    : 'Event NONAKTIF — pengumuman disembunyikan di semua HP.';
+}
+
+async function setBbEventEnabled(enabled){
+  if(!sb) return;
+  const toggle = document.getElementById('bbEventToggle');
+  if(toggle) toggle.disabled = true;
+  try{
+    const { error } = await sb.from(SETTINGS_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      bb_event_enabled: enabled,
+      updated_by: CLIENT_ID,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'screen_code' });
+    if(error) throw error;
+    bbEventEnabled = enabled;
+    renderBbEventStatus();
+  } catch(err){
+    console.error('Gagal mengubah status event Block Blast:', err);
+    renderBbEventStatus();
+    alert('Gagal menyimpan perubahan. Pastikan kolom bb_event_enabled sudah ditambahkan (lihat komentar SQL di atas file), lalu coba lagi.');
+  } finally {
+    if(toggle) toggle.disabled = false;
+  }
+}
+
+
+// ====== Reset Skor Leaderboard Block Blast ======
+// 1) hapus semua baris di blockblast_leaderboard, 2) isi stok_opname_settings.bb_reset_at
+// dengan waktu sekarang. Poin 2 jadi sinyal ke semua HP supaya mereka juga membuang sisa
+// skor lama yang tersimpan lokal (skor tertunda) dan tidak mengirimnya lagi setelah reset.
+const BB_LB_TABLE = 'blockblast_leaderboard';
+let bbResetAt = null;
+let bbLbCount = null;      // jumlah pemain di leaderboard
+let bbLbTop = null;        // {player_name, best_score}
+let bbLbChannel = null;
+
+function renderBbResetStatus(){
+  const el = document.getElementById('bbResetStatus');
+  if(!el) return;
+  let t = (bbLbCount == null) ? 'Memuat info skor…'
+    : (bbLbCount === 0 ? 'Leaderboard kosong.'
+      : (bbLbCount + ' pemain tercatat · Top 1: ' + bbLbTop.player_name + ' (' + Number(bbLbTop.best_score).toLocaleString('id-ID') + ')'));
+  if(bbResetAt){
+    const d = new Date(bbResetAt);
+    if(!isNaN(d)) t += ' · Terakhir direset: ' + d.toLocaleString('id-ID', { dateStyle:'medium', timeStyle:'short' });
+  }
+  el.textContent = t;
+}
+
+async function loadBbLbInfo(){
+  if(!sb) return;
+  try{
+    const { data, count, error } = await sb.from(BB_LB_TABLE)
+      .select('player_name,best_score', { count:'exact' })
+      .order('best_score', { ascending:false }).limit(1);
+    if(error) throw error;
+    bbLbCount = (typeof count === 'number') ? count : (data ? data.length : 0);
+    bbLbTop = (data && data[0]) || null;
+    if(bbLbCount > 0 && !bbLbTop) bbLbCount = 0;
+    renderBbResetStatus();
+  } catch(err){
+    console.error('Gagal memuat info leaderboard Block Blast:', err);
+    const el = document.getElementById('bbResetStatus');
+    if(el) el.textContent = 'Gagal memuat info skor. Pastikan tabel blockblast_leaderboard ada.';
+  }
+}
+
+function subscribeBbLbChannel(){
+  if(!sb || bbLbChannel) return;
+  bbLbChannel = sb.channel('bblb-admin-' + BROADCAST_SCREEN_CODE)
+    .on('postgres_changes', { event:'*', schema:'public', table: BB_LB_TABLE }, () => { loadBbLbInfo(); })
+    .subscribe();
+}
+
+async function resetBbLeaderboard(){
+  if(!sb) return;
+  const info = (bbLbCount > 0 && bbLbTop)
+    ? ('\n\nSaat ini ' + bbLbCount + ' pemain tercatat. Top 1: ' + bbLbTop.player_name + ' (' + Number(bbLbTop.best_score).toLocaleString('id-ID') + ').')
+    : '';
+  if(!confirm('Reset SEMUA skor leaderboard Block Blast?' + info + '\n\nSkor semua pemain akan dihapus dan tidak bisa dikembalikan.')) return;
+  const btn = document.getElementById('bbResetBtn');
+  if(btn) btn.disabled = true;
+  try{
+    // 1) hapus semua skor
+    const del = await sb.from(BB_LB_TABLE).delete().not('player_name', 'is', null);
+    if(del.error) throw del.error;
+    // Pastikan benar-benar terhapus (kalau izin delete belum ada, Supabase tidak error tapi tidak menghapus)
+    const chk = await sb.from(BB_LB_TABLE).select('player_name', { count:'exact', head:true });
+    if(!chk.error && chk.count > 0){
+      alert('Skor belum terhapus (masih ada ' + chk.count + ' baris). Kemungkinan izin hapus belum diaktifkan di Supabase — jalankan "create policy anon delete blockblast" (lihat komentar SQL di atas file).');
+      await loadBbLbInfo();
+      return;
+    }
+    // 2) sinyal reset ke semua HP
+    const nowIso = new Date().toISOString();
+    const { error } = await sb.from(SETTINGS_TABLE).upsert({
+      screen_code: BROADCAST_SCREEN_CODE,
+      bb_reset_at: nowIso,
+      updated_by: CLIENT_ID,
+      updated_at: nowIso
+    }, { onConflict: 'screen_code' });
+    if(error){
+      alert('Skor sudah dihapus, tapi sinyal reset ke HP gagal terkirim (kolom bb_reset_at belum ada?). HP yang masih menyimpan skor lama bisa mengirimnya lagi. Jalankan SQL "add column bb_reset_at" lalu reset ulang.');
+    } else {
+      bbResetAt = nowIso;
+    }
+    await loadBbLbInfo();
+    renderBbResetStatus();
+  } catch(err){
+    console.error('Gagal mereset skor Block Blast:', err);
+    alert('Gagal mereset skor. Cek koneksi internet / izin hapus di Supabase, lalu coba lagi.');
+  } finally {
+    if(btn) btn.disabled = false;
   }
 }
 
