@@ -300,52 +300,35 @@
 
   alter publication supabase_realtime add table public.stok_opname_stock_import;
 
-  -- ===== Slot Menu Farmacare Toolkit (userscript) =====
-  -- Slot 1-3 di menu userscript diisi dari kartu "Slot Menu Farmacare Toolkit".
-  -- Kode script berjalan di halaman app.farmacare.id milik semua pengguna, jadi
-  -- TULIS hanya boleh lewat fungsi ber-PIN di bawah (anon hanya boleh membaca).
-  -- GANTI 'GANTI-PIN-INI' dengan PIN rahasiamu sebelum dijalankan.
-  create table if not exists public.stok_opname_toolkit_slot (
-    slot int primary key check (slot between 1 and 3),
-    judul text,
-    ikon text,
-    deskripsi text,
-    kode text,
-    aktif boolean not null default false,
+  -- ====== PUSTAKA SCRIPT FARMACARE (card "Script Farmacare" di panel admin) ======
+  -- Script yang diunggah di panel admin disimpan di sini, lalu muncul sebagai
+  -- daftar/menu di halaman app.farmacare.id lewat userscript "Farmacare Receiver".
+  create table if not exists public.stok_opname_scripts (
+    id uuid primary key default gen_random_uuid(),
+    screen_code text not null default 'semua-layar',
+    name text not null,
+    code text not null,
+    enabled boolean not null default true,    -- false = disembunyikan dari menu Farmacare
+    autorun boolean not null default false,   -- true = langsung dijalankan saat Farmacare terbuka
+    sort_order int not null default 0,
     updated_by text,
     updated_at timestamptz not null default now()
   );
+  create index if not exists stok_opname_scripts_screen_idx on public.stok_opname_scripts (screen_code);
+  alter table public.stok_opname_scripts enable row level security;
 
-  alter table public.stok_opname_toolkit_slot enable row level security;
-
-  create policy "anon read toolkit slot" on public.stok_opname_toolkit_slot
+  drop policy if exists "anon select scripts" on public.stok_opname_scripts;
+  create policy "anon select scripts" on public.stok_opname_scripts
     for select using (true);
-  -- sengaja TIDAK ada policy insert/update/delete untuk anon
-
-  create table if not exists public.stok_opname_toolkit_pin (
-    id int primary key default 1 check (id = 1),
-    pin text not null
-  );
-  alter table public.stok_opname_toolkit_pin enable row level security; -- tanpa policy = anon tidak bisa baca/tulis
-  insert into public.stok_opname_toolkit_pin (id, pin) values (1, 'GANTI-PIN-INI') on conflict (id) do nothing;
-  -- ganti PIN nanti: update public.stok_opname_toolkit_pin set pin = 'PIN-BARU' where id = 1;
-
-  create or replace function public.toolkit_slot_simpan(
-    p_pin text, p_slot int, p_judul text, p_ikon text, p_deskripsi text, p_kode text, p_aktif boolean, p_by text
-  ) returns void language plpgsql security definer set search_path = public as $$
-  begin
-    if p_slot not between 1 and 3 then raise exception 'slot tidak valid'; end if;
-    if not exists (select 1 from public.stok_opname_toolkit_pin where id = 1 and pin = p_pin) then
-      raise exception 'PIN salah';
-    end if;
-    insert into public.stok_opname_toolkit_slot (slot, judul, ikon, deskripsi, kode, aktif, updated_by, updated_at)
-    values (p_slot, p_judul, p_ikon, p_deskripsi, p_kode, p_aktif, p_by, now())
-    on conflict (slot) do update set
-      judul = excluded.judul, ikon = excluded.ikon, deskripsi = excluded.deskripsi,
-      kode = excluded.kode, aktif = excluded.aktif, updated_by = excluded.updated_by, updated_at = now();
-  end $$;
-
-  grant execute on function public.toolkit_slot_simpan(text, int, text, text, text, text, boolean, text) to anon;
+  drop policy if exists "anon insert scripts" on public.stok_opname_scripts;
+  create policy "anon insert scripts" on public.stok_opname_scripts
+    for insert with check (true);
+  drop policy if exists "anon update scripts" on public.stok_opname_scripts;
+  create policy "anon update scripts" on public.stok_opname_scripts
+    for update using (true) with check (true);
+  drop policy if exists "anon delete scripts" on public.stok_opname_scripts;
+  create policy "anon delete scripts" on public.stok_opname_scripts
+    for delete using (true);
 
   -- Untuk fitur "Pengguna Aktif Sekarang" di panel admin ini: murni
   -- Supabase Realtime Presence, tidak butuh tabel database apa pun.
@@ -1565,22 +1548,36 @@
   </div>
 
 
-  <div class="card connected-only" id="tkCard">
-    <h2>🧩 Slot Menu Farmacare Toolkit</h2>
-    <div class="master-status" id="tkStatusBox">Memuat slot…</div>
-
-    <div style="margin-top:12px;">
-      <input type="password" class="field-input" id="tkPin" placeholder="PIN admin (wajib untuk simpan/kosongkan)" autocomplete="off">
-      <div class="field-hint">PIN diset di Supabase (lihat komentar SQL di atas file ini). Disimpan di browser ini setelah berhasil dipakai.</div>
+  <div class="card connected-only">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <h2 style="margin:0;">Script Farmacare (Pustaka)</h2>
+      <span class="presence-count-badge" id="scriptLibCount">0 script</span>
     </div>
-
-    <div id="tkSlots"></div>
-
+    <div class="field-hint" style="margin-top:10px;">
+      Unggah atau tempel script di sini. Script disimpan permanen dan otomatis muncul sebagai daftar/menu
+      di halaman <b>app.farmacare.id</b> lewat <i>Farmacare Receiver</i> (tombol <b>Script</b> di pojok kiri bawah).
+      Terpisah dari "Tampilkan di Layar" di bawah.
+    </div>
+    <input type="text" class="field-input" id="scriptLibName" placeholder="Nama script (mis. Farmacare Toolkit)" maxlength="80">
+    <textarea id="scriptLibCode" spellcheck="false" style="min-height:140px;" placeholder="Tempel script di sini, atau klik Unggah File…"></textarea>
+    <div class="radio-row" style="margin:8px 0 0;">
+      <label><input type="checkbox" id="scriptLibAutorun"> Jalankan otomatis begitu Farmacare dibuka</label>
+    </div>
+    <div class="actions-row">
+      <input type="file" id="scriptLibFile" accept=".js,.html,.htm,.txt,text/javascript,text/html,text/plain" style="display:none;" onchange="loadScriptLibFile(this.files && this.files[0]); this.value='';">
+      <button type="button" class="btn-tool" onclick="document.getElementById('scriptLibFile').click()">Unggah File (.js / .html)</button>
+      <button type="button" class="btn-main" id="btnSaveScriptLib" onclick="saveScriptLib()">Simpan Script</button>
+      <button type="button" class="link-btn" id="btnCancelScriptLib" style="display:none;" onclick="cancelEditScriptLib()">Batal edit</button>
+    </div>
+    <div class="field-hint" id="scriptLibInfo" style="margin-top:8px;"></div>
+    <div id="scriptLibList" style="margin-top:12px;"><div class="petugas-empty">Memuat…</div></div>
+    <div class="actions-row">
+      <button type="button" class="link-btn" onclick="loadScriptLib()">Muat ulang</button>
+    </div>
     <div class="footnote">
-      Tiap slot muncul sebagai satu pilihan menu di userscript. Kode diambil <b>baru setiap kali menu
-      diklik</b>, jadi pengguna otomatis dapat versi terbaru tanpa update userscript. Slot yang
-      <b>dikosongkan</b> tampil abu-abu & tidak bisa diklik. Kode di sini bisa dibaca siapa saja yang
-      punya akun toolkit, jangan taruh password/rahasia di dalamnya.
+      Script berjalan di halaman Farmacare (bukan di Tampermonkey), jadi fungsi <code>GM_*</code> tidak tersedia.
+      Receiver mengecek daftar ini tiap beberapa detik; script yang <b>Nonaktif</b> atau dihapus hilang dari menu dan
+      elemen yang ditambahkannya dibuang (timer/event yang sudah berjalan baru berhenti setelah halaman dimuat ulang).
     </div>
   </div>
 
@@ -1594,8 +1591,14 @@
     </div>
 
     <div class="tab-panel active" data-tab="html" id="tabHtml">
-      <textarea id="htmlInput" placeholder="&lt;div style=&quot;color:white;font-size:40px;text-align:center;padding-top:40vh;&quot;&gt;Promo hari ini!&lt;/div&gt;"></textarea>
-      <div class="field-hint">Tempel kode HTML lengkap (boleh pakai CSS/JS di dalamnya). Akan tampil satu layar penuh di layar stok opname, menimpa tampilan biasa, sampai dihentikan.</div>
+      <textarea id="htmlInput" oninput="updateHtmlKindHint()" spellcheck="false" placeholder="Tempel script Farmacare Toolkit (boleh lengkap dengan // ==UserScript==, boleh dibungkus &lt;script&gt;), atau HTML biasa, mis. &lt;div style=&quot;color:white;font-size:40px;text-align:center;padding-top:40vh;&quot;&gt;Promo hari ini!&lt;/div&gt;"></textarea>
+      <div class="field-hint">
+        Tempel kode HTML lengkap (boleh pakai CSS/JS di dalamnya) <b>atau script Farmacare Toolkit</b>.
+        Kode dikirim ke layar stok opname <b>dan</b> ke halaman <b>app.farmacare.id</b> lewat script
+        <i>Farmacare Receiver</i> (Tampermonkey/Violentmonkey) yang sudah terpasang. Dalam beberapa detik menu Toolkit muncul di Farmacare;
+        tombol <b>Hentikan</b> di bawah akan membuangnya lagi.
+        <br><span id="htmlKindHint" style="color:var(--teal-deep);font-weight:600;"></span>
+      </div>
       <div class="actions-row">
         <button type="button" class="btn-main" onclick="showHtml()">Tampilkan di Layar</button>
       </div>
@@ -2119,12 +2122,12 @@ async function connectGlobal(){
 
   loadSyncCardSetting();
   loadRooms();
+  loadScriptLib();
   loadPetugasAdmin();
   loadPetugasSessionsAdmin();
   loadPesanAdmin();
   loadItemMaster();
   loadStockImportStatus();
-  loadToolkitSlots();
   subscribePresenceChannel();
 }
 
@@ -4869,7 +4872,10 @@ function renderStatus(){
   setStatus('Tersambung • layar sedang menampilkan konten dari admin', 'on');
   btnStop.disabled = false;
   if(currentRow.type === 'html'){
-    nowShowing.innerHTML = `Layar sedang menampilkan <b>HTML custom</b> yang ditempel dari admin.`;
+    const _k = detectBroadcastKind(currentRow.html_content || '');
+    nowShowing.innerHTML = (_k === 'js' || _k === 'inject' || /<script[\s>]/i.test(currentRow.html_content || ''))
+      ? `Layar sedang menampilkan <b>script/HTML custom</b> dari admin. Di <b>app.farmacare.id</b> akan aktif lewat Farmacare Receiver dalam beberapa detik.`
+      : `Layar sedang menampilkan <b>HTML custom</b> yang ditempel dari admin.`;
   } else if(currentRow.type === 'video'){
     const srcLabel = currentRow.video_source === 'upload' ? 'diunggah' : (currentRow.video_source === 'local' ? 'file lokal' : 'link');
     if(currentRow.video_source === 'upload'){
@@ -5115,9 +5121,218 @@ async function pushBroadcast(payload){
   }
 }
 
+// ====== Kompatibilitas dengan "Farmacare Receiver" (userscript) ======
+// Receiver membaca kolom html_content dan mengenali 3 jenis isi:
+//   - JavaScript biasa (tidak diawali "<")  -> dijalankan di halaman Farmacare
+//   - Potongan HTML + <script>               -> elemen ditempel, script dijalankan
+//   - HTML biasa / dokumen lengkap           -> tampil layar penuh (iframe)
+// Fungsi di bawah merapikan isi yang ditempel supaya aman untuk ketiganya.
+function normalizeBroadcastCode(raw){
+  let t = String(raw || '').replace(/^\uFEFF/, '').trim();
+  // buang pagar markdown ```js ... ``` kalau tertempel dari chat
+  const fence = t.match(/^```[a-zA-Z]*\s*\n([\s\S]*?)\n?```$/);
+  if(fence) t = fence[1].trim();
+  return t;
+}
+function detectBroadcastKind(raw){
+  const t = normalizeBroadcastCode(raw);
+  if(!t) return '';
+  if(t[0] !== '<') return 'js';
+  if(/^<!doctype|^<html[\s>]|<body[\s>]/i.test(t)) return 'page';
+  if(/<script[\s>]/i.test(t)) return 'inject';
+  return 'page';
+}
+function updateHtmlKindHint(){
+  const el = document.getElementById('htmlKindHint');
+  if(!el) return;
+  const k = detectBroadcastKind(document.getElementById('htmlInput').value);
+  el.textContent = ({
+    js: 'Terdeteksi: JavaScript / userscript → akan dijalankan di halaman Farmacare.',
+    inject: 'Terdeteksi: potongan HTML + script → ditempel & dijalankan di halaman Farmacare.',
+    page: 'Terdeteksi: HTML biasa → tampil layar penuh (iframe).'
+  })[k] || '';
+}
+// JavaScript mentah dibungkus <script> supaya layar stok opname tidak menampilkannya
+// sebagai teks, sementara Receiver tetap menjalankannya di Farmacare.
+function prepareBroadcastHtml(raw){
+  const t = normalizeBroadcastCode(raw);
+  if(detectBroadcastKind(t) === 'js'){
+    return '<script>\n' + t.replace(/<\/script/gi, '<\\/script') + '\n</scr' + 'ipt>';
+  }
+  return t;
+}
+
+// ====== Pustaka Script Farmacare (tabel stok_opname_scripts) ======
+// Dibaca oleh userscript "Farmacare Receiver" dan ditampilkan sebagai menu di app.farmacare.id.
+const SCRIPT_LIB_TABLE = 'stok_opname_scripts';
+let scriptLib = [];
+let scriptLibEditingId = null;
+
+function scriptLibNormalize(raw){
+  let t = String(raw || '').replace(/^\uFEFF/, '').trim();
+  const fence = t.match(/^```[a-zA-Z]*\s*\n([\s\S]*?)\n?```$/);
+  if(fence) t = fence[1].trim();
+  // dibungkus satu tag script -> ambil isinya saja
+  const wrap = t.match(/^<script[^>]*>([\s\S]*)<\/script>$/i);
+  if(wrap && !/<script[\s>]/i.test(wrap[1])) t = wrap[1].trim();
+  return t;
+}
+
+function scriptLibSetInfo(msg){
+  const el = document.getElementById('scriptLibInfo');
+  if(el) el.textContent = msg || '';
+}
+
+function loadScriptLibFile(file){
+  if(!file) return;
+  if(file.size > 2 * 1024 * 1024){ alert('File terlalu besar (maks 2 MB).'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('scriptLibCode').value = String(reader.result || '');
+    const nameEl = document.getElementById('scriptLibName');
+    if(!nameEl.value.trim()) nameEl.value = file.name.replace(/\.(user\.)?(js|html?|txt)$/i, '');
+    scriptLibSetInfo('File dimuat: ' + file.name + ' (' + Math.ceil(file.size / 1024) + ' KB). Klik "Simpan Script" untuk menyimpan.');
+  };
+  reader.onerror = () => alert('Gagal membaca file.');
+  reader.readAsText(file);
+}
+(function setupScriptLibDrop(){
+  const ta = document.getElementById('scriptLibCode');
+  if(!ta) return;
+  ['dragenter','dragover'].forEach(ev => ta.addEventListener(ev, e => { e.preventDefault(); ta.style.outline = '2px dashed var(--teal-deep)'; }));
+  ['dragleave','drop'].forEach(ev => ta.addEventListener(ev, e => { e.preventDefault(); ta.style.outline = ''; }));
+  ta.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if(f) loadScriptLibFile(f); });
+})();
+
+async function loadScriptLib(){
+  const list = document.getElementById('scriptLibList');
+  if(!list) return;
+  if(!sb){ list.innerHTML = '<div class="petugas-empty">Belum tersambung.</div>'; return; }
+  try{
+    const { data, error } = await sb.from(SCRIPT_LIB_TABLE).select('*')
+      .eq('screen_code', BROADCAST_SCREEN_CODE)
+      .order('sort_order', { ascending: true }).order('name', { ascending: true });
+    if(error) throw error;
+    scriptLib = data || [];
+    renderScriptLib();
+  } catch(err){
+    console.error('Gagal memuat pustaka script:', err);
+    list.innerHTML = '<div class="petugas-empty">Gagal memuat. Pastikan tabel <b>stok_opname_scripts</b> sudah dibuat (SQL ada di komentar paling atas file ini).</div>';
+  }
+}
+
+function renderScriptLib(){
+  const list = document.getElementById('scriptLibList');
+  const badge = document.getElementById('scriptLibCount');
+  if(badge) badge.textContent = scriptLib.length + ' script';
+  if(!scriptLib.length){
+    list.innerHTML = '<div class="petugas-empty">Belum ada script. Unggah atau tempel di atas lalu klik Simpan Script.</div>';
+    return;
+  }
+  list.innerHTML = scriptLib.map(it => {
+    const kb = Math.max(1, Math.ceil((it.code || '').length / 1024));
+    const when = it.updated_at ? relativeTimeFromNow(it.updated_at) : '-';
+    const badges =
+      (it.enabled ? '' : '<span class="room-item-badge" style="background:#fbf1e0;color:#b8863b;">Nonaktif</span>') +
+      (it.autorun ? '<span class="room-item-badge">Otomatis</span>' : '');
+    return `<div class="room-item">
+      <div class="room-item-head"><span class="room-item-code" style="font-family:inherit;">${escapeHtml(it.name)}</span>${badges}</div>
+      <div class="room-item-sub">${kb} KB • diperbarui ${when}</div>
+      <div class="room-item-actions">
+        <button type="button" class="link-btn" onclick="editScriptLib('${it.id}')">Edit</button>
+        <button type="button" class="link-btn" onclick="toggleScriptLib('${it.id}')">${it.enabled ? 'Nonaktifkan' : 'Aktifkan'}</button>
+        <button type="button" class="link-btn link-btn-danger" onclick="deleteScriptLib('${it.id}')">Hapus</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function saveScriptLib(){
+  if(!sb){ alert('Belum tersambung. Tunggu sebentar lalu coba lagi.'); return; }
+  const name = document.getElementById('scriptLibName').value.trim();
+  const code = scriptLibNormalize(document.getElementById('scriptLibCode').value);
+  const autorun = document.getElementById('scriptLibAutorun').checked;
+  if(!name){ alert('Isi nama script dulu.'); return; }
+  if(!code){ alert('Script masih kosong. Tempel atau unggah dulu.'); return; }
+  const btn = document.getElementById('btnSaveScriptLib');
+  btn.disabled = true;
+  try{
+    const row = { name, code, autorun, updated_by: CLIENT_ID, updated_at: new Date().toISOString() };
+    let error;
+    if(scriptLibEditingId){
+      ({ error } = await sb.from(SCRIPT_LIB_TABLE).update(row).eq('id', scriptLibEditingId));
+    } else {
+      ({ error } = await sb.from(SCRIPT_LIB_TABLE).insert({ ...row, screen_code: BROADCAST_SCREEN_CODE, enabled: true }));
+    }
+    if(error) throw error;
+    const wasEdit = !!scriptLibEditingId;
+    cancelEditScriptLib();
+    scriptLibSetInfo(wasEdit ? 'Script diperbarui. Muncul di Farmacare dalam beberapa detik.' : 'Script tersimpan. Muncul di Farmacare dalam beberapa detik.');
+    await loadScriptLib();
+  } catch(err){
+    console.error('Gagal menyimpan script:', err);
+    alert('Gagal menyimpan script. Pastikan tabel stok_opname_scripts sudah dibuat di Supabase (SQL ada di komentar paling atas file ini).');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function editScriptLib(id){
+  const it = scriptLib.find(x => x.id === id);
+  if(!it) return;
+  scriptLibEditingId = id;
+  document.getElementById('scriptLibName').value = it.name || '';
+  document.getElementById('scriptLibCode').value = it.code || '';
+  document.getElementById('scriptLibAutorun').checked = !!it.autorun;
+  document.getElementById('btnSaveScriptLib').textContent = 'Simpan Perubahan';
+  document.getElementById('btnCancelScriptLib').style.display = '';
+  scriptLibSetInfo('Mengedit: ' + (it.name || ''));
+  document.getElementById('scriptLibName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function cancelEditScriptLib(){
+  scriptLibEditingId = null;
+  document.getElementById('scriptLibName').value = '';
+  document.getElementById('scriptLibCode').value = '';
+  document.getElementById('scriptLibAutorun').checked = false;
+  document.getElementById('btnSaveScriptLib').textContent = 'Simpan Script';
+  document.getElementById('btnCancelScriptLib').style.display = 'none';
+  scriptLibSetInfo('');
+}
+
+async function toggleScriptLib(id){
+  const it = scriptLib.find(x => x.id === id);
+  if(!it || !sb) return;
+  try{
+    const { error } = await sb.from(SCRIPT_LIB_TABLE)
+      .update({ enabled: !it.enabled, updated_by: CLIENT_ID, updated_at: new Date().toISOString() }).eq('id', id);
+    if(error) throw error;
+    await loadScriptLib();
+  } catch(err){
+    console.error(err);
+    alert('Gagal mengubah status script.');
+  }
+}
+
+async function deleteScriptLib(id){
+  const it = scriptLib.find(x => x.id === id);
+  if(!it || !sb) return;
+  if(!confirm('Hapus script "' + it.name + '" permanen?')) return;
+  try{
+    const { error } = await sb.from(SCRIPT_LIB_TABLE).delete().eq('id', id);
+    if(error) throw error;
+    if(scriptLibEditingId === id) cancelEditScriptLib();
+    await loadScriptLib();
+  } catch(err){
+    console.error(err);
+    alert('Gagal menghapus script.');
+  }
+}
+
 async function showHtml(){
-  const html = document.getElementById('htmlInput').value;
-  if(!html.trim()){ alert('Tempel dulu kode HTML-nya.'); return; }
+  const rawInput = document.getElementById('htmlInput').value;
+  if(!rawInput.trim()){ alert('Tempel dulu kode HTML-nya.'); return; }
+  const html = prepareBroadcastHtml(rawInput);
   const ok = await pushBroadcast({
     type: 'html', active: true, html_content: html,
     video_source: null, video_value: null, video_path: null,
@@ -5504,161 +5719,6 @@ async function clearMasterList(){
     alert('Gagal menghapus di server. Cek koneksi internet lalu coba lagi.');
   } finally {
     if(btn) btn.disabled = false;
-  }
-}
-
-// ====== Slot Menu Farmacare Toolkit — stok_opname_toolkit_slot ======
-// Judul/ikon/deskripsi/kode untuk 3 pilihan menu di userscript. Baca langsung dari tabel,
-// tulis lewat fungsi RPC toolkit_slot_simpan (butuh PIN).
-const TK_TABLE = 'stok_opname_toolkit_slot';
-const TK_PIN_KEY = 'toolkit-slot-pin';
-const TK_N = 3;
-let tkRows = {}; // slot -> row
-
-function tkPin(){
-  const el = document.getElementById('tkPin');
-  return el ? el.value.trim() : '';
-}
-
-function tkInitPin(){
-  const el = document.getElementById('tkPin');
-  if(!el || el.dataset.ready) return;
-  el.dataset.ready = '1';
-  try{ el.value = localStorage.getItem(TK_PIN_KEY) || ''; }catch(e){}
-}
-
-function tkStatusText(){
-  const box = document.getElementById('tkStatusBox');
-  if(!box) return;
-  const filled = Object.values(tkRows).filter(r => r.aktif && r.judul).length;
-  box.innerHTML = `<b>${filled} dari ${TK_N} slot</b> terisi.`;
-}
-
-function renderToolkitSlots(){
-  const wrap = document.getElementById('tkSlots');
-  if(!wrap) return;
-  let html = '';
-  for(let n = 1; n <= TK_N; n++){
-    const r = tkRows[n] || {};
-    const filled = !!(r.aktif && r.judul);
-    const when = r.updated_at && filled ? ' • diperbarui ' + relativeTimeFromNow(r.updated_at) : '';
-    html += `
-    <div class="foto-musik-section" data-tk="${n}">
-      <div class="foto-musik-label">Slot ${n} — ${filled ? 'Terisi' + when : 'Kosong'}</div>
-      <div style="display:flex; gap:8px;">
-        <input type="text" class="field-input" id="tkIkon${n}" maxlength="4" placeholder="🧩" style="width:64px; text-align:center;" value="${escapeHtml(r.ikon || '')}">
-        <input type="text" class="field-input" id="tkJudul${n}" maxlength="40" placeholder="Judul menu (mis. Input Faktur)" value="${escapeHtml(r.judul || '')}">
-      </div>
-      <input type="text" class="field-input" id="tkDesk${n}" maxlength="120" placeholder="Deskripsi singkat di bawah judul" value="${escapeHtml(r.deskripsi || '')}">
-      <textarea id="tkKode${n}" spellcheck="false" placeholder="Tempel kode JavaScript di sini, atau upload file .js di bawah"></textarea>
-      <div class="actions-row" style="margin-top:8px;">
-        <label class="link-btn" style="cursor:pointer;">📂 Upload file .js
-          <input type="file" accept=".js,.txt,text/javascript" style="display:none;" onchange="tkLoadFile(${n}, this)">
-        </label>
-      </div>
-      <div class="actions-row">
-        <button type="button" class="btn-main" id="tkSave${n}" onclick="tkSave(${n})">Simpan Slot ${n}</button>
-        <button type="button" class="btn-stop" id="tkClear${n}" onclick="tkClear(${n})">Kosongkan</button>
-      </div>
-    </div>`;
-  }
-  wrap.innerHTML = html;
-  // isi textarea lewat properti (aman untuk karakter khusus), kode lama dimuat dari server
-  for(let n = 1; n <= TK_N; n++){
-    const r = tkRows[n];
-    const ta = document.getElementById('tkKode' + n);
-    if(ta && r && r.kode) ta.value = r.kode;
-  }
-  tkStatusText();
-}
-
-async function loadToolkitSlots(){
-  tkInitPin();
-  if(!sb) return;
-  try{
-    const { data, error } = await sb.from(TK_TABLE).select('*').order('slot', { ascending: true });
-    if(error) throw error;
-    tkRows = {};
-    (data || []).forEach(r => { tkRows[r.slot] = r; });
-    renderToolkitSlots();
-  } catch(err){
-    console.error('Gagal memuat slot toolkit:', err);
-    const box = document.getElementById('tkStatusBox');
-    if(box) box.textContent = 'Gagal memuat slot. Pastikan tabel stok_opname_toolkit_slot sudah dibuat (lihat komentar SQL di atas file ini).';
-  }
-}
-
-async function tkLoadFile(n, input){
-  const f = input.files && input.files[0];
-  if(!f) return;
-  try{
-    const text = await f.text();
-    document.getElementById('tkKode' + n).value = text;
-    const j = document.getElementById('tkJudul' + n);
-    if(j && !j.value.trim()){
-      j.value = f.name.replace(/\.(user\.)?(js|txt)$/i, '').replace(/[-_]+/g, ' ').trim().slice(0, 40);
-    }
-  } catch(e){
-    alert('Gagal membaca file.');
-  }
-  input.value = '';
-}
-
-async function tkCallSave(n, vals){
-  const pin = tkPin();
-  if(!pin){ alert('Isi PIN admin dulu.'); return false; }
-  const { error } = await sb.rpc('toolkit_slot_simpan', {
-    p_pin: pin, p_slot: n,
-    p_judul: vals.judul, p_ikon: vals.ikon, p_deskripsi: vals.deskripsi,
-    p_kode: vals.kode, p_aktif: vals.aktif, p_by: 'admin-' + CLIENT_ID
-  });
-  if(error){
-    if(/PIN salah/i.test(error.message || '')) alert('PIN salah.');
-    else { console.error('Gagal simpan slot:', error); alert('Gagal menyimpan ke server: ' + (error.message || 'cek koneksi / pastikan fungsi toolkit_slot_simpan sudah dibuat.')); }
-    return false;
-  }
-  try{ localStorage.setItem(TK_PIN_KEY, pin); }catch(e){}
-  return true;
-}
-
-async function tkSave(n){
-  if(!sb) return;
-  const judul = document.getElementById('tkJudul' + n).value.trim();
-  const ikon = document.getElementById('tkIkon' + n).value.trim() || '🧩';
-  const deskripsi = document.getElementById('tkDesk' + n).value.trim();
-  const kode = document.getElementById('tkKode' + n).value;
-  if(!judul){ alert('Isi judul menu dulu.'); return; }
-  if(!kode.trim()){ alert('Kode masih kosong. Tempel kode atau upload file .js. (Mau mengosongkan slot? pakai tombol Kosongkan.)'); return; }
-  try{ new Function(kode); }
-  catch(e){
-    if(e instanceof SyntaxError){
-      if(!confirm('Kode ini punya kesalahan sintaks:\n' + e.message + '\n\nTetap simpan?')) return;
-    }
-  }
-  const btn = document.getElementById('tkSave' + n);
-  if(btn){ btn.disabled = true; btn.textContent = 'Menyimpan…'; }
-  try{
-    const ok = await tkCallSave(n, { judul, ikon, deskripsi, kode, aktif: true });
-    if(ok){
-      tkRows[n] = { slot: n, judul, ikon, deskripsi, kode, aktif: true, updated_at: new Date().toISOString() };
-      renderToolkitSlots();
-      alert('✓ Slot ' + n + ' disimpan. Muncul di menu userscript saat menu dibuka lagi.');
-    }
-  } finally {
-    const b2 = document.getElementById('tkSave' + n);
-    if(b2){ b2.disabled = false; b2.textContent = 'Simpan Slot ' + n; }
-  }
-}
-
-async function tkClear(n){
-  if(!sb) return;
-  const r = tkRows[n];
-  if(!(r && r.aktif && r.judul)){ alert('Slot ' + n + ' memang sudah kosong.'); return; }
-  if(!confirm('Kosongkan Slot ' + n + ' ("' + r.judul + '")? Menu di userscript jadi abu-abu & kodenya dihapus.')) return;
-  const ok = await tkCallSave(n, { judul: null, ikon: null, deskripsi: null, kode: null, aktif: false });
-  if(ok){
-    delete tkRows[n];
-    renderToolkitSlots();
   }
 }
 
