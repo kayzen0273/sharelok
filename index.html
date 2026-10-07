@@ -1332,6 +1332,10 @@
   .pa-chat-compose textarea{flex:1; min-width:0; resize:none; max-height:110px; font-family:inherit; font-size:13.5px; padding:10px 13px; border:1.5px solid var(--line); border-radius:14px; background:#fff; color:var(--ink); margin:0;}
   .pa-chat-send{flex-shrink:0; width:42px; height:42px; border-radius:14px; border:none; background:var(--teal); color:#fff; font-size:17px; cursor:pointer;}
   .pa-chat-send:disabled{opacity:.4; cursor:default;}
+
+.tk-drag{cursor:grab;touch-action:none;user-select:none;font-size:22px;line-height:1;padding:6px 8px;margin-right:4px;border-radius:8px;color:var(--teal-deep, #0f5c4d);background:rgba(15,92,77,.08);}
+.tk-num{display:inline-block;min-width:22px;margin-right:6px;font-size:12px;font-weight:700;color:#6b7a75;}
+.tk-row.tk-dragging{opacity:.75;box-shadow:0 6px 18px rgba(0,0,0,.18);outline:2px dashed var(--teal-deep, #0f5c4d);}
 </style>
 </head>
 <body>
@@ -5358,12 +5362,10 @@ function renderToolkit(){
     const kb = Math.max(1, Math.ceil((it.code || '').length / 1024));
     const when = it.updated_at ? relativeTimeFromNow(it.updated_at) : '-';
     const badges = it.enabled ? '' : '<span class="room-item-badge" style="background:#fbf1e0;color:#b8863b;">Nonaktif</span>';
-    return `<div class="room-item">
-      <div class="room-item-head"><span class="room-item-code" style="font-family:inherit;">${tkIconHtml(it.icon, 22)} ${escapeHtml(it.title)}</span>${badges}</div>
+    return `<div class="room-item tk-row" data-id="${it.id}">
+      <div class="room-item-head"><span class="tk-drag" data-id="${it.id}" title="Tahan lalu geser untuk mengubah urutan">⠿</span><span class="tk-num">${i + 1}</span><span class="room-item-code" style="font-family:inherit;">${tkIconHtml(it.icon, 22)} ${escapeHtml(it.title)}</span>${badges}</div>
       <div class="room-item-sub">${escapeHtml(it.description || '')}${it.description ? ' • ' : ''}${kb} KB • diperbarui ${when}</div>
       <div class="room-item-actions">
-        <button type="button" class="link-btn" ${i === 0 ? 'disabled' : ''} onclick="moveToolkitItem('${it.id}',-1)">↑</button>
-        <button type="button" class="link-btn" ${i === items.length - 1 ? 'disabled' : ''} onclick="moveToolkitItem('${it.id}',1)">↓</button>
         <button type="button" class="link-btn" onclick="editToolkitItem('${it.id}')">Edit</button>
         <button type="button" class="link-btn" onclick="toggleToolkitItem('${it.id}')">${it.enabled ? 'Nonaktifkan' : 'Aktifkan'}</button>
         <button type="button" class="link-btn link-btn-danger" onclick="deleteToolkitItem('${it.id}')">Hapus</button>
@@ -5477,25 +5479,66 @@ async function deleteToolkitItem(id){
   } catch(err){ console.error(err); alert('Gagal menghapus pilihan.'); }
 }
 
-async function moveToolkitItem(id, dir){
+async function saveToolkitOrder(ids){
   if(!sb) return;
-  const items = toolkitItems();
-  const i = items.findIndex(x => x.id === id);
-  const j = i + dir;
-  if(i < 0 || j < 0 || j >= items.length) return;
-  [items[i], items[j]] = [items[j], items[i]];
+  const byId = {}; toolkitItems().forEach(x => { byId[x.id] = x; });
+  const now = new Date().toISOString();
   try{
-    const now = new Date().toISOString();
-    for(let k = 0; k < items.length; k++){
+    const jobs = [];
+    ids.forEach((id, k) => {
       const order = (k + 1) * 10;
-      if(items[k].sort_order !== order){
-        const { error } = await sb.from(TOOLKIT_TABLE).update({ sort_order: order, updated_by: CLIENT_ID, updated_at: now }).eq('id', items[k].id);
-        if(error) throw error;
+      if(byId[id] && byId[id].sort_order !== order){
+        byId[id].sort_order = order;
+        jobs.push(sb.from(TOOLKIT_TABLE).update({ sort_order: order, updated_by: CLIENT_ID, updated_at: now }).eq('id', id));
       }
-    }
-    await loadToolkit();
+    });
+    const res = await Promise.all(jobs);
+    const bad = res.find(r => r && r.error);
+    if(bad) throw bad.error;
+    tkSetInfo('tkItemInfo', 'Urutan disimpan. Menu di Farmacare ikut berubah dalam beberapa detik.');
   } catch(err){ console.error(err); alert('Gagal mengubah urutan.'); }
+  await loadToolkit();
 }
+
+// Seret ikon ⠿ untuk mengubah urutan (mouse & sentuh)
+(function setupToolkitDrag(){
+  const list = document.getElementById('tkItemList');
+  if(!list) return;
+  let row = null, startY = 0;
+  list.addEventListener('pointerdown', e => {
+    const h = e.target.closest('.tk-drag');
+    if(!h) return;
+    row = h.closest('.tk-row');
+    if(!row) return;
+    e.preventDefault();
+    startY = e.clientY;
+    row.classList.add('tk-dragging');
+    try{ h.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  list.addEventListener('pointermove', e => {
+    if(!row) return;
+    e.preventDefault();
+    const rows = Array.from(list.querySelectorAll('.tk-row')).filter(r => r !== row);
+    let before = null;
+    for(const r of rows){
+      const box = r.getBoundingClientRect();
+      if(e.clientY < box.top + box.height / 2){ before = r; break; }
+    }
+    if(before) list.insertBefore(row, before); else list.appendChild(row);
+    list.querySelectorAll('.tk-row .tk-num').forEach((n, i) => { n.textContent = i + 1; });
+    // gulir otomatis dekat tepi layar
+    if(e.clientY < 80) window.scrollBy(0, -12);
+    else if(e.clientY > window.innerHeight - 80) window.scrollBy(0, 12);
+  });
+  const end = () => {
+    if(!row) return;
+    row.classList.remove('tk-dragging');
+    row = null;
+    saveToolkitOrder(Array.from(list.querySelectorAll('.tk-row')).map(r => r.dataset.id));
+  };
+  list.addEventListener('pointerup', end);
+  list.addEventListener('pointercancel', end);
+})();
 
 async function showHtml(){
   const rawInput = document.getElementById('htmlInput').value;
