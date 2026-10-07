@@ -333,30 +333,8 @@
   -- Untuk fitur "Pengguna Aktif Sekarang" di panel admin ini: murni
   -- Supabase Realtime Presence, tidak butuh tabel database apa pun.
 
-  -- Untuk fitur "Chat Anonim" (admin <-> pengguna Toolkit), jalankan juga:
-  create table if not exists public.stok_opname_chat (
-    id bigint generated always as identity primary key,
-    sender text not null default 'anon',      -- 'admin' | 'anon'
-    client_id text,                           -- hanya penanda pesan milik sendiri, TIDAK ditampilkan
-    pesan text not null check (char_length(pesan) <= 500),
-    reply_to bigint,
-    reply_text text,
-    reply_sender text,
-    created_at timestamptz not null default now()
-  );
-  create index if not exists stok_opname_chat_created_idx on public.stok_opname_chat (created_at);
-  alter table public.stok_opname_chat enable row level security;
-  drop policy if exists "anon select chat" on public.stok_opname_chat;
-  create policy "anon select chat" on public.stok_opname_chat for select using (true);
-  drop policy if exists "anon insert chat" on public.stok_opname_chat;
-  create policy "anon insert chat" on public.stok_opname_chat for insert with check (true);
-  drop policy if exists "anon delete chat" on public.stok_opname_chat;
-  create policy "anon delete chat" on public.stok_opname_chat for delete using (true);
-  alter publication supabase_realtime add table public.stok_opname_chat;
-  -- Kirim foto/video di chat memakai bucket 'broadcast-foto' yang sama dengan broadcast (sudah dibuat di atas).
-  alter table public.stok_opname_chat add column if not exists media_url text;
-  alter table public.stok_opname_chat add column if not exists media_type text;   -- 'image' | 'video'
-  alter table public.stok_opname_chat add column if not exists media_path text;   -- path file di Storage (bucket broadcast-foto)
+  -- Untuk video dari chat Toolkit tampil di "Pesan & Lapor Petugas" (foto memakai kolom gambar yang sudah ada):
+  alter table public.stok_opname_pesan add column if not exists video_url text;
   ====================================================================
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1325,7 +1303,9 @@
   /* ===== Tampilan chat admin ===== */
   #paThreadOverlay{align-items:center; justify-content:center; padding:0;}
   .pa-chat{width:100%; max-width:520px; height:min(92vh, 720px); display:flex; flex-direction:column; background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 18px 50px rgba(10,40,35,.4);}
-  @media(max-width:560px){ .pa-chat{height:100dvh; max-height:100dvh; border-radius:0;} }
+  #paThreadOverlay{padding:12px;}
+  .pa-chat{max-width:min(420px, 100%);}
+  @media(max-width:560px){ .pa-chat{height:min(78dvh, 560px); max-height:78dvh;} }
   .pa-chat-head{display:flex; align-items:center; gap:10px; padding:10px 12px; background:linear-gradient(135deg,var(--teal-deep),var(--teal)); color:#fff; flex-shrink:0;}
   .pa-chat-head .pa-avatar{background:rgba(255,255,255,.25);}
   .pa-chat-title{flex:1; min-width:0; display:flex; flex-direction:column;}
@@ -6899,6 +6879,7 @@ async function paReloadThread(scroll){
       return sep + '<div class="pa-msg ' + (admin ? 'admin' : 'petugas') + '">' +
         (admin ? '' : '<div class="pa-kat">' + escapeHtml(PA_KAT[r.kategori] || '') + '</div>') +
         '<div class="pa-bub">' + (r.gambar ? '<img src="' + r.gambar + '" onclick="paZoom(this.src)" alt="Lampiran" style="display:block;max-width:100%;max-height:220px;border-radius:10px;margin-bottom:6px;cursor:zoom-in;">' : '') +
+        (r.video_url ? '<video src="' + escapeHtml(r.video_url) + '" controls preload="metadata" playsinline style="display:block;max-width:100%;max-height:240px;border-radius:10px;margin-bottom:6px;background:#000;"></video>' : '') +
         escapeHtml(r.pesan) + '</div><div class="pa-msg-info">' + jam + ' ' + sel + '</div></div>';
     }).join('') || '<div class="pa-empty">Belum ada pesan.<br>Tulis pesan di bawah untuk memulai chat dengan ' + escapeHtml(nama) + '.</div>';
     if(scroll || atBottom) body.scrollTop = body.scrollHeight;
@@ -7234,248 +7215,6 @@ initCoretDrawing();
     dragHandle.addEventListener('pointerdown', onStart);
     dragHandle.addEventListener('touchstart', onStart, {passive:false});
   })();
-</script>
-<style id="fch-admin-style">
-.fch{position:fixed;right:12px;bottom:84px;width:min(340px,calc(100vw - 24px));height:min(440px,calc(100dvh - 130px));display:none;flex-direction:column;z-index:100050;border-radius:16px;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fch-bg);color:var(--fch-fg);border:1px solid var(--fch-bd);box-shadow:0 12px 36px rgba(0,0,0,.45)}
-.fch.fch-on{display:flex;animation:fchPop .22s ease}
-@keyframes fchPop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
-.fch.dark{--fch-bg:#0b1417;--fch-fg:#e8fff6;--fch-bd:rgba(0,255,166,.3);--fch-head:linear-gradient(135deg,#0a6c74,#0b4f55);--fch-body:#0a1a1d;--fch-in:#16282c;--fch-infg:#e8fff6;--fch-out:#0a8f7a;--fch-acc:#00ffa6;--fch-bar:#0d1b1f}
-.fch.light{--fch-bg:#fff;--fch-fg:#173b36;--fch-bd:#dde3dd;--fch-head:linear-gradient(135deg,#0a453e,#0d5c52);--fch-body:#eef3f0;--fch-in:#fff;--fch-infg:#173b36;--fch-out:#0d5c52;--fch-acc:#0d5c52;--fch-bar:#f4f7f5}
-.fch-head{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--fch-head);color:#fff;flex:none}
-.fch-head b{display:block;font-size:14px}
-.fch-head small{display:block;font-size:10.5px;opacity:.8;margin-top:1px}
-.fch-head button{border:0;background:rgba(255,255,255,.18);color:#fff;width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:13px;flex:none}
-.fch-body{flex:1;overflow-y:auto;padding:10px;background:var(--fch-body);overscroll-behavior:contain}
-.fch-empty{padding:30px 10px;text-align:center;font-size:12.5px;opacity:.65;line-height:1.5}
-.fch-m{display:flex;flex-direction:column;max-width:84%;margin-bottom:8px}
-.fch-m.ot{align-items:flex-start;margin-right:auto}
-.fch-m.me{align-items:flex-end;margin-left:auto}
-.fch-who{font-size:10px;font-weight:700;opacity:.65;margin:0 4px 2px}
-.fch-m.adm .fch-who{color:var(--fch-acc);opacity:1}
-.fch-b{padding:7px 11px;border-radius:14px;font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-word;background:var(--fch-in);color:var(--fch-infg);cursor:pointer;text-align:left}
-.fch-m.me .fch-b{background:var(--fch-out);color:#fff;border-bottom-right-radius:4px}
-.fch-m.ot .fch-b{border-bottom-left-radius:4px}
-.fch-m.adm.ot .fch-b{border:1px solid var(--fch-acc)}
-.fch-q{border-left:3px solid var(--fch-acc);background:rgba(0,0,0,.15);padding:3px 7px;margin-bottom:5px;border-radius:6px;font-size:11.5px;opacity:.85}
-.fch-q b{display:block;font-size:10px}
-.fch-t{font-size:9.5px;opacity:.6;margin:2px 4px 0}
-.fch-del{border:0;background:none;color:#e5484d;cursor:pointer;font-size:10px;padding:0 2px}
-.fch-rep{display:none;align-items:center;gap:8px;padding:6px 10px;font-size:11.5px;background:var(--fch-bar);border-top:1px solid var(--fch-bd);flex:none}
-.fch-rep.on{display:flex}
-.fch-rep span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.8}
-.fch-rep button{border:0;background:none;color:inherit;cursor:pointer;font-size:13px}
-.fch-comp{display:flex;gap:8px;padding:8px 10px;background:var(--fch-bar);border-top:1px solid var(--fch-bd);flex:none;align-items:flex-end}
-.fch-ta{flex:1;min-width:0;resize:none;max-height:90px;font:inherit;font-size:13px;padding:8px 11px;border-radius:12px;border:1px solid var(--fch-bd);background:var(--fch-in);color:var(--fch-infg);outline:none;margin:0}
-.fch-send{width:38px;height:38px;border:0;border-radius:12px;background:var(--fch-out);color:#fff;font-size:16px;cursor:pointer;flex:none}
-.fch-send:disabled{opacity:.4;cursor:default}
-.fch-retry{border:0;border-radius:10px;padding:7px 14px;background:var(--fch-out);color:#fff;font:inherit;font-weight:700;cursor:pointer}
-.fch-att{width:38px;height:38px;border:1px solid var(--fch-bd);border-radius:12px;background:var(--fch-in);color:var(--fch-infg);font-size:16px;cursor:pointer;flex:none}
-.fch-pv{display:none;padding:6px 10px;background:var(--fch-bar);border-top:1px solid var(--fch-bd);flex:none}
-.fch-pv.on{display:block}
-.fch-pvi{display:flex;align-items:center;gap:10px;font-size:11.5px}
-.fch-pvi img,.fch-pvi video{width:48px;height:48px;object-fit:cover;border-radius:8px;flex:none;background:#000}
-.fch-pvi span{flex:1;opacity:.8}
-.fch-pvx{border:0;background:none;color:inherit;cursor:pointer;font-size:13px}
-.fch-img{display:block;max-width:100%;max-height:200px;border-radius:10px;margin-bottom:4px;cursor:zoom-in}
-.fch-vid{display:block;width:100%;max-height:220px;border-radius:10px;margin-bottom:4px;background:#000}
-.fch-badge{display:none;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ff4d6d;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-sizing:border-box}
-.fch-badge.on{display:inline-block}
-
-.fch.light{right:18px}
-#fch-admin-fab{position:fixed;right:18px;bottom:18px;width:52px;height:52px;border-radius:50%;border:0;background:#0d5c52;color:#fff;font-size:22px;cursor:pointer;z-index:100049;box-shadow:0 6px 18px rgba(10,69,62,.45)}
-#fch-admin-fab .fch-badge{position:absolute;top:-3px;right:-3px}
-</style>
-<button id="fch-admin-fab" type="button" aria-label="Chat Anonim" title="Chat Anonim">💬<span class="fch-badge"></span></button>
-<script>
-(function(){
-  /* ===== Chat Anonim (admin <-> pengguna). Tabel: stok_opname_chat ===== */
-  function fchCreate(o){
-    var T='stok_opname_chat', BUCKET='broadcast-foto', MAXV=20*1024*1024, pending=null, busy=false, ROLE=o.role, sb=null, rows=[], ids={}, unread=0, openF=false, replyTo=null, err='', last=0;
-    var cid=(function(){try{var k='fch-cid',v=localStorage.getItem(k);if(!v){v='c-'+Date.now().toString(36)+Math.random().toString(36).slice(2,9);localStorage.setItem(k,v);}return v;}catch(e){return 'c-'+Math.random().toString(36).slice(2,11);}})();
-    var esc=function(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];});};
-    var who=function(s){return s==='admin'?'Admin':'Anonim';};
-    var fmt=function(d){var x=new Date(d);return ('0'+x.getHours()).slice(-2)+':'+('0'+x.getMinutes()).slice(-2);};
-    var isMine=function(r){return ROLE==='admin'?r.sender==='admin':(r.sender==='anon'&&r.client_id===cid);};
-
-    var root=document.createElement('div');
-    root.id=o.id; root.className='fch '+o.theme;
-    root.innerHTML=
-      '<div class="fch-head"><div style="flex:1;min-width:0"><b>💬 Chat Anonim</b><small>Semua tampil sebagai Anonim &bull; ketuk pesan untuk membalas</small></div>'
-      +(ROLE==='admin'?'<button class="fch-clr" title="Hapus semua pesan" aria-label="Hapus semua">🗑</button>':'')
-      +'<button class="fch-x" aria-label="Tutup">✕</button></div>'
-      +'<div class="fch-body"></div>'
-      +'<div class="fch-rep"><span class="fch-rept"></span><button class="fch-repx" aria-label="Batal balas">✕</button></div>'
-      +'<div class="fch-pv"></div><div class="fch-comp"><button class="fch-att" aria-label="Lampirkan foto atau video">📎</button><input type="file" class="fch-file" accept="image/*,video/*" style="display:none"><textarea class="fch-ta" rows="1" maxlength="500" placeholder="Tulis pesan…"></textarea><button class="fch-send" aria-label="Kirim" disabled>➤</button></div>';
-    document.body.appendChild(root);
-    var $=function(s){return root.querySelector(s);};
-    ['click','mousedown','mouseup','touchstart','touchend','pointerdown','pointerup','keydown','keyup','keypress','input','focusin'].forEach(function(ev){root.addEventListener(ev,function(e){e.stopPropagation();});});
-    var body=$('.fch-body'), ta=$('.fch-ta'), sendB=$('.fch-send'), rep=$('.fch-rep'), repT=$('.fch-rept'), pv=$('.fch-pv'), fileIn=$('.fch-file');
-
-    function media(r){
-      if(!r.media_url)return '';
-      var u=esc(r.media_url);
-      return r.media_type==='video'?'<video class="fch-vid" src="'+u+'" controls preload="metadata" playsinline></video>':'<img class="fch-img" src="'+u+'" alt="" loading="lazy">';
-    }
-    function label(r){return r.pesan||(r.media_type==='video'?'🎥 Video':r.media_type==='image'?'📷 Foto':'');}
-    function render(force){
-      var near=body.scrollHeight-body.scrollTop-body.clientHeight<80;
-      if(err){body.innerHTML='<div class="fch-empty">'+esc(err)+'<br><br><button class="fch-retry">Coba lagi</button></div>';return;}
-      if(!rows.length){body.innerHTML='<div class="fch-empty">Belum ada pesan.<br>Mulai bertanya, identitasmu tetap Anonim.</div>';return;}
-      body.innerHTML=rows.map(function(r){
-        var q=r.reply_text?'<div class="fch-q"><b>'+who(r.reply_sender)+'</b>'+esc(r.reply_text)+'</div>':'';
-        var del=ROLE==='admin'?' <button class="fch-del" data-del="'+r.id+'" title="Hapus pesan">✕</button>':'';
-        return '<div class="fch-m '+(isMine(r)?'me':'ot')+(r.sender==='admin'?' adm':'')+'"><div class="fch-who">'+who(r.sender)+'</div>'
-          +'<div class="fch-b" data-id="'+r.id+'">'+q+media(r)+esc(r.pesan)+'</div><div class="fch-t">'+fmt(r.created_at)+del+'</div></div>';
-      }).join('');
-      if(near||force)body.scrollTop=body.scrollHeight;
-    }
-    function add(r,rt,force){
-      if(ids[r.id])return; ids[r.id]=1; rows.push(r);
-      if(rows.length>200){var x=rows.shift();delete ids[x.id];}
-      if(rt&&!isMine(r)&&!openF){unread++;o.onUnread&&o.onUnread(unread);}
-      render(force);
-    }
-    function drop(id){
-      if(!ids[id])return; delete ids[id];
-      rows=rows.filter(function(r){return r.id!==id;}); render();
-    }
-    function setReply(r){
-      replyTo=r?{id:r.id,sender:r.sender,text:String(label(r)).slice(0,80)}:null;
-      rep.classList.toggle('on',!!r);
-      if(r){repT.textContent='Membalas '+who(r.sender)+': '+replyTo.text;ta.focus();}
-    }
-    function sync(){sendB.disabled=busy||!(ta.value.trim()||pending);}
-    function setPending(f,kind){
-      if(pending&&pending.url)URL.revokeObjectURL(pending.url);
-      pending=f?{file:f,kind:kind,url:URL.createObjectURL(f)}:null;
-      pv.innerHTML=pending?('<div class="fch-pvi">'+(kind==='image'?'<img src="'+pending.url+'" alt="">':'<video src="'+pending.url+'" muted playsinline></video>')+'<span>'+(kind==='image'?'📷 Foto':'🎥 Video')+' siap dikirim</span><button class="fch-pvx" aria-label="Batal lampiran">✕</button></div>'):'';
-      pv.classList.toggle('on',!!pending); sync();
-    }
-    function shrink(f){
-      return new Promise(function(res,rej){
-        var u=URL.createObjectURL(f), im=new Image();
-        im.onload=function(){
-          var w=im.naturalWidth,h=im.naturalHeight,s=Math.min(1,1280/Math.max(w,h));
-          var cv=document.createElement('canvas');cv.width=Math.round(w*s);cv.height=Math.round(h*s);
-          cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
-          URL.revokeObjectURL(u);
-          cv.toBlob(function(b){b?res(b):rej(new Error('Gagal memproses foto'));},'image/jpeg',0.82);
-        };
-        im.onerror=function(){URL.revokeObjectURL(u);rej(new Error('Foto tidak bisa dibaca'));};
-        im.src=u;
-      });
-    }
-    function upload(p){
-      return (p.kind==='image'?shrink(p.file):Promise.resolve(p.file)).then(function(blob){
-        var ext=p.kind==='image'?'jpg':((p.file.name||'v.mp4').split('.').pop().toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'mp4');
-        var path='chat/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
-        return sb.storage.from(BUCKET).upload(path,blob,{contentType:p.kind==='image'?'image/jpeg':(p.file.type||'video/mp4'),cacheControl:'3600'}).then(function(r){
-          if(r.error)throw r.error;
-          return {url:sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl,type:p.kind,path:path};
-        });
-      });
-    }
-    function send(){
-      var t=ta.value.trim();
-      if((!t&&!pending)||busy||Date.now()-last<700)return;
-      if(!sb){alert('Chat belum tersambung, mencoba menyambung ulang…');boot();return;}
-      last=Date.now(); busy=true; sendB.disabled=true; sendB.textContent=pending?'⏳':'➤';
-      (pending?upload(pending):Promise.resolve(null)).then(function(m){
-        var row={sender:ROLE,client_id:cid,pesan:t};
-        if(m){row.media_url=m.url;row.media_type=m.type;row.media_path=m.path;}
-        if(replyTo){row.reply_to=replyTo.id;row.reply_text=replyTo.text;row.reply_sender=replyTo.sender;}
-        return sb.from(T).insert(row).select().single().then(function(res){
-          if(res.error||!res.data){if(m)sb.storage.from(BUCKET).remove([m.path]);throw (res.error||new Error('Pesan gagal terkirim'));}
-          ta.value='';ta.style.height='auto';setReply(null);setPending(null);add(res.data,false,true);
-        });
-      }).catch(function(e){alert('Pesan gagal terkirim: '+((e&&e.message)||e));})
-      .then(function(){busy=false;sendB.textContent='➤';sync();});
-    }
-
-    body.addEventListener('click',function(e){
-      if(e.target.closest('.fch-retry')){boot();return;}
-      var im=e.target.closest('.fch-img'); if(im){window.open(im.src,'_blank','noopener');return;}
-      if(e.target.closest('video'))return;
-      var d=e.target.closest('[data-del]');
-      if(d){
-        var id=Number(d.getAttribute('data-del'));
-        var r0=rows.filter(function(x){return x.id===id;})[0];
-        sb.from(T).delete().eq('id',id).then(function(res){
-          if(res.error){alert('Gagal menghapus pesan.');return;}
-          drop(id); if(r0&&r0.media_path)sb.storage.from(BUCKET).remove([r0.media_path]);
-        });
-        return;
-      }
-      var b=e.target.closest('.fch-b');
-      if(b){var id2=Number(b.getAttribute('data-id'));var r=rows.filter(function(x){return x.id===id2;})[0];if(r)setReply(r);}
-    });
-    ta.addEventListener('input',function(){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,90)+'px';sync();});
-    ['keydown','keyup','keypress'].forEach(function(ev){ta.addEventListener(ev,function(e){
-      e.stopPropagation();
-      if(ev==='keydown'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}
-    });});
-    sendB.onclick=send;
-    $('.fch-att').onclick=function(){fileIn.click();};
-    pv.addEventListener('click',function(e){if(e.target.closest('.fch-pvx'))setPending(null);});
-    fileIn.onchange=function(){
-      var f=fileIn.files&&fileIn.files[0]; try{fileIn.value='';}catch(e){}
-      if(!f)return;
-      var kind=/^image\//.test(f.type)?'image':/^video\//.test(f.type)?'video':'';
-      if(!kind){alert('Hanya foto atau video yang bisa dikirim.');return;}
-      if(kind==='video'&&f.size>MAXV){alert('Video maksimal 20 MB.');return;}
-      setPending(f,kind);
-    };
-    $('.fch-x').onclick=function(){close();};
-    $('.fch-repx').onclick=function(){setReply(null);};
-    var clr=$('.fch-clr');
-    if(clr)clr.onclick=function(){
-      if(!confirm('Hapus SEMUA pesan chat? Tindakan ini tidak bisa dibatalkan.'))return;
-      var paths=rows.map(function(r){return r.media_path;}).filter(Boolean);
-      sb.from(T).delete().gte('id',0).then(function(res){
-        if(res.error){alert('Gagal menghapus. Cek izin delete tabel stok_opname_chat.');return;}
-        rows=[];ids={};render(); if(paths.length)sb.storage.from(BUCKET).remove(paths);
-      });
-    };
-
-    function open(){openF=true;root.classList.add('fch-on');unread=0;o.onUnread&&o.onUnread(0);render(true);setTimeout(function(){try{ta.focus();}catch(e){}},60);}
-    function close(){openF=false;root.classList.remove('fch-on');}
-
-    function boot(){
-    err='';
-    o.getSb().then(function(c){
-      sb=c;
-      return sb.from(T).select('*').order('id',{ascending:false}).limit(100);
-    }).then(function(res){
-      if(res.error)throw res.error;
-      res.data.reverse().forEach(function(r){add(r,false);});
-      render(true); sync();
-      var key='__fch_'+o.id, old=window[key];
-      if(old){try{old.c.removeChannel(old.ch);}catch(e){}}
-      var ch=sb.channel('fch-'+o.id+'-'+Math.random().toString(36).slice(2,7))
-        .on('postgres_changes',{event:'INSERT',schema:'public',table:T},function(p){add(p.new,true);})
-        .on('postgres_changes',{event:'DELETE',schema:'public',table:T},function(p){if(p.old&&p.old.id!=null)drop(p.old.id);})
-        .subscribe();
-      window[key]={c:sb,ch:ch};
-    }).catch(function(e){
-      console.error('Chat Anonim:',e);
-      var m=(e&&e.message)?e.message:String(e);
-      err=(ROLE==='admin'?'Chat belum aktif. Jalankan SQL chat (komentar paling atas file panel admin) di Supabase.':'Chat belum aktif. Hubungi admin.')+' ['+m+']';
-      render();
-    });
-    }
-    boot();
-
-    return {open:open,close:close,toggle:function(){openF?close():open();},isOpen:function(){return openF;}};
-  }
-
-  var fab=document.getElementById('fch-admin-fab');
-  var chat=fchCreate({
-    id:'fch-admin',role:'admin',theme:'light',
-    getSb:function(){var c=initSupabaseClient();return c?Promise.resolve(c):Promise.reject(new Error('Supabase belum tersambung'));},
-    onUnread:function(n){var b=fab.querySelector('.fch-badge');b.textContent=n>9?'9+':n;b.classList.toggle('on',n>0);}
-  });
-  fab.onclick=function(){chat.toggle();};
-})();
 </script>
 </body>
 </html>
