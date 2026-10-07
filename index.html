@@ -1553,39 +1553,6 @@
   </div>
 
 
-  <div class="card connected-only">
-    <div style="display:flex; align-items:center; gap:8px;">
-      <h2 style="margin:0;">Script Farmacare (Pustaka)</h2>
-      <span class="presence-count-badge" id="scriptLibCount">0 script</span>
-    </div>
-    <div class="field-hint" style="margin-top:10px;">
-      Unggah atau tempel script di sini. Script disimpan permanen dan otomatis muncul sebagai daftar/menu
-      di halaman <b>app.farmacare.id</b> lewat <i>Farmacare Receiver</i> (tombol <b>Script</b> di pojok kiri bawah).
-      Terpisah dari "Tampilkan di Layar" di bawah.
-    </div>
-    <input type="text" class="field-input" id="scriptLibName" placeholder="Nama script (mis. Farmacare Toolkit)" maxlength="80">
-    <textarea id="scriptLibCode" spellcheck="false" style="min-height:140px;" placeholder="Tempel script di sini, atau klik Unggah File…"></textarea>
-    <div class="radio-row" style="margin:8px 0 0;">
-      <label><input type="checkbox" id="scriptLibAutorun"> Jalankan otomatis begitu Farmacare dibuka</label>
-    </div>
-    <div class="actions-row">
-      <input type="file" id="scriptLibFile" accept=".js,.html,.htm,.txt,text/javascript,text/html,text/plain" style="display:none;" onchange="loadScriptLibFile(this.files && this.files[0]); this.value='';">
-      <button type="button" class="btn-tool" onclick="document.getElementById('scriptLibFile').click()">Unggah File (.js / .html)</button>
-      <button type="button" class="btn-main" id="btnSaveScriptLib" onclick="saveScriptLib()">Simpan Script</button>
-      <button type="button" class="link-btn" id="btnCancelScriptLib" style="display:none;" onclick="cancelEditScriptLib()">Batal edit</button>
-    </div>
-    <div class="field-hint" id="scriptLibInfo" style="margin-top:8px;"></div>
-    <div id="scriptLibList" style="margin-top:12px;"><div class="petugas-empty">Memuat…</div></div>
-    <div class="actions-row">
-      <button type="button" class="link-btn" onclick="loadScriptLib()">Muat ulang</button>
-    </div>
-    <div class="footnote">
-      Script berjalan di halaman Farmacare (bukan di Tampermonkey), jadi fungsi <code>GM_*</code> tidak tersedia.
-      Receiver mengecek daftar ini tiap beberapa detik; script yang <b>Nonaktif</b> atau dihapus hilang dari menu dan
-      elemen yang ditambahkannya dibuang (timer/event yang sudah berjalan baru berhenti setelah halaman dimuat ulang).
-    </div>
-  </div>
-
   <div class="card connected-only" id="toolkitCard">
     <div style="display:flex; align-items:center; gap:8px;">
       <h2 style="margin:0;">Toolkit Farmacare (Menu &amp; Pilihan)</h2>
@@ -2186,7 +2153,6 @@ async function connectGlobal(){
 
   loadSyncCardSetting();
   loadRooms();
-  loadScriptLib();
   loadToolkit();
   loadPetugasAdmin();
   loadPetugasSessionsAdmin();
@@ -5227,11 +5193,8 @@ function prepareBroadcastHtml(raw){
   return t;
 }
 
-// ====== Pustaka Script Farmacare (tabel stok_opname_scripts) ======
-// Dibaca oleh userscript "Farmacare Receiver" dan ditampilkan sebagai menu di app.farmacare.id.
+// ====== Helper bersama untuk Toolkit (tabel stok_opname_scripts) ======
 const SCRIPT_LIB_TABLE = 'stok_opname_scripts';
-let scriptLib = [];
-let scriptLibEditingId = null;
 
 function scriptLibNormalize(raw){
   let t = String(raw || '').replace(/^\uFEFF/, '').trim();
@@ -5241,157 +5204,6 @@ function scriptLibNormalize(raw){
   const wrap = t.match(/^<script[^>]*>([\s\S]*)<\/script>$/i);
   if(wrap && !/<script[\s>]/i.test(wrap[1])) t = wrap[1].trim();
   return t;
-}
-
-function scriptLibSetInfo(msg){
-  const el = document.getElementById('scriptLibInfo');
-  if(el) el.textContent = msg || '';
-}
-
-function loadScriptLibFile(file){
-  if(!file) return;
-  if(file.size > 2 * 1024 * 1024){ alert('File terlalu besar (maks 2 MB).'); return; }
-  const reader = new FileReader();
-  reader.onload = () => {
-    document.getElementById('scriptLibCode').value = String(reader.result || '');
-    const nameEl = document.getElementById('scriptLibName');
-    if(!nameEl.value.trim()) nameEl.value = file.name.replace(/\.(user\.)?(js|html?|txt)$/i, '');
-    scriptLibSetInfo('File dimuat: ' + file.name + ' (' + Math.ceil(file.size / 1024) + ' KB). Klik "Simpan Script" untuk menyimpan.');
-  };
-  reader.onerror = () => alert('Gagal membaca file.');
-  reader.readAsText(file);
-}
-(function setupScriptLibDrop(){
-  const ta = document.getElementById('scriptLibCode');
-  if(!ta) return;
-  ['dragenter','dragover'].forEach(ev => ta.addEventListener(ev, e => { e.preventDefault(); ta.style.outline = '2px dashed var(--teal-deep)'; }));
-  ['dragleave','drop'].forEach(ev => ta.addEventListener(ev, e => { e.preventDefault(); ta.style.outline = ''; }));
-  ta.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if(f) loadScriptLibFile(f); });
-})();
-
-async function loadScriptLib(){
-  const list = document.getElementById('scriptLibList');
-  if(!list) return;
-  if(!sb){ list.innerHTML = '<div class="petugas-empty">Belum tersambung.</div>'; return; }
-  try{
-    const { data, error } = await sb.from(SCRIPT_LIB_TABLE).select('*')
-      .eq('screen_code', BROADCAST_SCREEN_CODE)
-      .order('sort_order', { ascending: true }).order('name', { ascending: true });
-    if(error) throw error;
-    scriptLib = data || [];
-    renderScriptLib();
-  } catch(err){
-    console.error('Gagal memuat pustaka script:', err);
-    list.innerHTML = '<div class="petugas-empty">Gagal memuat. Pastikan tabel <b>stok_opname_scripts</b> sudah dibuat (SQL ada di komentar paling atas file ini).</div>';
-  }
-}
-
-function renderScriptLib(){
-  const list = document.getElementById('scriptLibList');
-  const badge = document.getElementById('scriptLibCount');
-  if(badge) badge.textContent = scriptLib.length + ' script';
-  if(!scriptLib.length){
-    list.innerHTML = '<div class="petugas-empty">Belum ada script. Unggah atau tempel di atas lalu klik Simpan Script.</div>';
-    return;
-  }
-  list.innerHTML = scriptLib.map(it => {
-    const kb = Math.max(1, Math.ceil((it.code || '').length / 1024));
-    const when = it.updated_at ? relativeTimeFromNow(it.updated_at) : '-';
-    const badges =
-      (it.enabled ? '' : '<span class="room-item-badge" style="background:#fbf1e0;color:#b8863b;">Nonaktif</span>') +
-      (it.autorun ? '<span class="room-item-badge">Otomatis</span>' : '');
-    return `<div class="room-item">
-      <div class="room-item-head"><span class="room-item-code" style="font-family:inherit;">${escapeHtml(it.name)}</span>${badges}</div>
-      <div class="room-item-sub">${kb} KB • diperbarui ${when}</div>
-      <div class="room-item-actions">
-        <button type="button" class="link-btn" onclick="editScriptLib('${it.id}')">Edit</button>
-        <button type="button" class="link-btn" onclick="toggleScriptLib('${it.id}')">${it.enabled ? 'Nonaktifkan' : 'Aktifkan'}</button>
-        <button type="button" class="link-btn link-btn-danger" onclick="deleteScriptLib('${it.id}')">Hapus</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function saveScriptLib(){
-  if(!sb){ alert('Belum tersambung. Tunggu sebentar lalu coba lagi.'); return; }
-  const name = document.getElementById('scriptLibName').value.trim();
-  const code = scriptLibNormalize(document.getElementById('scriptLibCode').value);
-  const autorun = document.getElementById('scriptLibAutorun').checked;
-  if(!name){ alert('Isi nama script dulu.'); return; }
-  if(!code){ alert('Script masih kosong. Tempel atau unggah dulu.'); return; }
-  const btn = document.getElementById('btnSaveScriptLib');
-  btn.disabled = true;
-  try{
-    const row = { name, code, autorun, updated_by: CLIENT_ID, updated_at: new Date().toISOString() };
-    let error;
-    if(scriptLibEditingId){
-      ({ error } = await sb.from(SCRIPT_LIB_TABLE).update(row).eq('id', scriptLibEditingId));
-    } else {
-      ({ error } = await sb.from(SCRIPT_LIB_TABLE).insert({ ...row, screen_code: BROADCAST_SCREEN_CODE, enabled: true }));
-    }
-    if(error) throw error;
-    const wasEdit = !!scriptLibEditingId;
-    cancelEditScriptLib();
-    scriptLibSetInfo(wasEdit ? 'Script diperbarui. Muncul di Farmacare dalam beberapa detik.' : 'Script tersimpan. Muncul di Farmacare dalam beberapa detik.');
-    await loadScriptLib();
-  } catch(err){
-    console.error('Gagal menyimpan script:', err);
-    alert('Gagal menyimpan script. Pastikan tabel stok_opname_scripts sudah dibuat di Supabase (SQL ada di komentar paling atas file ini).');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function editScriptLib(id){
-  const it = scriptLib.find(x => x.id === id);
-  if(!it) return;
-  scriptLibEditingId = id;
-  document.getElementById('scriptLibName').value = it.name || '';
-  document.getElementById('scriptLibCode').value = it.code || '';
-  document.getElementById('scriptLibAutorun').checked = !!it.autorun;
-  document.getElementById('btnSaveScriptLib').textContent = 'Simpan Perubahan';
-  document.getElementById('btnCancelScriptLib').style.display = '';
-  scriptLibSetInfo('Mengedit: ' + (it.name || ''));
-  document.getElementById('scriptLibName').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function cancelEditScriptLib(){
-  scriptLibEditingId = null;
-  document.getElementById('scriptLibName').value = '';
-  document.getElementById('scriptLibCode').value = '';
-  document.getElementById('scriptLibAutorun').checked = false;
-  document.getElementById('btnSaveScriptLib').textContent = 'Simpan Script';
-  document.getElementById('btnCancelScriptLib').style.display = 'none';
-  scriptLibSetInfo('');
-}
-
-async function toggleScriptLib(id){
-  const it = scriptLib.find(x => x.id === id);
-  if(!it || !sb) return;
-  try{
-    const { error } = await sb.from(SCRIPT_LIB_TABLE)
-      .update({ enabled: !it.enabled, updated_by: CLIENT_ID, updated_at: new Date().toISOString() }).eq('id', id);
-    if(error) throw error;
-    await loadScriptLib();
-  } catch(err){
-    console.error(err);
-    alert('Gagal mengubah status script.');
-  }
-}
-
-async function deleteScriptLib(id){
-  const it = scriptLib.find(x => x.id === id);
-  if(!it || !sb) return;
-  if(!confirm('Hapus script "' + it.name + '" permanen?')) return;
-  try{
-    const { error } = await sb.from(SCRIPT_LIB_TABLE).delete().eq('id', id);
-    if(error) throw error;
-    if(scriptLibEditingId === id) cancelEditScriptLib();
-    await loadScriptLib();
-  } catch(err){
-    console.error(err);
-    alert('Gagal menghapus script.');
-  }
 }
 
 // ====== Toolkit Farmacare: Menu + Pilihan Menu ======
