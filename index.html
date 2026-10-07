@@ -5297,7 +5297,9 @@ function tkMeta(o){ return '/*FTK:' + JSON.stringify(o).replace(/\*\//g, '*\\/')
 function tkBuildItem(meta, code){
   return tkMeta(meta) + '\n(window.FTK_REG=window.FTK_REG||{})[' + JSON.stringify(meta.key) + ']={title:' + JSON.stringify(meta.title) +
     ',desc:' + JSON.stringify(meta.desc || '') + ',icon:' + JSON.stringify(meta.icon || '') +
-    ',run:function(){\n/*FTK-CODE*/\n' + code + '\n/*FTK-END*/\n}};';
+    ',order:' + (Number(meta.order) || 0) + ',run:function(){\n/*FTK-CODE*/\n' + code + '\n/*FTK-END*/\n}};' +
+    // susun ulang FTK_REG menurut 'order' supaya menu di Farmacare mengikuti urutan dari panel admin
+    '\n;(function(r){var ks=Object.keys(r).sort(function(a,b){return (r[a].order||0)-(r[b].order||0)}),c={};ks.forEach(function(k){c[k]=r[k];delete r[k]});ks.forEach(function(k){r[k]=c[k]})})(window.FTK_REG);';
 }
 function tkBuildMenu(logo, code){
   return tkMeta({ kind: 'menu' }) + '\nwindow.FTK_LOGO=' + JSON.stringify(logo || '') + ';window.FTK_OPEN=true;\n/*FTK-CODE*/\n' + code + '\n/*FTK-END*/';
@@ -5411,7 +5413,7 @@ async function saveToolkitItem(){
   try{
     const editing = toolkitEditingId ? toolkitRows.find(x => x.id === toolkitEditingId) : null;
     const key = (editing && editing.key) || ('k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5));
-    const row = { name: TK_ITEM_PREFIX + title, code: tkBuildItem({ kind: 'item', key, title, desc, icon }, code), autorun: false, updated_by: CLIENT_ID, updated_at: new Date().toISOString() };
+    const row = { name: TK_ITEM_PREFIX + title, code: tkBuildItem({ kind: 'item', key, title, desc, icon, order: editing ? (editing.sort_order || 0) : (toolkitItems().reduce((m, r) => Math.max(m, r.sort_order || 0), 0) + 10) }, code), autorun: false, updated_by: CLIENT_ID, updated_at: new Date().toISOString() };
     let error;
     if(editing){
       ({ error } = await sb.from(TOOLKIT_TABLE).update(row).eq('id', editing.id));
@@ -5480,24 +5482,31 @@ async function deleteToolkitItem(id){
 }
 
 async function saveToolkitOrder(ids){
-  if(!sb) return;
+  if(!sb){ alert('Belum tersambung ke server, urutan tidak bisa disimpan.'); await loadToolkit(); return; }
   const byId = {}; toolkitItems().forEach(x => { byId[x.id] = x; });
   const now = new Date().toISOString();
+  const prev = {}; ids.forEach(id => { if(byId[id]) prev[id] = byId[id].sort_order; });
+  // urutan baru langsung berlaku di tampilan (optimistis)
+  ids.forEach((id, k) => { if(byId[id]) byId[id].sort_order = (k + 1) * 10; });
+  toolkitRows.sort((x, y) => (x.sort_order - y.sort_order));
+  renderToolkit();
+  tkSetInfo('tkItemInfo', 'Menyimpan urutan…');
   try{
-    const jobs = [];
-    ids.forEach((id, k) => {
-      const order = (k + 1) * 10;
-      if(byId[id] && byId[id].sort_order !== order){
-        byId[id].sort_order = order;
-        jobs.push(sb.from(TOOLKIT_TABLE).update({ sort_order: order, updated_by: CLIENT_ID, updated_at: now }).eq('id', id));
-      }
-    });
+    const jobs = ids.filter(id => byId[id]).map(id =>
+      sb.from(TOOLKIT_TABLE)
+        .update({ sort_order: byId[id].sort_order, code: tkBuildItem({ kind: 'item', key: byId[id].key, title: byId[id].title, desc: byId[id].description, icon: byId[id].icon, order: byId[id].sort_order }, byId[id].code), updated_by: CLIENT_ID, updated_at: now })
+        .eq('id', id).select('id'));
     const res = await Promise.all(jobs);
-    const bad = res.find(r => r && r.error);
+    const bad = res.find(r => r.error);
     if(bad) throw bad.error;
-    tkSetInfo('tkItemInfo', 'Urutan disimpan. Menu di Farmacare ikut berubah dalam beberapa detik.');
-  } catch(err){ console.error(err); alert('Gagal mengubah urutan.'); }
-  await loadToolkit();
+    if(res.some(r => !r.data || !r.data.length)) throw new Error('Server menolak perubahan (0 baris terubah). Cek policy UPDATE tabel stok_opname_scripts di Supabase.');
+    tkSetInfo('tkItemInfo', 'Urutan disimpan. Di Farmacare, klik bookmark Script Farmacare (atau muat ulang halaman) agar menu mengikuti urutan baru.');
+  } catch(err){
+    console.error(err);
+    tkSetInfo('tkItemInfo', 'Gagal menyimpan urutan: ' + (err && err.message ? err.message : err));
+    alert('Gagal menyimpan urutan: ' + (err && err.message ? err.message : err));
+    await loadToolkit();
+  }
 }
 
 // Seret ikon ⠿ untuk mengubah urutan (mouse & sentuh)
