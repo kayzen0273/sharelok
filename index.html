@@ -333,6 +333,29 @@
   -- Untuk fitur "Pengguna Aktif Sekarang" di panel admin ini: murni
   -- Supabase Realtime Presence, tidak butuh tabel database apa pun.
 
+  -- ====== PENGGUNA TOOLKIT (siapa sedang pakai + terakhir aktif) ======
+  -- "Online" berasal dari Realtime Presence (channel presence-toolkit), sedangkan
+  -- "terakhir aktif" dari tabel ini (heartbeat tiap 60 detik dari script menu).
+  create table if not exists public.toolkit_pengguna (
+    device_key text primary key,
+    nama text,
+    device text,
+    halaman text,
+    fitur_terakhir text,
+    fitur_at timestamptz,
+    first_seen timestamptz not null default now(),
+    last_seen timestamptz not null default now()
+  );
+  alter table public.toolkit_pengguna enable row level security;
+  drop policy if exists "anon select toolkit pengguna" on public.toolkit_pengguna;
+  create policy "anon select toolkit pengguna" on public.toolkit_pengguna for select using (true);
+  drop policy if exists "anon insert toolkit pengguna" on public.toolkit_pengguna;
+  create policy "anon insert toolkit pengguna" on public.toolkit_pengguna for insert with check (true);
+  drop policy if exists "anon update toolkit pengguna" on public.toolkit_pengguna;
+  create policy "anon update toolkit pengguna" on public.toolkit_pengguna for update using (true) with check (true);
+  drop policy if exists "anon delete toolkit pengguna" on public.toolkit_pengguna;
+  create policy "anon delete toolkit pengguna" on public.toolkit_pengguna for delete using (true);
+
   -- Untuk video dari chat Toolkit tampil di "Pesan & Lapor Petugas" (foto memakai kolom gambar yang sudah ada):
   alter table public.stok_opname_pesan add column if not exists video_url text;
   ====================================================================
@@ -1432,6 +1455,20 @@
     </div>
   </div>
 
+  <div class="card connected-only" id="tkUsersCard">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <h2 style="margin:0;">Pengguna Toolkit</h2>
+      <span class="presence-count-badge" id="tkUsersBadge">0 online</span>
+      <button type="button" class="link-btn" style="margin-left:auto;" onclick="loadToolkitUsers()">Muat ulang</button>
+    </div>
+    <div id="tkUsersList" style="margin-top:12px;"><div class="presence-empty">Memuat…</div></div>
+    <div class="footnote">
+      Semua perangkat yang menjalankan Farmacare Toolkit. Titik hijau = sedang online sekarang;
+      selain itu tampil "Terakhir aktif …" (dicatat tiap 60 detik selama tab terlihat).
+      Butuh tabel <b>toolkit_pengguna</b> (SQL ada di komentar atas file ini).
+    </div>
+  </div>
+
   <div class="card connected-only" id="paCard">
     <div style="display:flex; align-items:center; gap:8px;">
       <h2 style="margin:0;">💬 Pesan &amp; Lapor Petugas</h2>
@@ -2164,6 +2201,8 @@ async function connectGlobal(){
   loadItemMaster();
   loadStockImportStatus();
   subscribePresenceChannel();
+  subscribeToolkitUsers();
+  loadToolkitUsers();
 }
 
 // ====== Kontrol Modal Sinkronisasi Tim ======
@@ -4805,6 +4844,110 @@ async function adminDeletePetugas(id){
     console.error('Gagal menghapus nama petugas:', err);
     alert('Gagal menghapus nama petugas. Cek koneksi internet lalu coba lagi.');
   }
+}
+
+// ====== Pengguna Toolkit (Presence 'presence-toolkit' + tabel toolkit_pengguna) ======
+const TKU_TABLE = 'toolkit_pengguna';
+const TKU_CHANNEL = 'presence-toolkit';
+let tkuChannel = null;
+let tkuRows = [];
+let tkuTimer = null;
+
+function subscribeToolkitUsers(){
+  if(!sb) return;
+  if(tkuChannel){ try{ sb.removeChannel(tkuChannel); }catch(e){} tkuChannel = null; }
+  // Hanya mendengarkan (tidak track), jadi admin tidak ikut terhitung.
+  tkuChannel = sb.channel(TKU_CHANNEL, { config: { presence: { key: 'admin-' + CLIENT_ID } } });
+  tkuChannel
+    .on('presence', { event: 'sync' }, renderToolkitUsers)
+    .on('presence', { event: 'join' }, renderToolkitUsers)
+    .on('presence', { event: 'leave' }, renderToolkitUsers)
+    .subscribe();
+  if(!tkuTimer){
+    // Segarkan data tabel + teks "x menit lalu" tiap 30 detik.
+    tkuTimer = setInterval(() => { if(!document.hidden) loadToolkitUsers(); }, 30000);
+  }
+}
+
+async function loadToolkitUsers(){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.from(TKU_TABLE).select('*').order('last_seen', { ascending: false }).limit(100);
+    if(error) throw error;
+    tkuRows = data || [];
+  } catch(err){
+    console.error('Gagal memuat pengguna toolkit:', err);
+    const list = document.getElementById('tkUsersList');
+    if(list && !tkuRows.length) list.innerHTML = '<div class="presence-empty">Belum bisa memuat. Pastikan tabel toolkit_pengguna sudah dibuat (SQL di komentar atas file ini).</div>';
+    return;
+  }
+  renderToolkitUsers();
+}
+
+function renderToolkitUsers(){
+  const list = document.getElementById('tkUsersList');
+  const badge = document.getElementById('tkUsersBadge');
+  if(!list) return;
+
+  // key presence = device_key; ambil meta terbaru per key (abaikan key admin).
+  const live = {};
+  if(tkuChannel){
+    const state = tkuChannel.presenceState();
+    Object.keys(state).forEach(k => {
+      if(k.indexOf('admin-') === 0) return;
+      const metas = state[k] || [];
+      let latest = metas[0];
+      metas.forEach(m => { if(m && m.online_at && (!latest || m.online_at > latest.online_at)) latest = m; });
+      if(latest) live[k] = latest;
+    });
+  }
+
+  const byKey = {};
+  tkuRows.forEach(r => { byKey[r.device_key] = {
+    key: r.device_key, nama: r.nama, device: r.device, fitur: r.fitur_terakhir,
+    fitur_at: r.fitur_at, last_seen: r.last_seen, online: false
+  }; });
+  Object.keys(live).forEach(k => {
+    const m = live[k];
+    const cur = byKey[k] || { key: k, last_seen: m.online_at };
+    cur.online = true;
+    cur.nama = m.nama || cur.nama;
+    cur.device = m.device || cur.device;
+    if(m.fitur){ cur.fitur = m.fitur; cur.fitur_at = m.fitur_at; }
+    byKey[k] = cur;
+  });
+
+  const all = Object.keys(byKey).map(k => byKey[k]).sort((a, b) => {
+    if(a.online !== b.online) return a.online ? -1 : 1;
+    return (b.last_seen || '').localeCompare(a.last_seen || '');
+  });
+  const onlineCount = all.filter(x => x.online).length;
+  if(badge) badge.textContent = onlineCount + ' online';
+
+  if(!all.length){
+    list.innerHTML = '<div class="presence-empty">Belum ada yang tercatat memakai Toolkit.</div>';
+    return;
+  }
+
+  list.innerHTML = all.map(e => {
+    const nama = (e.nama || '').trim();
+    const anon = !nama || nama === 'Anonim';
+    const label = anon ? ('Anonim …' + String(e.key || '').slice(-4)) : nama;
+    const inisial = anon ? '?' : nama.charAt(0).toUpperCase();
+    const sub = [];
+    if(e.device) sub.push(escapeHtml(e.device));
+    if(e.fitur) sub.push('Fitur: ' + escapeHtml(e.fitur) + (e.fitur_at ? ' (' + relativeTimeFromNow(e.fitur_at) + ')' : ''));
+    sub.push(e.online ? '<b style="color:#1faa6b;">Online sekarang</b>' : ('Terakhir aktif ' + relativeTimeFromNow(e.last_seen)));
+    return `
+      <div class="presence-item" style="${e.online ? '' : 'opacity:.7;'}">
+        <div class="presence-avatar">${escapeHtml(inisial)}${e.online ? '<span class="live-dot"></span>' : ''}</div>
+        <div>
+          <div class="presence-name">${escapeHtml(label)}</div>
+          <div class="presence-sub">${sub.join(' • ')}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // ====== Pengguna Aktif Sekarang (Presence) ======
