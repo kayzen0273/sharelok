@@ -1816,6 +1816,29 @@
 
 </div>
 
+<div class="to-history-overlay" id="tkTutOverlay" style="z-index:100040;" onclick="if(event.target===this) closeTkTutModal()">
+  <div class="to-history-modal">
+    <div class="to-history-modal-head">
+      <h3 id="tkTutModalTitle">Tutorial</h3>
+      <button class="to-history-close" onclick="closeTkTutModal()">✕</button>
+    </div>
+    <div class="to-history-modal-body">
+      <textarea id="tkTutText" spellcheck="false" style="min-height:90px;font-family:inherit;" placeholder="Langkah-langkah memakai tool ini (opsional). Contoh:&#10;1. Buka halaman Input Faktur&#10;2. Klik tool ini di menu&#10;3. Pilih file lalu tekan Mulai"></textarea>
+      <div class="actions-row" style="margin-top:8px;">
+        <input type="file" id="tkTutFile" accept="image/*" multiple style="display:none;" onchange="tkPickTutImages(this.files); this.value='';">
+        <button type="button" class="btn-tool" onclick="document.getElementById('tkTutFile').click()">+ Tambah Foto</button>
+        <span class="field-hint" style="margin:0;" id="tkTutCount">0 foto</span>
+      </div>
+      <div id="tkTutList" style="margin-top:10px;"></div>
+      <div class="field-hint">Foto otomatis diperkecil (720px) dan tampil per halaman seperti buku. Tiap foto bisa diberi keterangan dan diurutkan. Di menu Toolkit tampil sebagai tombol <b>📖 Tutorial</b> di bawah tool ini.</div>
+      <div class="actions-row">
+        <button type="button" class="btn-main" id="tkTutSaveBtn" onclick="saveTkTutorial()">Simpan Tutorial</button>
+        <button type="button" class="link-btn" onclick="closeTkTutModal()">Batal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="takeover-overlay" id="takeoverOverlay">
   <div class="takeover-panel">
     <div class="takeover-header">
@@ -5435,12 +5458,103 @@ function tkIconHtml(icon, px){
   return escapeHtml(icon || '▫️');
 }
 
+// --- Tutorial bergambar per tool (editor per pilihan, dibuka dari tombol di tiap baris) ---
+const TK_TUT_MAX = 8;
+let tkTutImgs = [];      // [{src: dataURL, cap: ''}] milik tool yang sedang diedit
+let tkTutEditId = null;
+function tkResizeJpeg(file, size, quality){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const sc = Math.min(1, size / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('bad image')); };
+    img.src = url;
+  });
+}
+function openTkTutModal(id){
+  const it = toolkitRows.find(x => x.id === id);
+  if(!it) return;
+  tkTutEditId = id;
+  tkTutImgs = ((it.tut && it.tut.imgs) || []).map(i => ({ src: i.src, cap: i.cap || '' }));
+  document.getElementById('tkTutModalTitle').textContent = 'Tutorial — ' + (it.title || '');
+  document.getElementById('tkTutText').value = (it.tut && it.tut.text) || '';
+  tkRenderTutImgs();
+  document.getElementById('tkTutOverlay').classList.add('show');
+}
+function closeTkTutModal(){
+  document.getElementById('tkTutOverlay').classList.remove('show');
+  tkTutEditId = null; tkTutImgs = [];
+}
+async function tkPickTutImages(files){
+  const arr = Array.from(files || []).filter(f => /^image\//.test(f.type || ''));
+  if(!arr.length) return;
+  const room = TK_TUT_MAX - tkTutImgs.length;
+  if(room <= 0){ alert('Maksimal ' + TK_TUT_MAX + ' foto per tool.'); return; }
+  if(arr.length > room) alert('Hanya ' + room + ' foto pertama yang dipakai (maks ' + TK_TUT_MAX + ').');
+  for(const f of arr.slice(0, room)){
+    try{ tkTutImgs.push({ src: await tkResizeJpeg(f, 720, 0.65), cap: '' }); }
+    catch(e){ alert('Foto "' + f.name + '" tidak bisa dibaca.'); }
+  }
+  tkRenderTutImgs();
+}
+function tkRenderTutImgs(){
+  const box = document.getElementById('tkTutList'), cnt = document.getElementById('tkTutCount');
+  if(cnt){
+    const kb = Math.round(tkTutImgs.reduce((s, i) => s + i.src.length, 0) * 0.75 / 1024);
+    cnt.textContent = tkTutImgs.length + ' / ' + TK_TUT_MAX + ' foto' + (tkTutImgs.length ? ' (± ' + kb + ' KB)' : '');
+  }
+  if(!box) return;
+  box.innerHTML = tkTutImgs.map((im, i) => `
+    <div style="display:flex;gap:8px;align-items:flex-start;border:1.5px solid var(--line);border-radius:10px;padding:8px;margin-bottom:6px;background:var(--card);">
+      <img src="${im.src}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none;background:#eee;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;font-weight:700;color:var(--ink-soft);margin-bottom:4px;">Foto ${i + 1}</div>
+        <input type="text" class="field-input" maxlength="140" placeholder="Keterangan foto (opsional)" value="${escapeHtml(im.cap || '')}" oninput="tkTutImgs[${i}].cap=this.value" style="margin-bottom:0;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;flex:none;">
+        <button type="button" class="link-btn" ${i === 0 ? 'disabled' : ''} onclick="tkMoveTutImg(${i},-1)">↑</button>
+        <button type="button" class="link-btn" ${i === tkTutImgs.length - 1 ? 'disabled' : ''} onclick="tkMoveTutImg(${i},1)">↓</button>
+        <button type="button" class="link-btn link-btn-danger" onclick="tkDelTutImg(${i})">✕</button>
+      </div>
+    </div>`).join('') || '<div class="petugas-empty">Belum ada foto. Klik "+ Tambah Foto".</div>';
+}
+function tkMoveTutImg(i, d){
+  const j = i + d; if(j < 0 || j >= tkTutImgs.length) return;
+  const t = tkTutImgs[i]; tkTutImgs[i] = tkTutImgs[j]; tkTutImgs[j] = t; tkRenderTutImgs();
+}
+function tkDelTutImg(i){ tkTutImgs.splice(i, 1); tkRenderTutImgs(); }
+async function saveTkTutorial(){
+  const it = toolkitRows.find(x => x.id === tkTutEditId);
+  if(!it || !sb) return;
+  const btn = document.getElementById('tkTutSaveBtn'); btn.disabled = true;
+  try{
+    const tut = { text: (document.getElementById('tkTutText').value || '').trim(), imgs: tkTutImgs.map(i => ({ src: i.src, cap: (i.cap || '').trim() })) };
+    const code = tkBuildItem({ kind: 'item', key: it.key, title: it.title, desc: it.description, icon: it.icon, order: it.sort_order }, it.code, tut);
+    const { error } = await sb.from(TOOLKIT_TABLE).update({ code, updated_by: CLIENT_ID, updated_at: new Date().toISOString() }).eq('id', it.id);
+    if(error) throw error;
+    closeTkTutModal();
+    tkSetInfo('tkItemInfo', 'Tutorial tersimpan. Klik bookmark Script Farmacare untuk memuat ulang menu.');
+    await loadToolkit();
+  }catch(err){
+    console.error('Gagal menyimpan tutorial:', err);
+    alert('Gagal menyimpan tutorial. Kalau fotonya banyak, kurangi jumlah fotonya lalu coba lagi.');
+  }finally{ btn.disabled = false; }
+}
+
 // --- bungkus / baca kembali ---
 function tkMeta(o){ return '/*FTK:' + JSON.stringify(o).replace(/\*\//g, '*\\/') + '*/'; }
-function tkBuildItem(meta, code){
+function tkTutJson(t){
+  if(!t || (!(t.text||'').trim() && !(t.imgs||[]).length)) return 'null';
+  return JSON.stringify({ text: t.text || '', imgs: (t.imgs || []).map(i => ({ src: i.src, cap: i.cap || '' })) }).replace(/\*\//g, '*\\/');
+}
+function tkBuildItem(meta, code, tut){
   return tkMeta(meta) + '\n(window.FTK_REG=window.FTK_REG||{})[' + JSON.stringify(meta.key) + ']={title:' + JSON.stringify(meta.title) +
     ',desc:' + JSON.stringify(meta.desc || '') + ',icon:' + JSON.stringify(meta.icon || '') +
-    ',order:' + (Number(meta.order) || 0) + ',run:function(){\n/*FTK-CODE*/\n' + code + '\n/*FTK-END*/\n}};' +
+    ',tut:/*FTK-TUT*/' + tkTutJson(tut) + '/*FTK-TUTEND*/,order:' + (Number(meta.order) || 0) + ',run:function(){\n/*FTK-CODE*/\n' + code + '\n/*FTK-END*/\n}};' +
     // susun ulang FTK_REG menurut 'order' supaya menu di Farmacare mengikuti urutan dari panel admin
     '\n;(function(r){var ks=Object.keys(r).sort(function(a,b){return (r[a].order||0)-(r[b].order||0)}),c={};ks.forEach(function(k){c[k]=r[k];delete r[k]});ks.forEach(function(k){r[k]=c[k]})})(window.FTK_REG);';
 }
@@ -5455,7 +5569,11 @@ function tkParseRow(row){
   const a = c.indexOf('/*FTK-CODE*/\n'), b = c.lastIndexOf('\n/*FTK-END*/');
   const orig = (a >= 0 && b > a) ? c.slice(a + 13, b) : '';
   const out = { id: row.id, kind: meta.kind || 'item', key: meta.key, title: meta.title || '', description: meta.desc || '', icon: meta.icon || '',
-    code: orig, enabled: row.enabled, sort_order: row.sort_order || 0, updated_at: row.updated_at, logo: '' };
+    code: orig, enabled: row.enabled, sort_order: row.sort_order || 0, updated_at: row.updated_at, logo: '', tut: null };
+  const ta = c.indexOf('/*FTK-TUT*/'), tb = c.indexOf('/*FTK-TUTEND*/');
+  if(ta >= 0 && tb > ta){
+    try{ const t = JSON.parse(c.slice(ta + 11, tb)); if(t) out.tut = { text: t.text || '', imgs: Array.isArray(t.imgs) ? t.imgs : [] }; }catch(e){}
+  }
   if(out.kind === 'menu'){
     const lm = c.match(/window\.FTK_LOGO=("(?:[^"\\]|\\.)*");/);
     if(lm){ try{ out.logo = JSON.parse(lm[1]); } catch(e){} }
@@ -5509,8 +5627,9 @@ function renderToolkit(){
     const badges = it.enabled ? '' : '<span class="room-item-badge" style="background:#fbf1e0;color:#b8863b;">Nonaktif</span>';
     return `<div class="room-item tk-row" data-id="${it.id}">
       <div class="room-item-head"><span class="tk-drag" data-id="${it.id}" title="Tahan lalu geser untuk mengubah urutan">⠿</span><span class="tk-num">${i + 1}</span><span class="room-item-code" style="font-family:inherit;">${tkIconHtml(it.icon, 22)} ${escapeHtml(it.title)}</span>${badges}</div>
-      <div class="room-item-sub">${escapeHtml(it.description || '')}${it.description ? ' • ' : ''}${kb} KB • diperbarui ${when}</div>
+      <div class="room-item-sub">${escapeHtml(it.description || '')}${it.description ? ' • ' : ''}${kb} KB${it.tut && ((it.tut.imgs||[]).length || it.tut.text) ? ' • 📖 tutorial (' + (it.tut.imgs||[]).length + ' foto)' : ''} • diperbarui ${when}</div>
       <div class="room-item-actions">
+        <button type="button" class="link-btn" style="color:var(--teal-deep);" onclick="openTkTutModal('${it.id}')">📖 Tutorial${it.tut && ((it.tut.imgs||[]).length) ? ' (' + it.tut.imgs.length + ')' : ''}</button>
         <button type="button" class="link-btn" onclick="editToolkitItem('${it.id}')">Edit</button>
         <button type="button" class="link-btn" onclick="toggleToolkitItem('${it.id}')">${it.enabled ? 'Nonaktifkan' : 'Aktifkan'}</button>
         <button type="button" class="link-btn link-btn-danger" onclick="deleteToolkitItem('${it.id}')">Hapus</button>
@@ -5556,7 +5675,7 @@ async function saveToolkitItem(){
   try{
     const editing = toolkitEditingId ? toolkitRows.find(x => x.id === toolkitEditingId) : null;
     const key = (editing && editing.key) || ('k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5));
-    const row = { name: TK_ITEM_PREFIX + title, code: tkBuildItem({ kind: 'item', key, title, desc, icon, order: editing ? (editing.sort_order || 0) : (toolkitItems().reduce((m, r) => Math.max(m, r.sort_order || 0), 0) + 10) }, code), autorun: false, updated_by: CLIENT_ID, updated_at: new Date().toISOString() };
+    const row = { name: TK_ITEM_PREFIX + title, code: tkBuildItem({ kind: 'item', key, title, desc, icon, order: editing ? (editing.sort_order || 0) : (toolkitItems().reduce((m, r) => Math.max(m, r.sort_order || 0), 0) + 10) }, code, (editing ? editing.tut : null)), autorun: false, updated_by: CLIENT_ID, updated_at: new Date().toISOString() };
     let error;
     if(editing){
       ({ error } = await sb.from(TOOLKIT_TABLE).update(row).eq('id', editing.id));
@@ -5637,7 +5756,7 @@ async function saveToolkitOrder(ids){
   try{
     const jobs = ids.filter(id => byId[id]).map(id =>
       sb.from(TOOLKIT_TABLE)
-        .update({ sort_order: byId[id].sort_order, code: tkBuildItem({ kind: 'item', key: byId[id].key, title: byId[id].title, desc: byId[id].description, icon: byId[id].icon, order: byId[id].sort_order }, byId[id].code), updated_by: CLIENT_ID, updated_at: now })
+        .update({ sort_order: byId[id].sort_order, code: tkBuildItem({ kind: 'item', key: byId[id].key, title: byId[id].title, desc: byId[id].description, icon: byId[id].icon, order: byId[id].sort_order }, byId[id].code, byId[id].tut), updated_by: CLIENT_ID, updated_at: now })
         .eq('id', id).select('id'));
     const res = await Promise.all(jobs);
     const bad = res.find(r => r.error);
